@@ -1,0 +1,28 @@
+#
+# this is an AppConfig (and CAF::) example config file.
+#
+# $Id: example.cf,v 1.3 2005/01/31 09:34:48 gcancio Exp $
+#
+
+# override some application defaults
+
+specific = this is specifically in the config file.
+
+# you don't need the '=' sign
+
+myoption 'set to the my option'
+
+# show how to use multiple list values
+
+something = firstvalue
+
+something = secondvalue
+
+
+
+# show how to use hashes
+book camel = programming perl
+book lama  = learning perl
+
+# another example
+

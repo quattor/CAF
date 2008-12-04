@@ -1,0 +1,13 @@
+
+
+- use a user defined function for trapping errors in _add_config()
+  when using $config->define(..)
+
+- add HASH option processing in --help
+
+- don't exit() in Application.pm but raise a (nice) exception (?)
+
+- in general, better exception handling (eg. log file opening)
+
+- secure file manipulation functions (eg. LC:: ?) instead of using
+  perl built-ins (eg. rename)

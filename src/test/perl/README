@@ -1,0 +1,22 @@
+Some information on CAF tests.
+
+Currently, only CAF::FileWriter and CAF::Process have test
+batteries. Please feel free to add your own, and perhaps to adapt this
+document to your needs.
+
+We are not interested on seeing CAF::FileWriter writing files or
+CAF::Process running commands. That task is delegated on LC::*
+modules, so the only interest of these tests is to ensure that such
+modules are correctly invoked and the log (verbose) messages are
+consistent.
+
+To make it easier to test, some fake LC:: modules are provided. See
+their documentation.
+
+In general, it's easier to add your own backup modules for anything
+that is not CAF. Those modules should be trivial and allow for direct
+checking of the results (with no need to be root to execute them, for
+instance).
+
+All tests in this directory work directly with the Perl modules on CVS
+(those on ../CAF). There is no need to build an RPM and install it.

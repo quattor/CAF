@@ -1,0 +1,364 @@
+2008-11-15  <unknown>
+
+	* Release: 1.7.3
+	- Adding messages to CAF::FileWriter telling if the file was actually modified.
+
+2008-11-14  <unknown>
+
+	* Release: 1.7.2
+	- Documentation update on CAF::FileWriter
+
+2008-10-21  "Luis Fernando"
+
+	* Release: 1.7.1
+	- Fixed bug #43116
+	
+	There was a call to _REP_SETUP->report instead of $self->report on the debug method.
+	Also, ReporterMany blindly overwrote the settings from CAF::Reporter, leading to --verbose
+	and --debug not working.
+
+2008-09-30  "Luis Fernando"
+
+	* Release: 1.7.0
+	- New module, CAF::FileWriter, for wrapping file writing operations.
+	It provides a file-like interface, but doesn't actually write to a file
+	if the contents don't change. It uses LC::Check for that, so it doesn't
+	respect SELinux contexts.
+	
+	Added tests for CAF::FileWriter and updated the tests for CAF::Process.
+	
+	Added a run-all-tests script, for being able to run all tests with the
+	make test command.
+	
+	Renamed the "test" directory to "t", to comply with the build toolds
+	requirements.
+
+2008-09-29  "Luis Fernando"
+
+	* Release: 1.6.7
+	- Updated CAF::ReporterMany's documentation.
+
+2008-09-26  "Luis Fernando"
+
+	* Release: 1.6.6
+	- Removed the CAF::FileWriter module from the Makefile.
+
+2008-09-26  "Luis Fernando"
+
+	* Release: 1.6.5
+	- Temporarily removing the CAF::FileWriter module, to have a version that doesn't
+	require perl-IO-String and yet has a working CAF::ReporterMany.
+
+2008-09-26  "Luis Fernando"
+
+	* Release: 1.6.4
+	- Tagging the previous change.
+
+2008-09-26  Luis Fernando Muñoz Mejías  <mejias@delta.ft.uam.es>
+
+	* Release: 1.6.4
+	- CAF::ReporterMany: fixed the setup_reporter method to fetch, at
+	the beginning, the global settings of CAF::Reporter.
+
+2008-09-26  Marco Emilio Poleggi,<Marco.Poleggi@cnaf.infn.it>
+
+	* Release: 1.6.3
+	- CAF::Reporter: restored singleton behavior;
+	- CAF::ReporterMany: new class allowing multiple reporter objects;
+	- CAF::RepLogger updated to use CAF::ReporterMany
+
+2008-09-18  "Luis Fernando"
+
+	* Release: 1.6.2
+	- Added CAF::Process. CVS sucks.
+
+2008-09-17  "Luis Fernando"
+
+	* Release: 1.6.0
+	- Added a new module, Process.pm, which wraps LC::Process and allows to log the commands
+	run, at the verbose level. See the man page for more information.
+
+2008-08-05  "Luis Fernando"
+
+	* Release: 1.5.3
+	- Fixed Reporter.pm causing processes to die when the syslog daemon is not running
+	and the log sockets are not available (f.i., when installing OpenVZ guests)
+
+2008-08-04  "Luis Fernando"
+
+	* Release: 1.5.2
+	- Fixed a priority name
+
+2008-07-31  "Luis Fernando"
+
+	* Release: 1.5.1
+	- Fixed logging to syslog on SL4. Some of the macros used existed only on Perl 5.8.8 (SL5).
+
+2008-07-28  "Luis Fernando"
+
+	* Release: 1.5.0
+	- Adding the ability to log to syslog, as well as old-style logs.
+	Note that the CAF::Reporter::syslog method is not thread-safe.
+
+2007-12-06  Marco Emilio Poleggi,<Marco.Poleggi@cern.ch>
+
+	* Release: 1.4.15
+	- Object: inherits from Reporter and initializes it new() to avoid issues
+	with application which are already using CAF::Reporter.
+
+2007-12-05  Marco Emilio Poleggi,<Marco.Poleggi@cern.ch>
+
+	* Release: 1.4.14
+	- RepLogger: replaces LoggerSingle since it's more flexible
+	- Reporter: now allows multiple instances of reporter objects, so that
+	more than one log file can be used in the same application
+
+2007-11-27  Marco Emilio Poleggi,<Marco.Poleggi@cern.ch>
+
+	* Release: 1.4.13
+	- CAF::LoggerSingle: new module for easy logging with generic applications
+	- CAF::Reporer: small fix: now debug() checks that the first parameter is
+	integer.
+
+2007-05-24  Marco Emilio Poleggi,<Marco.Poleggi@cern.ch>
+
+	* Release: 1.4.12
+	- Small fix in CAF::Log to avoid extra newlines at log closing
+
+2007-02-06  Marco Emilio Poleggi,<Marco.Poleggi@cern.ch>
+
+	* Release: 1.4.11
+	- Small bugfix for handling correctly indented comments in conf files
+
+2006-08-21  Marco Emilio Poleggi
+
+        * Release: 1.4.10
+        - Added 'Provides' line to specfile for dependency on old edg-caf-perl
+
+2006-08-18  Marco Emilio Poleggi
+
+        * Release: 1.4.9
+        - Error reporting enhanced when logfile cannot be created/accessed
+
+2006-05-26  Marco Emilio Poleggi
+
+        * Release: 1.4.8
+        - Removed test target from Makefile as it clashes with top level rules
+
+2006-02-17  German Cancio Melia
+
+        * Release: 1.4.7
+        - Moved AppConfig man pages to AppConfig-caf
+
+2006-02-16  German Cancio Melia
+
+        * Release: 1.4.6
+        - Fix RPM 4.2.3 issue with Obsoletes/Provides
+
+2005-09-19  German Cancio Melia
+
+        * Release: 1.4.5
+        - Removed Provides: as already Obsoletes: edg-caf-perl - and this was confusing RPM!!
+
+2005-07-04  German Cancio Melia
+
+        * Release: 1.4.4
+        - Added explicit Requires: of perl-Proc-ProcessTable
+
+2005-06-03  German Cancio Melia
+
+        * Release: 1.4.3
+        - Added root permissions to AppConfig RPM
+
+2005-05-31  German Cancio Melia
+
+        * Release: 1.4.2
+        - Adds a 'provides edg-caf-perl' for backwards compatibility
+
+2005-05-06  German Cancio Melia
+
+        * Release: 1.4.1
+        - Minor fix in Lock.pm - verify if application instance holding the lock becomes stale in every wait iteration
+
+2005-05-06  German Cancio Melia
+
+        * Release: 1.4.0
+        - Bumped minorversion. Also added a is_set() method to Lock to check if lock is set by this application instance.
+
+2005-05-06  German Cancio Melia
+
+        * Release: 1.3.13
+        - Adding CAF::Lock class (as requested in Savannah #3180)
+
+2005-04-18  German Cancio Melia
+
+        * Release: 1.3.12
+        - Updated the example to show arrays and hashes
+
+2005-01-31  German CANCIO MELIA
+
+        * Release: 1.3.11
+        - Accepts now for --cfgfile both --cfgfile value and --cfgfile=value
+
+2005-01-24  German CANCIO MELIA
+
+        * Release: 1.3.10
+        - Addded restriction to redefine QTTR_PERLLIB only on Linux
+
+2004-12-03  German CANCIO MELIA
+
+        * Release: 1.3.9
+        - Added obsoletes for edg-caf-perl
+
+2004-12-03  German CANCIO MELIA
+
+        * Release: 1.3.8
+        - Changed RPM group to 'quattor'
+
+2004-10-07  Rafael Garcia Leiva
+
+        * Release: 1.3.7
+        - package renamed, package dependencies fixed
+
+2004-08-24  German CANCIO MELIA
+
+        * Release: 1.3.6
+        - Splitted out AppConfig to a separate package, fixing Savannah #4088
+
+2004-05-26  German CANCIO MELIA
+
+        * Release: 1.3.5
+        - fixed typo in pod doc (Savannah #3487)
+
+2004-03-15  German Cancio Melia
+
+        * Release: 1.3.4
+        - Put libraries now in standard perl directory
+
+2003-08-25 CVS: new release (gcancio)
+
+        * Release: 1.3.3
+        - small fix due to quattor build tools date missing
+
+2003-08-25 CVS: new release (gcancio)
+
+        * Release: 1.3.2
+        - for Solaris compatibility, separated mkdir line
+
+2003-08-22 CVS: new release (gcancio)
+
+        * Release: 1.3.1
+        - removed @LCFGCONFIGMSG@ from specfile
+
+2003-08-22 CVS: new release (gcancio)
+
+        * Release: 1.3.0
+        - Cleanup and polish port to new Quattor build tools
+
+2003-08-22  CVS: new release
+
+ * Release: 1.2.4
+
+2003-08-21  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* converted to new quattor build tools
+
+2003-07-01  CVS: new release
+
+	* Release: 1.2.2
+
+2003-07-01  CVS: new release
+
+	* Release: 1.2.1
+
+2003-07-01  CVS: new release
+
+	* Release: 0.1.13
+
+2003-07-01  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* added new ReporterObject class, to use Reporter as an singleton
+  	  class
+
+2003-06-11  CVS: new release
+
+	* Release: 0.1.12
+
+2003-06-11  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* support -help as --help in Application.pm
+
+2003-03-21  CVS: new release
+
+	* Release: 0.1.11
+
+2003-03-21  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* small doc fix in Application.pm
+
+2003-02-17  CVS: new release
+
+	* Release: 0.1.10
+
+2003-02-12  CVS: new release
+
+	* Release: 0.1.9
+
+2003-02-06  CVS: new release
+
+	* Release: 0.1.8
+
+2003-02-06  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* removed Exception.pm as now found in edg-perl-LC package
+
+2003-02-05  CVS: new release
+
+	* Release: 0.1.7
+
+2003-02-05  CVS: new release
+
+	* Release: 0.1.6
+
+2003-02-05  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* Removed destruction method in Reporter as not
+	  object but invariant class
+
+2003-02-05  CVS: new release
+
+	* Release: 0.1.5
+
+2003-02-05  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* bugfix for help display (no defaults).
+	* added hash handling in help display.
+
+2003-02-04  CVS: new release
+
+	* Release: 0.1.4
+
+2003-02-04  CVS: new release
+
+	* Release: 0.1.3
+
+2003-02-04  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* small bugfix (AppConfig.pm readded to specfile)
+
+2003-02-04  CVS: new release
+
+	* Release: 0.1.2
+
+2003-02-04  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* added LC::Exception as a temporary hack.
+
+2003-02-04  CVS: new release
+
+	* Release: 0.1.1
+
+2003-02-04  German CANCIO MELIA  <gcancio@asis-w6.cern.ch>
+
+	* first version.
+

@@ -1,0 +1,306 @@
+<project
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.quattor.cfg.module</groupId>
+  <artifactId>perl-CAF</artifactId>
+
+  <packaging>pom</packaging>
+  <version>1.12.1-SNAPSHOT</version>
+  <name>Configuration Cache Manager for Quattor</name>
+
+  <repositories>
+    <repository>
+      <id>quattor-releases</id>
+      <url>http://lapp-repo01.in2p3.fr:8081/nexus/content/repositories/releases/</url>
+    </repository>
+  </repositories>
+
+  <parent>
+    <groupId>org.quattor.maven</groupId>
+    <artifactId>build-profile</artifactId>
+    <version>1.15</version>
+    <relativePath/>
+  </parent>
+
+  <licenses>
+    <license>
+      <name>Apache 2 License</name>
+      <url>http://www.opensource.org/licenses/apache2.0</url>
+      <comments>Copyright (c) Responsible Organization</comments>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Luis Fernando Muñoz Mejías</name>
+      <email>Luis.Munoz@UGent.be</email>
+    </developer>
+    <developer>
+      <name>Loïc Brarda</name>
+      <email>Loic.Brarda@cern.ch</email>
+    </developer>
+  </developers>
+
+  <contributors>
+    <contributor>
+      <name>Marco Emilio Poleggi</name>
+    </contributor>
+    <contributor>
+      <name>Germán Cancio Meliá</name>
+      <email>German.Cancio@cern.ch</email>
+    </contributor>
+    <contributor>
+      <name>Rafael A. García Leiva</name>
+    </contributor>
+    <contributor>
+      <name>Piotr Poznanski</name>
+    </contributor>
+    <contributor>
+      <name>Ben Jones</name>
+      <email>ben.jones@morganstanleylcom</email>
+    </contributor>
+  </contributors>
+
+  <profiles>
+    <profile>
+      <id>cfg-module-dist</id>
+      <activation>
+	<file>
+	  <missing>deactivate.cfg.module.dist</missing>
+	</file>
+      </activation>
+      <build>
+  	<plugins>
+	  <plugin>
+	    <groupId>org.apache.maven.plugins</groupId>
+	    <artifactId>maven-resources-plugin</artifactId>
+	    <executions>
+	      <execution>
+		<id>filter-perl-sources</id>
+		<phase>process-sources</phase>
+		<goals>
+		  <goal>copy-resources</goal>
+		</goals>
+		<configuration combine.self="override">
+		  <outputDirectory>${project.build.directory}/lib/perl/CAF</outputDirectory>
+		  <resources>
+		    <resource>
+		      <directory>src/main/perl</directory>
+		      <includes>
+			<include>*.pm</include>
+		      </includes>
+		      <filtering>true</filtering>
+		    </resource>
+		  </resources>
+		</configuration>
+	      </execution>
+	      <execution>
+		<id>filter-doc-sources</id>
+		<phase>process-sources</phase>
+		<goals>
+		  <goal>copy-resources</goal>
+		</goals>
+		<configuration>
+		  <outputDirectory>${project.build.directory}/doc/eg</outputDirectory>
+		  <resources>
+		    <resource>
+		      <directory>src/main/doc</directory>
+		    </resource>
+		  </resources>
+		</configuration>
+	      </execution>
+	      <execution>
+		<id>filter-conf-sources</id>
+		<phase>process-sources</phase>
+		<goals>
+		  <goal>copy-resources</goal>
+		</goals>
+		<configuration>
+		  <outputDirectory>${project.build.directory}/etc</outputDirectory>
+		  <encoding>UTF-8</encoding>
+		  <delimiters>
+		    <delimiter>${*}</delimiter>
+		  </delimiters>
+		  <resources>
+		    <resource>
+		      <directory>src/main/conf</directory>
+		    </resource>
+		  </resources>
+		</configuration>
+	      </execution>
+	      <execution>
+		<id>filter-pod-sources</id>
+		<phase>process-sources</phase>
+		<goals>
+		  <goal>copy-resources</goal>
+		</goals>
+		<configuration self.combine="override">
+		  <outputDirectory>${project.build.directory}/doc/pod/CAF</outputDirectory>
+		  <resources>
+		    <resource>
+		      <directory>src/main/perl</directory>
+		      <includes>
+			<include>*.pm</include>
+		      </includes>
+		      <filtering>true</filtering>
+		    </resource>
+		  </resources>
+		</configuration>
+	      </execution>
+	    </executions>
+	  </plugin>
+	  <!-- Ok, so the build tools *really* want to have a bunch of
+	       .pod files under doc/pod. We just rename them. -->
+	  <plugin>
+	    <artifactId>maven-antrun-plugin</artifactId>
+	    <executions>
+	      <execution>
+		<id>rename-pod-sources</id>
+		<phase>process-sources</phase>
+		<goals>
+		  <goal>run</goal>
+		</goals>
+		<configuration>
+		  <tasks name="Rename">
+		    <move filtering="true" todir="${project.build.directory}/doc/pod/CAF">
+		      <fileset dir="${project.build.directory}/doc/pod/CAF"/>
+		      <mapper>
+			<globmapper from="*.pm" to="*.pod"/>
+		      </mapper>
+		    </move>
+		    <echo>Renaming stuff?</echo>
+		  </tasks>
+		</configuration>
+	      </execution>
+	    </executions>
+	  </plugin>
+          <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <extensions>true</extensions>
+            <executions>
+              <execution>
+                <id>tarballs</id>
+                <configuration combine.self="override">
+		  <descriptors>
+		    <descriptor>target/dependency/assemblies/bin.xml</descriptor>
+		  </descriptors>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+  	</plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>module-test</id>
+      <activation>
+	<property>
+	  <name>env.PERL5LIB</name>
+	</property>
+      </activation>
+      <build>
+	<plugins>
+	  <plugin>
+	    <groupId>org.codehaus.mojo</groupId>
+	    <artifactId>exec-maven-plugin</artifactId>
+	    <executions>
+	      <execution>
+		<id>prove</id>
+		<phase>test</phase>
+		<goals>
+		  <goal>exec</goal>
+		</goals>
+		<configuration>
+		  <executable>prove</executable>
+		  <workingDirectory>${basedir}</workingDirectory>
+		  <arguments>
+		    <argument>--harness=TAP::Harness::JUnit</argument>
+		    <argument>-I</argument>
+		    <argument>target/lib/perl</argument>
+		    <argument>-I</argument>
+		    <argument>src/test/resources</argument>
+		    <argument>src/test/perl</argument>
+		  </arguments>
+'		</configuration>
+	      </execution>
+	    </executions>
+	  </plugin>
+	</plugins>
+      </build>
+    </profile>
+  </profiles>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+	<plugin>
+	  <groupId>org.codehaus.mojo</groupId>
+	  <artifactId>rpm-maven-plugin</artifactId>
+	  <configuration>
+	    <summary>Common Application Framework for Quattor Perl applications</summary>
+	    <name>${project.artifactId}</name>
+	    <provides>
+	      <provide>edg-caf-perl</provide>
+	    </provides>
+	    <requires>
+	      <require>perl-LC</require>
+	      <require>Proc::ProcessTable</require>
+	    </requires>
+	    <mappings>
+              <mapping>
+                <directory>/usr/lib</directory>
+                <filemode>644</filemode>
+                <username>root</username>
+                <groupname>root</groupname>
+                <directoryIncluded>false</directoryIncluded>
+                <sources>
+                  <source>
+                    <location>${project.build.directory}/lib</location>
+                  </source>
+                </sources>
+		<recurseDirectories>true</recurseDirectories>
+              </mapping>
+	      <mapping>
+		<directory>/usr/share/doc/${project.artifactId}-${project.version}</directory>
+		<filemode>644</filemode>
+		<username>root</username>
+		<groupname>root</groupname>
+		<documentation>true</documentation>
+		<directoryIncluded>false</directoryIncluded>
+		<sources>
+		  <source>
+		    <location>${basedir}</location>
+		    <includes>
+		      <include>ChangeLog</include>
+		    </includes>
+		  </source>
+		</sources>
+	      </mapping>
+	      <mapping>
+		<directory>/usr/share/doc/man</directory>
+		<filemode>644</filemode>
+		<username>root</username>
+		<groupname>root</groupname>
+		<configuration>false</configuration>
+		<documentation>true</documentation>
+		<directoryIncluded>false</directoryIncluded>
+		<sources>
+		  <source>
+		    <location>${project.build.directory}/doc/man</location>
+		  </source>
+		</sources>
+		<recurseDirectories>true</recurseDirectories>
+	      </mapping>
+	    </mappings>
+	  </configuration>
+	</plugin>
+
+      </plugins>
+    </pluginManagement>
+  </build>
+
+</project>

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Bash script for running all tests.
+
+for i in *.pl lock
+do
+    echo "Running test suite: $i"
+    perl $i
+done
