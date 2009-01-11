@@ -70,7 +70,7 @@ is ($str, "Opening file " . FILENAME,
 $fh->close;
 is ($opts{contents}, TEXT, "Correct contents written to the logged file");
 is ($path, FILENAME, "Correct file opened with log");
-my $re =  ".*File " . FILENAME . " was modified";
+my $re =  ".*File " . FILENAME . " was modified"; # 
 like($str, qr{$re},
      "Modified file correctly reported");
 ok (!exists ($opts{LOG}), "No log information passed to LC::Check::file");
