@@ -1,5 +1,15 @@
 2009-01-11  <unknown>
 
+	* Release: 1.8.1
+	- Added head_print method, documentation and fixed the Makefile.
+	
+	Added full documentation with a few examples.
+	New head_print method, which I hope helps replacing the confusing syntax of
+	NCD::Check::lines (or whatever).
+	Updated the Makefile to build this module, too.
+
+2009-01-11  <unknown>
+
 	* Release: 1.8.0
 	- Added a new CAF::FileEditor module.
 	
