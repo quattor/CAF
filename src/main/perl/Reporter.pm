@@ -232,7 +232,7 @@ to 1. Output is prefixed with [VERB].
 
 sub verbose (@) {
   my $self=shift;
-  if ($self->{VERBOSE}) {
+  if ($_REP_SETUP->{VERBOSE}) {
     $self->syslog ('notice', @_);
     return $self->report('[VERB] ',@_) if ($_REP_SETUP->{'VERBOSE'});
   }

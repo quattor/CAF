@@ -1,3 +1,12 @@
+2009-03-03  Luis Fernando Muñoz Mejías
+
+	* Release: 1.8.2
+	- Fix CAF::Reporter::verbose.
+	
+	CAF::Reporter objects don't have the debug and verbose flags as part of the object,
+	but on the class-wide $_REP_SETUP. So that's the place to look at when we are verifying
+	whether or not a verbose message should be output.
+
 2009-01-11  <unknown>
 
 	* Release: 1.8.1
