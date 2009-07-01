@@ -9,6 +9,7 @@ use strict;
 use warnings;
 use CAF::FileWriter;
 use LC::File;
+use Fcntl qw(:seek);
 
 our @ISA = qw (CAF::FileWriter);
 
@@ -43,8 +44,12 @@ sub new
 {
     my $class = shift;
     my $self = $class->SUPER::new (@_);
-    my $txt = LC::File::file_contents (*$self->{filename});
-    $self->IO::String::open ($txt);
+    if (-f *$self->{filename}) {
+	my $txt = LC::File::file_contents (*$self->{filename});
+	$self->IO::String::open ($txt);
+	seek($self, 0, SEEK_END);
+    }
+    return $self;
 }
 
 =pod
@@ -72,7 +77,6 @@ C<CAF::FileWriter> object instead.
 
 sub set_contents
 {
-    
     return IO::String::open (@_);
 }
 

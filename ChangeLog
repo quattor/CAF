@@ -1,3 +1,12 @@
+2009-07-01  Luis Fernando Muñoz Mejías
+
+	* Release: 1.8.3
+	- Fix CAF::FileEditor::print.
+	
+	It was not working as expected, as IO::String has the stupid habit of
+	resetting the position to 0, so all printings were done on the very beginning
+	of the file, instead of at the end.
+
 2009-03-03  Luis Fernando Muñoz Mejías
 
 	* Release: 1.8.2
