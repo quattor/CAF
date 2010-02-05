@@ -274,6 +274,7 @@ sub setopts
     $self->{OPTIONS}->{stdin} = $opts{stdin} if exists $opts{stdin};
     $self->{OPTIONS}->{stdout} = $opts{stdout} if exists $opts{stdout};
     $self->{OPTIONS}->{stderr} = $opts{stderr} if exists $opts{stderr};
+    $self->{OPTIONS}->{shell} = $opts{shell} if exists $opts{shell};
 }
 
 1;
@@ -343,6 +344,18 @@ Suppose you want to add options to your command, dynamically:
 
     # Runs ls -l -a -h -S
     $proc->run();
+
+=head2 Subshells
+
+Okay, you B<really> want them. You can't live without them. You found
+some obscure case that really needs a shell. Here is how to get
+it. But please, don't use it without a B<good> reason:
+
+    my $cmd = CAF::Process->new(["ls -lh|wc -l"], log => $self,
+                                 shell => 1);
+    $cmd->execute();
+
+It will only work with the C<execute> method.
 
 =head1 SEE ALSO
 

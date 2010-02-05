@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use testapp;
 use CAF::FileEditor;
-use Test::More tests => 8;
+use Test::More tests => 9;
 our $filename = `mktemp`;
 use constant TEXT => <<EOF;
 En un lugar de La Mancha, de cuyo nombre no quiero acordarme
@@ -33,6 +33,8 @@ isa_ok ($fh, "CAF::FileEditor", "Correct class after new method");
 isa_ok ($fh, "CAF::FileWriter", "Correct class inheritance after new method");
 is (${$fh->string_ref()}, TEXT, "File opened and correctly read");
 $fh->close();
+
+is(*$fh->{filename}, $filename, "The object stores its parent's attributes");
 
 is ($opts{contents}, TEXT, "Attempted to write the file with the correct contents");
 $fh = CAF::FileEditor->open ($filename);
