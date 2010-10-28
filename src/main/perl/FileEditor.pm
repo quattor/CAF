@@ -9,9 +9,14 @@ use strict;
 use warnings;
 use CAF::FileWriter;
 use LC::File;
+use Exporter;
 use Fcntl qw(:seek);
 
-our @ISA = qw (CAF::FileWriter);
+our @ISA = qw (CAF::FileWriter Exporter);
+our @EXPORT = qw(BEGINNING_OF_FILE ENDING_OF_FILE);
+
+use constant BEGINNING_OF_FILE => SEEK_SET;
+use constant ENDING_OF_FILE => SEEK_END;
 
 =pod
 
@@ -86,8 +91,6 @@ sub set_contents
 
 Appends a line to the very beginning of the file.
 
-=back
-
 =cut
 
 sub head_print
@@ -98,9 +101,116 @@ sub head_print
     return $self;
 }
 
+=pod
+
+=item replace_lines(re, goodre, newvalue)
+
+Replace any lines matching C<re> but *not* C<goodre> with
+C<newvalue>. If there is no match, nothing will be done. For instance,
+
+    $fh->replace(qr(hello.*), qr(hello.*world), 'hello and good bye, world!')
+
+Will replace all lines containing 'hello' but B<not> world by the
+string 'hello and good bye, world!'. But if the file contents are
+
+    There was Eru, who in Arda is called Ilúvatar
+
+it will be kept as is.
+
+This is useful when we want to change a given configuration directive
+only if it exists and it's wrong.
+
+The regular expressions can be expressed with the C<qr> operator, thus
+allowing for modification flags such as C<i>.
+
+=cut
+
+sub replace_lines
+{
+    my ($self, $re, $goodre, $newvalue) = @_;
+
+    my @lns;
+    seek($self, 0, SEEK_SET);
+
+    while (my $l = <$self>) {
+	if ($l =~ $re && $l !~ $goodre) {
+	    push (@lns, $newvalue);
+	} else {
+	    push (@lns, $l);
+	}
+    }
+    $self->set_contents (join("", @lns));
+    seek ($self, 0, SEEK_END);
+}
+
+=pod
+
+=item add_or_replace_lines(re, goodre, newvalue, whence)
+
+Replace lines matching C<re> but not C<goodre> with C<newvalue>. If
+there is no match, a new line will be added to the where C<whence>
+tells us.
+
+=back
+
+=cut
+
+sub add_or_replace_lines
+{
+    my ($self, $re, $goodre, $newvalue, $whence) = @_;
+
+    my $add = 1;
+    my @lns;
+    seek ($self, 0, SEEK_SET);
+    while (my $l = <$self>) {
+	if ($l =~ $re) {
+	    if ($l =~ $goodre) {
+		push (@lns, $l);
+	    } else {
+		push (@lns, $newvalue);
+	    }
+	    $add = 0;
+	} else {
+	    push (@lns, $l);
+	}
+    }
+
+    if ($add) {
+	if ($whence == BEGINNING_OF_FILE) {
+	    $self->head_print ($newvalue);
+	} elsif ($whence == ENDING_OF_FILE) {
+	    print $self $newvalue;
+	} elsif (*$self->{LOG}) {
+	    *$self->{LOG}->error ("Wrong whence value");
+	}
+    } else {
+	$self->set_contents (join ("", @lns));
+    }
+    seek ($self, 0, SEEK_END);
+}
+
+
 __END__
 
 =pod
+
+=head1 EXPORTED CONSTANTS
+
+The following constants are automatically exported when using this module:
+
+=over
+
+=item C<BEGINNING_OF_FILE>
+
+Flag to pass to C<add_or_replace_lines>. Lines should be added at the
+beginning of the file.
+
+=item C<ENDING_OF_FILE>
+
+Flag to pass to C<add_or_replace_lines>. Lines should be added at the
+end of the file.
+
+=back
 
 =head1 EXAMPLES
 
@@ -133,6 +243,35 @@ Trivial: use the C<head_print> method:
     my $fh = CAF::FileEditor->open ("/foo/bar",
                                     log => $self);
     $fh->head_print ("This is a nice header for my file");
+
+=head2 Replacing configuration lines
+
+If you want to replace existing lines:
+
+    my $fh = CAF::FileEditor->open ("/foo/bar",
+                                    log => $self);
+    $fh->replace_lines (qr(pam_listfile),
+                        qr(session\s+required\s+pam_listfile.so.*item=user),
+                        join("\t", qw(session required pam_listfile.so
+                                      onerr=fail item=user sense=allow
+                                      file=/some/acl/file)));
+
+This will B<not> add any new lines in case there are no matches.
+
+=head2 Adding or replacing lines
+
+If you want to replace lines that match a given regular expression,
+and have to add them to the beginning of the file in case there are no
+matches:
+
+    my $fh = CAF::FileEditor->open ("/foo/bar",
+                                    log => $self);
+    $fh->add_or_replace_lines (qr(pam_listfile),
+                        qr(session\s+required\s+pam_listfile.so.*item=user),
+                        join("\t", qw(session required pam_listfile.so
+                                      onerr=fail item=user sense=allow
+                                      file=/some/acl/file)),
+                        BEGINNING_OF_FILE);
 
 =head1 SEE ALSO
 
