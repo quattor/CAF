@@ -1,3 +1,9 @@
+2010-12-08  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
+
+	* Release: 1.8.6
+	- Make the install path dependent on Perl's directories for
+	the platform.
+
 2010-10-28  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
 
 	* Release: 1.8.5
