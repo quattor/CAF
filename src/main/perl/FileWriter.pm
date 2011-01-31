@@ -13,6 +13,7 @@ use strict;
 use warnings;
 use LC::Check;
 use IO::String;
+use CAF::Process;
 
 our @ISA = qw (IO::String);
 
@@ -135,16 +136,26 @@ secure way (not following symlinks, etc).
 sub close
 {
     my $self = shift;
-    my ($str, $ret);
+    my ($str, $ret, $cmd);
 
     if (*$self->{save}) {
 	*$self->{save} = 0;
 	$str = *$self->{buf};
 	*$self->{options}->{contents} = $$str;
 	$ret = LC::Check::file (*$self->{filename}, %{*$self->{options}});
-	*$self->{LOG}->verbose ("File ", *$self->{filename}, " was",
-				$ret?" ":" not ", "modified")
-	    if *$self->{LOG};
+	# Restore the SELinux context in case of modifications.
+	if ($ret) {
+	    *$self->{LOG}->verbose ("File ",  *$self->{filename},
+				    " was modified")
+		if *$self->{LOG};
+	    $cmd = CAF::Process->new (['restorecond', *$self->{filename}],
+				     log => *$self->{LOG});
+	    $cmd->run();
+	} else {
+	    *$self->{LOG}->verbose ("File ", *$self->{filename},
+				    " was not modified")
+		if *$self->{LOG};
+	}
     }
     $self->SUPER::close();
     return $ret;
