@@ -14,6 +14,8 @@ use warnings;
 use LC::Check;
 use IO::String;
 use CAF::Process;
+use CAF::Object;
+use overload '""' => "stringify";
 
 our @ISA = qw (IO::String);
 
@@ -138,6 +140,10 @@ sub close
     my $self = shift;
     my ($str, $ret, $cmd);
 
+    if ($CAF::Object::NoAction) {
+	$self->cancel();
+    }
+
     if (*$self->{save}) {
 	*$self->{save} = 0;
 	$str = *$self->{buf};
@@ -175,6 +181,23 @@ sub cancel
 	*$self->{LOG}->verbose ("Not saving file ", *$self->{filename});
     }
     *$self->{save} = 0;
+}
+
+=pod
+
+=item stringify
+
+Returns a string with the contents of the file, so far. It overloads
+C<"">, so it's now possible to do "$fh" and get the contents of the
+file so far.
+
+=cut
+
+sub stringify
+{
+     my $self = shift;
+     my $str = $self->string_ref;
+     return $$str;
 }
 
 =back

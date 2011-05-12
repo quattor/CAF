@@ -148,7 +148,9 @@ sub execute
 	}
 	$self->{log}->verbose (join (" ", "Command options:", @opts));
     }
-
+    if ($CAF::Object::NoAction) {
+	return 0;
+    }
     return LC::Process::execute ($self->{COMMAND}, %{$self->{OPTIONS}});
 }
 
@@ -169,6 +171,10 @@ sub output
 
     $self->{log}->verbose (join(" ", "Output of command:", @{$self->{COMMAND}}))
 	if $self->{log};
+
+    if ($CAF::Object::NoAction) {
+	return "";
+    }
 
     return LC::Process::output (@{$self->{COMMAND}});
 }
@@ -194,6 +200,9 @@ sub toutput
 				 "|with $timeout seconds of timeout"))
 	if $self->{log};
 
+    if ($CAF::Object::NoAction) {
+	return "";
+    }
     return LC::Process::toutput ($timeout, @{$self->{COMMAND}});
 }
 
@@ -214,6 +223,9 @@ sub run
     $self->{log}->verbose (join (" ", "Running the command:",
 				 @{$self->{COMMAND}}))
 	if $self->{log};
+    if ($CAF::Object::NoAction) {
+	 return 0;
+    }
     return LC::Process::run (@{$self->{COMMAND}});
 }
 
@@ -235,6 +247,10 @@ sub trun
 				 @{$self->{COMMAND}},
 				 "|with $timeout seconds of timeout"))
 	if $self->{log};
+
+    if ($CAF::Object::NoAction) {
+	 return 0;
+    }
 
     return LC::Process::trun ($timeout, @{$self->{COMMAND}});
 }

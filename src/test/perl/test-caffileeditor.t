@@ -1,12 +1,8 @@
 #!/usr/bin/perl
-
-BEGIN {
-    unshift (@INC, qw (. .. ../../perl-LC));
-}
-
-
 use strict;
 use warnings;
+use FindBin qw($Bin);
+use lib "$Bin/", "$Bin/..", "$Bin/../../perl-LC";
 use testapp;
 use CAF::FileEditor;
 use Test::More tests => 18;
@@ -77,8 +73,7 @@ unlike(${$fh->string_ref()},
        qr(^En un lugar de La Mancha"),
        "add_or_replace actually has replaced and not added anything");
 $fh->add_or_replace_lines(qr(Ainur), qr(thought),
-			  join(" ",
-			       qw(And he made first the Ainur, the Holy Ones)),
+			  q(And he made first the Ainur, the Holy Ones),
 			  BEGINNING_OF_FILE);
 like(${$fh->string_ref()},
      qr(^And he made first the Ainur, the Holy Ones)s,

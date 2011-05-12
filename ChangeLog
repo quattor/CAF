@@ -1,3 +1,18 @@
+2011-05-12 Luis Fernando Muñoz Mejías <lfmunozmejias@gmail.com>
+
+	* Release: 1.9.0
+	- Add NoAction to Object and stringify to File*
+
+	Process and File* will not do anything if NoAction is present. The
+	name is probably not optimal, but it's consistent with what we
+	find in NCM::Components.
+
+	Also, it's possible to get the contents of a FileWriter or
+	FileEditor as if it was a string, and check if it contains some
+	pattern just by doing
+
+	$fh =~ m{regexp};
+
 2011-01-31  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
 
 	* Release: 1.8.7

@@ -1,15 +1,12 @@
 #!/usr/bin/perl
 
-BEGIN {
-    unshift (@INC, qw (. .. ../../perl-LC));
-}
-
-
+use FindBin qw($Bin);
+use lib "$Bin/", "$Bin/..", "$Bin/../../perl-LC";
 use strict;
 use warnings;
 use testapp;
-
-use Test::More tests => 29;
+use CAF::Process;
+use Test::More;
 
 my ($p, $this_app, $str, $fh, $out, $out2);
 
@@ -98,3 +95,19 @@ $p->execute ();
 is ($opts{stdin}, "Something", "Option from creation is respected");
 is (${$opts{stdout}}, $str, "Correct stdout");
 ok (@$cmd == @$command, "The command got options appended");
+# Test the NoAction flag
+$CAF::Object::NoAction = 1;
+init_test();
+$p->execute();
+ok (!@$cmd, "LC::Process::execute not called with NoAction");
+is ($p->output(), "", "The ouptut with NoAction is empty");
+ok (!@$cmd, "LC::Process::output not called with NoAction");
+is ($p->run(), 0, "Run returns the expected value with NoAction");
+ok (!@$cmd, "LC::Process::run not called with NoAction");
+is ($p->toutput(10), "", "The toutput with NoAction is empty");
+ok (!@$cmd, "LC::Process::toutput not called with NoAction");
+is ($p->trun(10), 0,
+    "LC::Process::trun returns the expected value with NoAction");
+ok (!@$cmd, "LC::Process::trun not called with NoAction");
+
+done_testing();

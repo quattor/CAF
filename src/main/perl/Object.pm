@@ -10,9 +10,11 @@
 package CAF::Object;
 
 use strict;
-use vars qw(@ISA);
+our @ISA;
 #use CAF::Reporter;
 use LC::Exception qw (SUCCESS throw_error);
+
+our $NoAction;
 
 my $ec = LC::Exception::Context->new->will_store_all;
 

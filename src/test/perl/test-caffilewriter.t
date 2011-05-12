@@ -1,15 +1,13 @@
 #!/usr/bin/perl
 
-BEGIN {
-    unshift (@INC, qw (. .. ../../perl-LC));
-}
-
 use strict;
 use warnings;
+use FindBin qw($Bin);
+use lib "$Bin/", "$Bin/..", "$Bin/../../perl-LC";
 use testapp;
 use CAF::FileWriter;
-
-use Test::More tests => 22;
+use CAF::Object;
+use Test::More tests => 25;
 
 # El ingenioso hidalgo Don Quijote de La Mancha
 use constant TEXT => <<EOF;
@@ -97,3 +95,18 @@ $re = "File " . FILENAME . " was not modified";
 $fh->close();
 like($str, qr{$re},
      "Unmodified file correctly reported");
+
+$CAF::Object::NoAction = 1;
+
+init_test;
+$fh = CAF::FileWriter->open (FILENAME, log => $this_app,
+			     backup => "foo",
+			     mode => 0400,
+			     owner => 100,
+			     group => 200);
+print $fh TEXT;
+is ("$fh", TEXT, "Stringify works");
+like ($fh, qr(En un lugar), "Regexp also works");
+$fh->close();
+ok(!exists ($opts{contents}), "Nothing is written when NoAction is specified");
+
