@@ -1,3 +1,9 @@
+2011-07-18 Loic Brarda <loic.brarda@cern.ch>
+
+	* Release: 1.9.1
+	- add_or_replace_sysconfig_lines : new function
+	- remove_lines functions : new function by pierre.jean.schweitzer@cern.ch
+
 2011-05-12 Luis Fernando Muñoz Mejías <lfmunozmejias@gmail.com>
 
 	* Release: 1.9.0

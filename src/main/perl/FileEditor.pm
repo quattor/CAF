@@ -145,13 +145,31 @@ sub replace_lines
 
 =pod
 
+=item add_or_replace_sysconfig_lines(key, value, whence)
+
+Replace the C<value> in lines matching the C<key>. If
+there is no match, a new line will be added to the where C<whence> tells us.
+The sysconfig_separator value can be changed if it's not the usual '='.
+
+=cut
+
+our $sysconfig_separator = '=';
+
+sub add_or_replace_sysconfig_lines {
+    my ($self, $key, $value, $whence) = @_;
+
+    if (not defined($whence)) { $whence = ENDING_OF_FILE;}
+    $self->add_or_replace_lines($key, $key.'/s*'.$sysconfig_separator.'/s*'.$value,
+                        $key.'='.$value."\n", $whence);
+}
+
+=pod
+
 =item add_or_replace_lines(re, goodre, newvalue, whence)
 
 Replace lines matching C<re> but not C<goodre> with C<newvalue>. If
 there is no match, a new line will be added to the where C<whence>
 tells us.
-
-=back
 
 =cut
 
@@ -189,6 +207,31 @@ sub add_or_replace_lines
     seek ($self, 0, SEEK_END);
 }
 
+
+=pod
+
+=item remove_lines(re, goodre)
+
+Remove any lines matching C<re> but *not* C<goodre>.
+If there is no match, nothing will be done.
+
+=cut
+
+sub remove_lines
+{
+    my ($self, $re, $goodre) = @_;
+
+    my @lns;
+    seek($self, 0, SEEK_SET);
+
+    while (my $l = <$self>) {
+        unless ($l =~ $re && $l !~ $goodre) {
+            push (@lns, $l);
+        }
+    }
+    $self->set_contents(join("", @lns));
+    seek($self, 0, SEEK_END);
+}
 
 __END__
 
