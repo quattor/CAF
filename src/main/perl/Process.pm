@@ -5,7 +5,7 @@
 #
 #
 # CAF::Process class
-# Written by Luis Fernando Muñoz Mejías <mejias@delta.ft.uam.es>
+# Written by Luis Fernando MuÃ±oz MejÃ­as <mejias@delta.ft.uam.es>
 
 package CAF::Process;
 
@@ -107,10 +107,13 @@ sub _initialize
     my ($self, $command, %opts) = @_;
 
     if (exists $opts{log}) {
-	if ($opts{log}) {
-	    $self->{log} = $opts{log};
-	}
+        if ($opts{log}) {
+            $self->{log} = $opts{log};
+        }
     }
+
+    $self->{NoAction} = $opts{Action} ? 0 : $CAF::Object::NoAction;
+
     $self->{COMMAND} = $command;
 
     $self->setopts (%opts);
@@ -139,17 +142,21 @@ sub execute
 {
     my $self = shift;
 
-    if ($self->{log}) { 
-	$self->{log}->verbose (join (" ",
-				     "Executing command:", @{$self->{COMMAND}}));
-	my @opts = ();
-	foreach my $k (sort(keys (%{$self->{OPTIONS}}))) {
-	    push (@opts, "$k=$self->{OPTIONS}->{$k}");
-	}
-	$self->{log}->verbose (join (" ", "Command options:", @opts));
+    my $na = "E";
+    if ($self->{NoAction}) {
+        $na = "Not e";
     }
-    if ($CAF::Object::NoAction) {
-	return 0;
+    if ($self->{log}) { 
+        $self->{log}->verbose (join (" ",
+                    "${na}xecuting command:", @{$self->{COMMAND}}));
+        my @opts = ();
+        foreach my $k (sort(keys (%{$self->{OPTIONS}}))) {
+            push (@opts, "$k=$self->{OPTIONS}->{$k}");
+        }
+        $self->{log}->verbose (join (" ", "Command options:", @opts));
+    }
+    if ($self->{NoAction}) {
+        return 0;
     }
     return LC::Process::execute ($self->{COMMAND}, %{$self->{OPTIONS}});
 }
@@ -169,10 +176,10 @@ sub output
 {
     my $self = shift;
 
-    $self->{log}->verbose (join(" ", "Output of command:", @{$self->{COMMAND}}))
+    $self->{log}->verbose (join(" ", "Getting output of command:", @{$self->{COMMAND}}))
 	if $self->{log};
 
-    if ($CAF::Object::NoAction) {
+    if ($self->{NoAction}) {
 	return "";
     }
 
@@ -200,7 +207,7 @@ sub toutput
 				 "|with $timeout seconds of timeout"))
 	if $self->{log};
 
-    if ($CAF::Object::NoAction) {
+    if ($self->{NoAction}) {
 	return "";
     }
     return LC::Process::toutput ($timeout, @{$self->{COMMAND}});
@@ -223,7 +230,7 @@ sub run
     $self->{log}->verbose (join (" ", "Running the command:",
 				 @{$self->{COMMAND}}))
 	if $self->{log};
-    if ($CAF::Object::NoAction) {
+    if ($self->{NoAction}) {
 	 return 0;
     }
     return LC::Process::run (@{$self->{COMMAND}});
@@ -248,7 +255,7 @@ sub trun
 				 "|with $timeout seconds of timeout"))
 	if $self->{log};
 
-    if ($CAF::Object::NoAction) {
+    if ($self->{NoAction}) {
 	 return 0;
     }
 

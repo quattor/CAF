@@ -113,7 +113,7 @@ C<newvalue>. If there is no match, nothing will be done. For instance,
 Will replace all lines containing 'hello' but B<not> world by the
 string 'hello and good bye, world!'. But if the file contents are
 
-    There was Eru, who in Arda is called Ilúvatar
+    There was Eru, who in Arda is called IlÃºvatar
 
 it will be kept as is.
 
@@ -177,6 +177,12 @@ sub add_or_replace_lines
 {
     my ($self, $re, $goodre, $newvalue, $whence) = @_;
 
+    if (*$self->{LOG}) {
+        my $fname = *$self->{'filename'};
+        my $nv = $newvalue;
+        chop $nv;
+        *$self->{LOG}->debug (5, "add_or_replace_lines ($fname): re = '$re'\tgoodre = '$goodre'\tnewvalue = '$nv'\twhence = '$whence'");
+    }
     my $add = 1;
     my @lns;
     seek ($self, 0, SEEK_SET);
@@ -221,6 +227,10 @@ sub remove_lines
 {
     my ($self, $re, $goodre) = @_;
 
+    if (*$self->{LOG}) {
+        my $fname = *$self->{'filename'};
+        *$self->{LOG}->debug (5, "remove_lines ($fname): re = '$re'\tgoodre = '$goodre'");
+    }
     my @lns;
     seek($self, 0, SEEK_SET);
 
