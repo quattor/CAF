@@ -155,6 +155,7 @@ my %_replogger_setup = (
     'session-ids'   => [],
     'stack-frame'   => 0,
     'verbose'       => 0,
+    'facility'      => 'local1',
     'rep-obj'       => undef  # A _RepObj's object
 );
 
@@ -331,7 +332,8 @@ sub setup_replogger(@) {
     unless($_replogger_setup{'rep-obj'}->setup_reporter(
             $_replogger_setup{'debug-level'},
             $_replogger_setup{'quiet'},
-            $_replogger_setup{'verbose'})) {
+            $_replogger_setup{'verbose'},
+            $_replogger_setup{'facility'})) {
         throw_error('Cannot set up reporter', $ec->error);
         return;
     }

@@ -94,7 +94,7 @@ with the set_logfile method.
 
 =over 4
 
-=item B<setup_reporter>(I<$debuglvl, $quiet, $verbose>): boolean
+=item B<setup_reporter>(I<$debuglvl, $quiet, $verbose, $facility>): boolean
 
 Reporter setup:
 
@@ -120,6 +120,10 @@ if set to a true value (e.g. 1), stop any output to console. Default is false
 if set to a true value (e.g. 1), produce verbose output (via the B<verbose>
 method). Default is false
 
+=item I<$facility>
+
+syslog facility the messages will be sent to. Default to local1
+
 =back
 
 If any of these arguments is C<undef>, current application settings
@@ -128,8 +132,8 @@ will be used.
 =cut
 
 ################################################################################
-sub setup_reporter($$$$) {
-    my ($self, $debuglvl, $quiet, $verbose) = @_;
+sub setup_reporter($$$$$) {
+    my ($self, $debuglvl, $quiet, $verbose,$facility) = @_;
 
     # pre-init
     while (my ($opt, $val) = each (%$CAF::Reporter::_REP_SETUP)) {
@@ -139,6 +143,7 @@ sub setup_reporter($$$$) {
     $self->{'DEBUGLV'} = $debuglvl if (defined $debuglvl and $debuglvl > 0);
     $self->{'QUIET'} = 1 if $quiet;
     $self->{'VERBOSE'} = 1 if $verbose;
+    $self->{'FACILITY'} = $facility unless !defined $facility;
 
     return SUCCESS;
 }
@@ -337,7 +342,7 @@ sub syslog {
     return unless $self->{LOGFILE} && $self->{LOGFILE}->{SYSLOG};
     # If syslog can't be reached do nothing, but please don't die.
     eval {
-        openlog ($self->{LOGFILE}->{SYSLOG}, "pid", "local1");
+        openlog ($self->{LOGFILE}->{SYSLOG}, "pid", $self->{'FACILITY'});
         Sys::Syslog::syslog ($priority, join ('', @msg));
         closelog();
     }
@@ -359,7 +364,7 @@ German Cancio <German.Cancio@cern.ch>
 
 Marco Emilio Poleggi <marcoep@gmail.com>
 
-Syslog support by Luis Fernando Muñoz Mejías <luisf.munnoz@uam.es>
+Syslog support by Luis Fernando MuÃ±oz MejÃ­as <luisf.munnoz@uam.es>
 
 =head1 VERSION
 

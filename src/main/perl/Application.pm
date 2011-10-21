@@ -421,7 +421,8 @@ sub _initialize ($$@) {
   #
   $self->setup_reporter($self->option('debug'),
                         $self->option('quiet'),
-                        $self->option('verbose'));
+                        $self->option('verbose'),
+                        $self->option('facility'));
 
   #
   # initialize log file if any.
