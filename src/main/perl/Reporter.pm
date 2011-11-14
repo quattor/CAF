@@ -303,11 +303,11 @@ Writes @array to the syslog, with the given priority.
 sub syslog {
   my ($self, $priority, @msg) = @_;
 
-  return unless $self->{LOGFILE} &&
-      exists ($self->{LOGFILE}->{SYSLOG});
+  return unless $_REP_SETUP->{LOGFILE} &&
+      exists ($_REP_SETUP->{LOGFILE}->{SYSLOG});
   # If syslog can't be reached do nothing, but please don't die.
   eval {
-    openlog ($self->{LOGFILE}->{SYSLOG}, "pid", $_REP_SETUP->{'FACILITY'});
+    openlog ($_REP_SETUP->{LOGFILE}->{SYSLOG}, "pid", $_REP_SETUP->{'FACILITY'});
     Sys::Syslog::syslog ($priority, join ('', @msg));
     closelog();
   }

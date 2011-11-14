@@ -1,5 +1,10 @@
 2011-11-14  Loic Brarda
 
+	* Release: 1.12.0
+	- Fix the syslog function : It was using $self instead of its internal $_REP_SETUP to find the logfile so the real syslog function was never called
+
+2011-11-14  Loic Brarda
+
 	* Release: 1.11.0
 	- Don't write message if facility parameter or config item is not known (use default -local1- in that case)
 
