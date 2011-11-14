@@ -419,10 +419,16 @@ sub _initialize ($$@) {
   #
   # setup Reporter: verbose, quiet, debug
   #
+  my $facility = undef;
+  my %vl = $self->{'CONFIG'}->varlist(".*");
+  if (exists $vl{'facility'}) {
+    $facility = $self->option('facility');
+  }
+
   $self->setup_reporter($self->option('debug'),
                         $self->option('quiet'),
                         $self->option('verbose'),
-                        $self->option('facility'));
+                        $facility);
 
   #
   # initialize log file if any.
