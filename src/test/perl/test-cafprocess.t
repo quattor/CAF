@@ -70,7 +70,7 @@ like ($str, qr/Running the command: a random command/,
       "run logged");
 $p->output ();
 is ($output, 2, "output with options correctly run");
-like ($str, qr/Output of.*a random command/,
+like ($str, qr/Getting output of.*a random command/,
       "output used the correct options and was correctly logged");
 $str = "";
 open ($fh, ">", \$str);
@@ -98,7 +98,7 @@ ok (@$cmd == @$command, "The command got options appended");
 # Test the NoAction flag
 $CAF::Object::NoAction = 1;
 init_test();
-$p->execute();
+$p = CAF::Process->new($command);
 ok (!@$cmd, "LC::Process::execute not called with NoAction");
 is ($p->output(), "", "The ouptut with NoAction is empty");
 ok (!@$cmd, "LC::Process::output not called with NoAction");
@@ -109,5 +109,12 @@ ok (!@$cmd, "LC::Process::toutput not called with NoAction");
 is ($p->trun(10), 0,
     "LC::Process::trun returns the expected value with NoAction");
 ok (!@$cmd, "LC::Process::trun not called with NoAction");
+ok($p->{NoAction}, "By default assume the command changes the system state");
+$p = CAF::Process->new($command, keeps_state => 1);
+ok(!$p->{NoAction},
+   "NoAction invalidated because command doesn't change the state");
+
+$p = CAF::Process->new($command, keeps_state => 0);
+ok($p->{NoAction}, "Respect NoAction if the command changes the state");
 
 done_testing();

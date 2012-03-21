@@ -92,6 +92,15 @@ Reference to a scalar that will have child's stdout
 
 Reference to a scalar that will hold the child's stderr.
 
+=item C<keeps_state>
+
+A boolean specifying whether the command respects the current system
+state or not. A command that C<keeps_state> will be executed,
+regardless of any value for C<noaction>.
+
+By default, commands modify the state and thus C<keeps_state> is
+false.
+
 =back
 
 These options will only be used by the execute method.
@@ -112,7 +121,10 @@ sub _initialize
         }
     }
 
+
+
     $self->{NoAction} = $opts{Action} ? 0 : $CAF::Object::NoAction;
+    $self->{NoAction} &&= !$opts{keeps_state};
 
     $self->{COMMAND} = $command;
 
@@ -146,7 +158,7 @@ sub execute
     if ($self->{NoAction}) {
         $na = "Not e";
     }
-    if ($self->{log}) { 
+    if ($self->{log}) {
         $self->{log}->verbose (join (" ",
                     "${na}xecuting command:", @{$self->{COMMAND}}));
         my @opts = ();
@@ -176,7 +188,8 @@ sub output
 {
     my $self = shift;
 
-    $self->{log}->verbose (join(" ", "Getting output of command:", @{$self->{COMMAND}}))
+    $self->{log}->verbose (join(" ", "Getting output of command:",
+				@{$self->{COMMAND}}))
 	if $self->{log};
 
     if ($self->{NoAction}) {
