@@ -1,33 +1,21 @@
-
 use strict;
-
-BEGIN {
-	unshift (our @INC, qw(.. ../../perl-LC));
-}
-
+use warnings;
+use Test::More tests => 7;
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
- 
+
 my $lock=CAF::Lock->new("/tmp/lock-caf");
 
-
-print "locked at start\n" if ($lock->is_locked());
-
+ok(!$lock->is_locked(), "Unlocked at start");
 my $lockpid=$lock->get_lock_pid();
 
-print "lockpid : $lockpid\n" if ($lockpid);
+is($lockpid, undef, "Lock PID undefined on unaquired lock");
 
+ok($lock->set_lock(), "Lock set");
+ok($lock->is_locked(), "Locked on request");
 
-print "is stale\n" if ($lock->is_stale);
+is($lock->get_lock_pid(), $$, "Lock PID correctly set on locked object");
 
-print "now locking myself... with ALWAYS\n";
-unless ($lock->set_lock()) { #3,3,FORCE_ALWAYS)) {
-	print "cannot set lock\n";
-}
+ok($lock->is_stale(), "Lock is stale");
 
-print "locked\n" if ($lock->is_locked());
-                                                                                
-unless ($lock->unlock()) {
-	print "cannot release lock\n";
-}
- 
+ok($lock->unlock(), "Lock released");
 
