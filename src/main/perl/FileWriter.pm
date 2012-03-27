@@ -15,6 +15,7 @@ use LC::Check;
 use IO::String;
 use CAF::Process;
 use CAF::Object;
+use CAF::Reporter;
 use overload '""' => "stringify";
 
 our @ISA = qw (IO::String);
@@ -130,15 +131,31 @@ Closes the file. If it has not been saved and it has not been
 cancelled, it checks its contents and perhaps re-writes it, in a
 secure way (not following symlinks, etc).
 
+Under a verbose level, it will show in the standard output a diff of
+the old and the newly-generated contents for this file before actually
+saving to disk. This diff will B<not> be stored in any logs to prevent
+any leakages of confidential information (f.i. when writing to
+/etc/shadow).
+
 =cut
 
 sub close
 {
     my $self = shift;
-    my ($str, $ret, $cmd);
+    my ($str, $ret, $cmd, $diff);
 
     if ($CAF::Object::NoAction) {
 	$self->cancel();
+    }
+
+    # We have to do this because Text::Diff is not present in SL5. :(
+    if (*$self->{LOG} && $CAF::Reporter::_REP_SETUP->{VERBOSE}
+	&& -e *$self->{filename} && *$self->{buf}) {
+	$cmd = CAF::Process->new (["diff", "-u", *$self->{filename}, "-"],
+				  stdin => "$self", stdout => \$diff);
+	$cmd->execute();
+	*$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
+	*$self->{LOG}->report ($diff);
     }
 
     if (*$self->{save}) {
@@ -288,5 +305,11 @@ will be closed automatically when it is destroyed:
 
 This package inherits from L<IO::String(3pm)>. Check its man page to
 do powerful things with the already printed contents.
+
+=head1 TODO
+
+This has became too heavy: in some circumstances, manipulating a file
+involves opening it three times, reading it twice and executing two
+commands. We probably need to drop LC::* and do things in our own way.
 
 =cut

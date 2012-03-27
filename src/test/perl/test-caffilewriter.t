@@ -3,11 +3,11 @@
 use strict;
 use warnings;
 use FindBin qw($Bin);
-use lib "$Bin/", "$Bin/..", "$Bin/../../perl-LC";
+use lib "$Bin/";
 use testapp;
 use CAF::FileWriter;
 use CAF::Object;
-use Test::More tests => 25;
+use Test::More; # tests => 26;
 
 # El ingenioso hidalgo Don Quijote de La Mancha
 use constant TEXT => <<EOF;
@@ -22,7 +22,8 @@ our $path;
 our $file_changed = 1;
 my ($log, $str);
 
-
+our $cmd;
+our $report;
 my $this_app = testapp->new ($0, qw (--verbose));
 
 sub init_test
@@ -68,7 +69,7 @@ is ($str, "Opening file " . FILENAME,
 $fh->close;
 is ($opts{contents}, TEXT, "Correct contents written to the logged file");
 is ($path, FILENAME, "Correct file opened with log");
-my $re =  ".*File " . FILENAME . " was modified"; # 
+my $re =  ".*File " . FILENAME . " was modified"; #
 like($str, qr{$re},
      "Modified file correctly reported");
 ok (!exists ($opts{LOG}), "No log information passed to LC::Check::file");
@@ -110,3 +111,17 @@ like ($fh, qr(En un lugar), "Regexp also works");
 $fh->close();
 ok(!exists ($opts{contents}), "Nothing is written when NoAction is specified");
 
+
+# Check that the diff works
+close($log);
+open ($log, ">", \$str);
+*testapp::report = sub { $report = 1; };
+
+$this_app->set_report_logfile ($log);
+init_test();
+$fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
+print $fh "hello, world\n";
+$fh->close();
+#undef $fh;
+is($report, 1, "Diff output got reported");
+done_testing();
