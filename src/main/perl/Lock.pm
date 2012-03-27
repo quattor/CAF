@@ -18,7 +18,7 @@ use CAF::Reporter;
 
 use LC::Exception qw (SUCCESS throw_error);
 use FileHandle;
-use Proc::ProcessTable;
+#use Proc::ProcessTable;
 
 use Exporter;
 use vars qw(@ISA @EXPORT @EXPORT_OK);
@@ -133,8 +133,7 @@ sub get_lock_pid() {
 =item is_stale()
 
 Returns SUCCESS if the lock is stale - a lock file is set but the
-corresponding PID is not found in the process table. Returns undef
-otherwise.
+corresponding PID does not exist. Returns undef otherwise.
 
 =cut
 
@@ -144,12 +143,7 @@ sub is_stale {
   return undef unless ($self->is_locked());
   my $lock_pid=$self->get_lock_pid();
   return undef unless (defined $lock_pid);
-  my $proctable = Proc::ProcessTable->new();
-  unless (defined $proctable) {
-    $self->error("cannot access Proc::ProcessTable");
-    return undef;
-  }
-  return SUCCESS unless (grep ($_->pid == $lock_pid, @{$proctable->table}));
+  return SUCCESS if kill(0, $lock_pid);
   return undef;
 }
 
