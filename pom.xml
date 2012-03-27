@@ -246,10 +246,7 @@
 	    <provides>
 	      <provide>edg-caf-perl</provide>
 	    </provides>
-	    <requires>
-	      <require>perl-LC</require>
-	      <require>Proc::ProcessTable</require>
-	    </requires>
+	    <requires/>
 	    <mappings>
               <mapping>
                 <directory>/usr/lib</directory>
