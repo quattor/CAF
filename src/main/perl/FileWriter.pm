@@ -122,10 +122,7 @@ Synonimous of new.
 
 =cut
 
-sub open
-{
-    return new (@_);
-}
+*__PACKAGE__::open = \&new;
 
 =item close
 
