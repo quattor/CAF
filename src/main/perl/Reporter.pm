@@ -106,7 +106,7 @@ Reporter setup:
 
 =cut
 
-sub setup_reporter ($$$$$) {
+sub setup_reporter {
   my ($self,$debuglvl,$quiet,$verbose,$facility)=@_;
 
   $_REP_SETUP->{'DEBUGLV'}= defined $debuglvl && $debuglvl > 0 ? $debuglvl : 0;
@@ -131,7 +131,7 @@ instance. If $logfile is undefined (undef), no log file will be used.
 
 =cut
 
-sub set_report_logfile ($$) {
+sub set_report_logfile {
   my ($self,$logfile)=@_;
 
   $_REP_SETUP->{'LOGFILE'}=$logfile;
@@ -154,7 +154,7 @@ are concatenated and sent as a single line to the output(s).
 
 =cut
 
-sub report (@) {
+sub report {
   my $self=shift;
   my $string=join('',@_)."\n";
   print $string unless ($_REP_SETUP->{'QUIET'});
@@ -256,7 +256,7 @@ higher or equal than $debuglvl.
 =cut
 
 
-sub debug ($@) {
+sub debug {
   my $self=shift;
   my $debuglvl=shift;
 
@@ -286,7 +286,7 @@ Writes @array to the log file, if any.
 
 
 
-sub log (@) {
+sub log {
   my $self=shift;
   my $string=join('',@_)."\n";
   $_REP_SETUP->{'LOGFILE'}->print($string) if ($_REP_SETUP->{'LOGFILE'});
