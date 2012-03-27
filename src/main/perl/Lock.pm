@@ -124,7 +124,11 @@ sub get_lock_pid() {
     $self->error("cannot close lock file: ".$self->{'LOCK_FILE'});
     return undef;
   }
-  return $pid;
+  if ($pid !~ m{^(\d+)$}) {
+      $self->error("Strange PID $pid holding lock $self->{LOCK_FILE}");
+      return undef;
+  }
+  return $1;
 }
 
 
@@ -143,7 +147,7 @@ sub is_stale {
   return undef unless ($self->is_locked());
   my $lock_pid=$self->get_lock_pid();
   return undef unless (defined $lock_pid);
-  return SUCCESS if kill(0, $lock_pid);
+  return SUCCESS unless kill(0, $lock_pid);
   return undef;
 }
 
