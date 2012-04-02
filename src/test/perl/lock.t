@@ -4,7 +4,13 @@ use warnings;
 use Test::More;
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 
-my $lock=CAF::Lock->new("/tmp/lock-caf");
+use constant LOCK_TEST_DIR => "target/tests";
+use constant LOCK_TEST => LOCK_TEST_DIR . "/lock-caf";
+
+mkdir(LOCK_TEST_DIR);
+unlink(LOCK_TEST);
+
+my $lock=CAF::Lock->new(LOCK_TEST);
 
 ok(!$lock->is_locked(), "Unlocked at start");
 my $lockpid=$lock->get_lock_pid();
@@ -20,7 +26,7 @@ ok(!$lock->is_stale(), "Lock is NOT stale");
 
 ok($lock->unlock(), "Lock released");
 
-open(my $fh, ">/tmp/lock-caf");
+open(my $fh, ">", LOCK_TEST);
 if (!kill(0, $$+1)) {
     print $fh $$+1;
     close($fh);
