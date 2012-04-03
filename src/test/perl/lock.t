@@ -33,4 +33,18 @@ if (!kill(0, $$+1)) {
     ok($lock->is_stale(), "Lock by non-existing process is stale");
 }
 
+ok(!$lock->set_lock(), "Non-forced lock on stalled lock not acuired");
+ok($lock->set_lock(0, 0, FORCE_IF_STALE), "Forced lock on stalled resource aquired");
+$lock->unlock();
+
+open($fh, ">", LOCK_TEST);
+close($fh);
+
+ok($lock->is_stale(), "Lock on empty lock file is stale");
+ok($lock->set_lock(0, 0, FORCE_IF_STALE), "Forced lock on empty lock file aquired");
+
+# How does it handle when an empty lock file is there?
+
+
+
 done_testing();

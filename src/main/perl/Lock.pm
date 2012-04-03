@@ -146,9 +146,11 @@ sub is_stale {
 
   return undef unless ($self->is_locked());
   my $lock_pid=$self->get_lock_pid();
-  return undef unless (defined $lock_pid);
-  return SUCCESS unless kill(0, $lock_pid);
-  return undef;
+  if ($lock_pid && kill(0, $lock_pid)) {
+      return undef;
+  } else {
+      return SUCCESS;
+  }
 }
 
 
