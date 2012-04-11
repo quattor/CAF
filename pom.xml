@@ -240,13 +240,15 @@
 	<plugin>
 	  <groupId>org.codehaus.mojo</groupId>
 	  <artifactId>rpm-maven-plugin</artifactId>
-	  <configuration>
+	  <configuration self.combine="override">
 	    <summary>Common Application Framework for Quattor Perl applications</summary>
 	    <name>${project.artifactId}</name>
 	    <provides>
 	      <provide>edg-caf-perl</provide>
 	    </provides>
-	    <requires/>
+	    <requires>
+	      <require>perl(LC)</require>
+	    </requires>
 	    <mappings>
               <mapping>
                 <directory>/usr/lib</directory>
