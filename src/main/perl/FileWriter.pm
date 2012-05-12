@@ -168,7 +168,7 @@ sub close
 	    *$self->{LOG}->verbose ("File ",  *$self->{filename},
 				    " was modified")
 		if *$self->{LOG};
-	    $cmd = CAF::Process->new (['restorecon', *$self->{filename}],
+	    $cmd = CAF::Process->new (['/sbin/restorecon', *$self->{filename}],
 				     log => *$self->{LOG});
 	    $cmd->run();
 	} else {
