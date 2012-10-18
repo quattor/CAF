@@ -6,6 +6,7 @@ use lib "$Bin/", "$Bin/..", "$Bin/../../perl-LC";
 use testapp;
 use CAF::FileEditor;
 use Test::More;
+use Carp qw(confess);
 our $filename = `mktemp`;
 use constant TEXT => <<EOF;
 En un lugar de La Mancha, de cuyo nombre no quiero acordarme
@@ -22,6 +23,13 @@ our %opts = ();
 our $path;
 my ($log, $str);
 my $this_app = testapp->new ($0, qw (--verbose));
+
+$SIG{__DIE__} = \&confess;
+
+*testapp::error = sub {
+    my $self = shift;
+    $self->{ERROR} = @_;
+};
 
 open ($log, ">", \$str);
 my $fh = CAF::FileEditor->new ($filename);
@@ -72,18 +80,21 @@ like(${$fh->string_ref()},
 unlike(${$fh->string_ref()},
        qr(^En un lugar de La Mancha"),
        "add_or_replace actually has replaced and not added anything");
-$fh->add_or_replace_lines(qr(Ainur), qr(thought),
-			  q(And he made first the Ainur, the Holy Ones),
+$fh->add_or_replace_lines(qr(Arda), qr(Eru),
+			  qq(There was Eru, the One, who in Arda is called Ilúvatar\n),
 			  BEGINNING_OF_FILE);
 like(${$fh->string_ref()},
-     qr(^And he made first the Ainur, the Holy Ones)s,
-     "add_or_replace adds lines if needed");
-$fh->add_or_replace_lines("aught else", "was made",
-			  "and they were with him before aught else was made",
+     qr(^There was Eru, the One),
+     "add_or_replace adds lines to the beginning if needed");
+$fh->add_or_replace_lines("Ainur", "Ones",
+			  "\nand he made first the Ainur, the Holy Ones",
 			 ENDING_OF_FILE);
 like(${$fh->string_ref()},
-     qr(and they were with him before aught else was made$)s,
-     "add_or_replace adds lines to the beginning, if needed");
+     qr(the Holy Ones$),
+     "add_or_replace adds lines to the end, if needed");
+
+$fh->add_or_replace_lines("fubar", "baz", "fubarbaz", 3.14);
+unlike($fh, qr{fubar}, "Invalid whence does nothing");
 
 $fh->replace_lines(qr(la mancha)i, qr(blah blah blah), "la mancha blah blah blah");
 like(${$fh->string_ref()},
@@ -99,6 +110,8 @@ like($fh, qr{^Dulcinea\s*=\s*Aldonza},
 
 $fh->remove_lines("Dulcinea", "Quijote");
 unlike($fh, qr{Dulcinea}, "Correct line is removed");
+$fh->remove_lines("Quijote", "Rocinante");
+like($fh, qr{Quijote.*Rocinante}, "Line that matches good re is not removed");
 $fh->cancel();
 
 close ($log);
@@ -114,5 +127,13 @@ $this_app->set_report_logfile($log);
 $fh = CAF::FileEditor->new($filename, log => $this_app);
 $fh->remove_lines("ljhljh", "lkjhljh");
 ok($str, "Debug output invoked by remove_lines when there is a log object");
+
+$this_app->{ERROR} = undef;
+$fh->add_or_replace_lines("foo", "bar", "fubarbaz", 3.14);
+ok($this_app->{ERROR}, "Invalid whence is logged");
+
+$fh = CAF::FileEditor->new("ljhljhluhoh");
+$str = $fh->string_ref();
+ok(!$str || !$$str, "Empty buffer when the file doesn't exist");
 
 done_testing();
