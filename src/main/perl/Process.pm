@@ -96,7 +96,7 @@ Reference to a scalar that will hold the child's stderr.
 
 A boolean specifying whether the command respects the current system
 state or not. A command that C<keeps_state> will be executed,
-regardless of any value for C<noaction>.
+regardless of any value for C<NoAction>.
 
 By default, commands modify the state and thus C<keeps_state> is
 false.
@@ -122,9 +122,7 @@ sub _initialize
     }
 
 
-
-    $self->{NoAction} = $opts{Action} ? 0 : $CAF::Object::NoAction;
-    $self->{NoAction} &&= !$opts{keeps_state};
+    $self->{NoAction} = $CAF::Object::NoAction && !$opts{keeps_state};
 
     $self->{COMMAND} = $command;
 
@@ -306,11 +304,9 @@ sub setopts
 {
     my ($self, %opts) = @_;
 
-    $self->{OPTIONS}->{timeout} = $opts{timeout} if exists $opts{timeout};
-    $self->{OPTIONS}->{stdin} = $opts{stdin} if exists $opts{stdin};
-    $self->{OPTIONS}->{stdout} = $opts{stdout} if exists $opts{stdout};
-    $self->{OPTIONS}->{stderr} = $opts{stderr} if exists $opts{stderr};
-    $self->{OPTIONS}->{shell} = $opts{shell} if exists $opts{shell};
+    foreach my $i (qw(timeout stdin stderr stdout shell)) {
+	$self->{OPTIONS}->{$i} = $opts{$i} if exists($opts{$i});
+    }
 }
 
 1;
