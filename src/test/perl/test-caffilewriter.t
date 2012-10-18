@@ -5,6 +5,7 @@ use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/";
 use testapp;
+use CAF::Reporter;
 use CAF::FileWriter;
 use CAF::Object;
 use Test::More; # tests => 26;
@@ -30,6 +31,7 @@ sub init_test
 {
     $path = "";
     %opts = ();
+    $report = 0;
 }
 
 open ($log, ">", \$str);
@@ -123,5 +125,20 @@ $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello, world\n";
 $fh->close();
 #undef $fh;
-is($report, 1, "Diff output got reported");
+like($str, qr{Changes to}, "Diff is reported");
+
+# No diffs if no contents
+close ($log);
+open ($log, ">", \$str);
+$fh->close();
+unlike($str, qr{Changes to \S+:}, "Diff not reported on already closed file");
+
+# No diffs printed if not verbose
+$CAF::Reporter::_REP_SETUP->{VERBOSE} = 0;
+init_test();
+$fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
+print $fh "hello world\n";
+$fh->close();
+is($report, 0, "Diff output is reported only with verbose");
+
 done_testing();
