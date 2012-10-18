@@ -5,7 +5,7 @@ use FindBin qw($Bin);
 use lib "$Bin/", "$Bin/..", "$Bin/../../perl-LC";
 use testapp;
 use CAF::FileEditor;
-use Test::More tests => 18;
+use Test::More;
 our $filename = `mktemp`;
 use constant TEXT => <<EOF;
 En un lugar de La Mancha, de cuyo nombre no quiero acordarme
@@ -89,3 +89,30 @@ $fh->replace_lines(qr(la mancha)i, qr(blah blah blah), "la mancha blah blah blah
 like(${$fh->string_ref()},
      qr(la mancha blah blah blah)s,
      "Regular expression modifiers work");
+
+$fh->add_or_replace_sysconfig_lines("Quijote", "Rocinante");
+like($fh, qr{Quijote\s*=\s*Rocinante$},
+     "add_or_replace_sysconfig_lines adds the key to the end of the file by default");
+$fh->add_or_replace_sysconfig_lines("Dulcinea", "Aldonza", BEGINNING_OF_FILE);
+like($fh, qr{^Dulcinea\s*=\s*Aldonza},
+     "Beginning of file honored in sysconfig lines");
+
+$fh->remove_lines("Dulcinea", "Quijote");
+unlike($fh, qr{Dulcinea}, "Correct line is removed");
+$fh->cancel();
+
+close ($log);
+open ($log, ">", \$str);
+$this_app->set_report_logfile($log);
+$fh = CAF::FileEditor->new($filename, log => $this_app);
+$fh->add_or_replace_lines("ljhljh", "Ljhljhluih", "oiojhpih",
+			  BEGINNING_OF_FILE);
+ok($str, "Debug output invoked by add_or_replace_lines when there is a log object");
+close ($log);
+open ($log, ">", \$str);
+$this_app->set_report_logfile($log);
+$fh = CAF::FileEditor->new($filename, log => $this_app);
+$fh->remove_lines("ljhljh", "lkjhljh");
+ok($str, "Debug output invoked by remove_lines when there is a log object");
+
+done_testing();
