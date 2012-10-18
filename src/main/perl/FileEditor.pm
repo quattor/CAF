@@ -17,6 +17,7 @@ our @EXPORT = qw(BEGINNING_OF_FILE ENDING_OF_FILE);
 
 use constant BEGINNING_OF_FILE => SEEK_SET;
 use constant ENDING_OF_FILE => SEEK_END;
+use constant SYSCONFIG_SEPARATOR => '=';
 
 =pod
 
@@ -153,13 +154,12 @@ The sysconfig_separator value can be changed if it's not the usual '='.
 
 =cut
 
-our $sysconfig_separator = '=';
 
 sub add_or_replace_sysconfig_lines {
     my ($self, $key, $value, $whence) = @_;
 
     if (not defined($whence)) { $whence = ENDING_OF_FILE;}
-    $self->add_or_replace_lines($key, $key.'/s*'.$sysconfig_separator.'/s*'.$value,
+    $self->add_or_replace_lines($key, $key.'/s*'.SYSCONFIG_SEPARATOR.'/s*'.$value,
                         $key.'='.$value."\n", $whence);
 }
 
