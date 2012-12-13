@@ -251,14 +251,14 @@
 	    </requires>
 	    <mappings>
               <mapping>
-                <directory>/usr/lib</directory>
+                <directory>/usr/lib/perl/CAF</directory>
                 <filemode>644</filemode>
                 <username>root</username>
                 <groupname>root</groupname>
                 <directoryIncluded>false</directoryIncluded>
                 <sources>
                   <source>
-                    <location>${project.build.directory}/lib</location>
+                    <location>${project.build.directory}/lib/perl/CAF</location>
                   </source>
                 </sources>
 		<recurseDirectories>true</recurseDirectories>
@@ -280,7 +280,7 @@
 		</sources>
 	      </mapping>
 	      <mapping>
-		<directory>/usr/share/doc/man</directory>
+		<directory>/usr/share/doc/man/man8</directory>
 		<filemode>644</filemode>
 		<username>root</username>
 		<groupname>root</groupname>
@@ -289,7 +289,7 @@
 		<directoryIncluded>false</directoryIncluded>
 		<sources>
 		  <source>
-		    <location>${project.build.directory}/doc/man</location>
+		    <location>${project.build.directory}/doc/man/man8</location>
 		  </source>
 		</sources>
 		<recurseDirectories>true</recurseDirectories>
