@@ -1,7 +1,4 @@
-<project
-    xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
 
@@ -9,7 +6,7 @@
   <artifactId>perl-CAF</artifactId>
 
   <packaging>pom</packaging>
-  <version>2.0.1-SNAPSHOT</version>
+  <version>2.1.0</version>
   <name>Configuration Cache Manager for Quattor</name>
 
   <repositories>
@@ -23,7 +20,7 @@
     <groupId>org.quattor.maven</groupId>
     <artifactId>build-profile</artifactId>
     <version>1.25</version>
-    <relativePath/>
+    <relativePath />
   </parent>
 
   <licenses>
@@ -173,9 +170,9 @@
 		<configuration>
 		  <tasks name="Rename">
 		    <move filtering="true" todir="${project.build.directory}/doc/pod/CAF">
-		      <fileset dir="${project.build.directory}/doc/pod/CAF"/>
+		      <fileset dir="${project.build.directory}/doc/pod/CAF" />
 		      <mapper>
-			<globmapper from="*.pm" to="*.pod"/>
+			<globmapper from="*.pm" to="*.pod" />
 		      </mapper>
 		    </move>
 		    <echo>Renaming stuff?</echo>
