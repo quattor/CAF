@@ -34,6 +34,12 @@
     </license>
   </licenses>
 
+  <scm>
+    <connection>scm:git:git://github.com/quattor/CAF.git</connection>
+    <developerConnection>scm:git:git@github.com:quattor/CAF.git</developerConnection>
+    <url>https://github.com/quattor/CAF</url>
+  </scm>
+
   <developers>
     <developer>
       <name>Luis Fernando Muñoz Mejías</name>
