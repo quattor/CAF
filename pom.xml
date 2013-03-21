@@ -221,7 +221,6 @@
 		  <executable>prove</executable>
 		  <workingDirectory>${basedir}</workingDirectory>
 		  <arguments>
-		    <argument>--harness=TAP::Harness::JUnit</argument>
 		    <argument>-I</argument>
 		    <argument>target/lib/perl</argument>
 		    <argument>-I</argument>
