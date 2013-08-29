@@ -152,7 +152,8 @@ sub close
     if (*$self->{LOG} && $CAF::Reporter::_REP_SETUP->{VERBOSE}
         && -e *$self->{filename} && *$self->{buf}) {
         $cmd = CAF::Process->new (["diff", "-u", *$self->{filename}, "-"],
-                                  stdin => "$self", stdout => \$diff);
+                                  stdin => "$self", stdout => \$diff,
+                                  keeps_state => 1);
         $cmd->execute();
         *$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
         *$self->{LOG}->report ($diff);
