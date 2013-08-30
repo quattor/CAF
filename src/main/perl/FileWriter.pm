@@ -145,37 +145,38 @@ sub close
     my ($str, $ret, $cmd, $diff);
 
     if ($CAF::Object::NoAction) {
-	$self->cancel();
+        $self->cancel();
     }
 
     # We have to do this because Text::Diff is not present in SL5. :(
     if (*$self->{LOG} && $CAF::Reporter::_REP_SETUP->{VERBOSE}
-	&& -e *$self->{filename} && *$self->{buf}) {
-	$cmd = CAF::Process->new (["diff", "-u", *$self->{filename}, "-"],
-				  stdin => "$self", stdout => \$diff);
-	$cmd->execute();
-	*$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
-	*$self->{LOG}->report ($diff);
+        && -e *$self->{filename} && *$self->{buf}) {
+        $cmd = CAF::Process->new (["diff", "-u", *$self->{filename}, "-"],
+                                  stdin => "$self", stdout => \$diff,
+                                  keeps_state => 1);
+        $cmd->execute();
+        *$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
+        *$self->{LOG}->report ($diff);
     }
 
     if (*$self->{save}) {
-	*$self->{save} = 0;
-	$str = *$self->{buf};
-	*$self->{options}->{contents} = $$str;
-	$ret = LC::Check::file (*$self->{filename}, %{*$self->{options}});
-	# Restore the SELinux context in case of modifications.
-	if ($ret) {
-	    *$self->{LOG}->verbose ("File ",  *$self->{filename},
-				    " was modified")
-		if *$self->{LOG};
-	    $cmd = CAF::Process->new (['/sbin/restorecon', *$self->{filename}],
-				     log => *$self->{LOG});
-	    $cmd->run();
-	} else {
-	    *$self->{LOG}->verbose ("File ", *$self->{filename},
-				    " was not modified")
-		if *$self->{LOG};
-	}
+        *$self->{save} = 0;
+        $str = *$self->{buf};
+        *$self->{options}->{contents} = $$str;
+        $ret = LC::Check::file (*$self->{filename}, %{*$self->{options}});
+        # Restore the SELinux context in case of modifications.
+        if ($ret) {
+            *$self->{LOG}->verbose ("File ",  *$self->{filename},
+                                    " was modified")
+                if *$self->{LOG};
+            $cmd = CAF::Process->new (['/sbin/restorecon', *$self->{filename}],
+                                     log => *$self->{LOG});
+            $cmd->run();
+        } else {
+            *$self->{LOG}->verbose ("File ", *$self->{filename},
+                                    " was not modified")
+                if *$self->{LOG};
+        }
     }
     $self->SUPER::close();
     return $ret;
@@ -192,7 +193,7 @@ sub cancel
 {
     my $self = shift;
     if (*$self->{LOG}) {
-	*$self->{LOG}->verbose ("Not saving file ", *$self->{filename});
+        *$self->{LOG}->verbose ("Not saving file ", *$self->{filename});
     }
     *$self->{save} = 0;
 }

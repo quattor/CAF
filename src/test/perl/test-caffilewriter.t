@@ -9,6 +9,7 @@ use CAF::Reporter;
 use CAF::FileWriter;
 use CAF::Object;
 use Test::More; # tests => 26;
+use Test::MockModule;
 
 # El ingenioso hidalgo Don Quijote de La Mancha
 use constant TEXT => <<EOF;
@@ -33,6 +34,12 @@ sub init_test
     %opts = ();
     $report = 0;
 }
+
+my $mock = Test::MockModule->new("CAF::Process");
+$mock->mock("execute", sub {
+                $cmd = $_[0];
+            });
+
 
 open ($log, ">", \$str);
 $this_app->set_report_logfile ($log);
@@ -126,6 +133,10 @@ print $fh "hello, world\n";
 $fh->close();
 #undef $fh;
 like($str, qr{Changes to}, "Diff is reported");
+ok(!$cmd->{NoAction},
+   "Diff will be shown even with noaction");
+undef $cmd;
+
 
 # No diffs if no contents
 close ($log);
