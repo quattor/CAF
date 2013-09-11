@@ -6,7 +6,6 @@ use FindBin qw($Bin);
 use lib "$Bin/";
 use testapp;
 use CAF::Reporter;
-use CAF::FileWriter;
 use CAF::Object;
 use Test::More; # tests => 26;
 use Test::MockModule;
@@ -24,7 +23,6 @@ our $path;
 our $file_changed = 1;
 my ($log, $str);
 
-our $cmd;
 our $report;
 my $this_app = testapp->new ($0, qw (--verbose));
 
@@ -35,11 +33,29 @@ sub init_test
     $report = 0;
 }
 
-my $mock = Test::MockModule->new("CAF::Process");
-$mock->mock("execute", sub {
-                $cmd = $_[0];
-            });
+our $cmd;
+our $mock;
 
+BEGIN {
+    $mock = Test::MockModule->new ("CAF::Process");
+    $mock->mock ("execute", sub {
+                     $cmd = $_[0];
+                     $? = 0;
+                     return 1;
+                 });
+
+    $mock->mock ("run", sub {
+                     $cmd = $_[0];
+                     $? = 0;
+                     return 1;
+                });
+}
+
+use CAF::FileWriter;
+
+if ($^O eq 'linux') {
+    isa_ok ($cmd, "CAF::Process", "restorecon hook enabled at load time");
+}
 
 open ($log, ">", \$str);
 $this_app->set_report_logfile ($log);
