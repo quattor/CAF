@@ -20,6 +20,23 @@ use overload '""' => "stringify";
 
 our @ISA = qw (IO::String);
 
+
+# This code makes sense only in Linux with SELinux enabled.  Other
+# platforms might require other adjustments after files are written.
+if ($^O eq 'linux' &&
+    CAF::Process->new(["/usr/sbin/selinuxenabled"])->run() &&
+    $? == 0) {
+    *change_hook = sub {
+        my $self = shift;
+        my $cmd = CAF::Process->new (['/sbin/restorecon', *$self->{filename}],
+                                     log => *$self->{LOG});
+        $cmd->run();
+    };
+} else {
+    *change_hook = sub{};
+}
+
+
 =pod
 
 =head1 NAME
@@ -117,6 +134,7 @@ sub new
     return bless ($self, $class);
 }
 
+
 =item open
 
 Synonimous of new.
@@ -168,10 +186,8 @@ sub close
         if ($ret) {
             *$self->{LOG}->verbose ("File ",  *$self->{filename},
                                     " was modified")
-                if *$self->{LOG};
-            $cmd = CAF::Process->new (['/sbin/restorecon', *$self->{filename}],
-                                     log => *$self->{LOG});
-            $cmd->run();
+                    if *$self->{LOG};
+            $self->change_hook();
         } else {
             *$self->{LOG}->verbose ("File ", *$self->{filename},
                                     " was not modified")
@@ -238,6 +254,8 @@ sub DESTROY
 }
 
 1;
+
+
 
 __END__
 
