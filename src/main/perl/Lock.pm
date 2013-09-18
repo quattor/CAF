@@ -304,7 +304,10 @@ application instance.
 
 sub DESTROY {
   my $self = shift;
-  $self->unlock() if ($self->{LOCK_SET});
+  # We unlock only on the process that owns the lock.  Otherwise this
+  # might be a forked process that is exiting and shouldn't sweep
+  # under its parent's feet.
+  $self->unlock() if $self->{LOCK_SET} && $self->get_lock_pid() == $$;
 }
 
 
