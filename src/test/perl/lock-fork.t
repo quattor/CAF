@@ -8,6 +8,11 @@ use Test::MockObject::Extends;
 use constant LOCK_TEST_DIR => "target/tests";
 use constant LOCK_TEST => LOCK_TEST_DIR . "/lock-fork";
 
+eval {
+    $$++;
+    $$--;
+};
+plan skip_all => "Cannot manipulate PID" if $@;
 my $pid;
 
 my $mock = Test::MockObject::Extends->new("CAF::Lock");
