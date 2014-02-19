@@ -35,6 +35,7 @@ sub init_test
 
 our $cmd;
 our $mock;
+our $app;
 
 BEGIN {
     $mock = Test::MockModule->new ("CAF::Process");
@@ -49,6 +50,7 @@ BEGIN {
                      $? = 0;
                      return 1;
                 });
+    $app = Test::MockModule->new ('CAF::Application');
 }
 
 use CAF::FileWriter;
@@ -167,5 +169,16 @@ $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello world\n";
 $fh->close();
 is($report, 0, "Diff output is reported only with verbose");
+
+$app->mock('add_files', sub {
+           my ($self, @args) = @_;
+           $self->{FILES} = \@args;
+       });
+
+init_test();
+$fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
+$fh->close();
+is(scalar(@{$this_app->{FILES}}), 1,
+   "Files were recorded when the logger can add_files");
 
 done_testing();

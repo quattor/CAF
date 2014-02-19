@@ -175,6 +175,7 @@ sub close
         $cmd->execute();
         *$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
         *$self->{LOG}->report ($diff);
+
     }
 
     if (*$self->{save}) {
@@ -193,6 +194,9 @@ sub close
                                     " was not modified")
                 if *$self->{LOG};
         }
+    }
+    if (*$self->{LOG} && *$self->{LOG}->can('add_files')) {
+        *$self->{LOG}->add_files(*$self->{filename});
     }
     $self->SUPER::close();
     return $ret;
