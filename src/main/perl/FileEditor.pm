@@ -51,9 +51,9 @@ sub new
     my $class = shift;
     my $self = $class->SUPER::new (@_);
     if (-f *$self->{filename}) {
-	my $txt = LC::File::file_contents (*$self->{filename});
-	$self->IO::String::open ($txt);
-	seek($self, 0, SEEK_END);
+        my $txt = LC::File::file_contents (*$self->{filename});
+        $self->IO::String::open ($txt);
+        seek($self, 0, SEEK_END);
     }
     return $self;
 }
@@ -134,11 +134,11 @@ sub replace_lines
     seek($self, 0, SEEK_SET);
 
     while (my $l = <$self>) {
-	if ($l =~ $re && $l !~ $goodre) {
-	    push (@lns, $newvalue);
-	} else {
-	    push (@lns, $l);
-	}
+        if ($l =~ $re && $l !~ $goodre) {
+            push (@lns, $newvalue);
+        } else {
+            push (@lns, $l);
+        }
     }
     $self->set_contents (join("", @lns));
     seek ($self, 0, SEEK_END);
@@ -160,7 +160,7 @@ sub add_or_replace_sysconfig_lines {
 
     if (not defined($whence)) { $whence = ENDING_OF_FILE;}
     $self->add_or_replace_lines($key, $key.'/s*'.SYSCONFIG_SEPARATOR.'/s*'.$value,
-                        $key.'='.$value."\n", $whence);
+                                $key.'='.$value."\n", $whence);
 }
 
 =pod
@@ -187,28 +187,28 @@ sub add_or_replace_lines
     my @lns;
     seek ($self, 0, SEEK_SET);
     while (my $l = <$self>) {
-	if ($l =~ $re) {
-	    if ($l =~ $goodre) {
-		push (@lns, $l);
-	    } else {
-		push (@lns, $newvalue);
-	    }
-	    $add = 0;
-	} else {
-	    push (@lns, $l);
-	}
+        if ($l =~ $re) {
+            if ($l =~ $goodre) {
+                push (@lns, $l);
+            } else {
+                push (@lns, $newvalue);
+            }
+            $add = 0;
+        } else {
+            push (@lns, $l);
+        }
     }
 
     if ($add) {
-	if ($whence == BEGINNING_OF_FILE) {
-	    $self->head_print ($newvalue);
-	} elsif ($whence == ENDING_OF_FILE) {
-	    print $self $newvalue;
-	} elsif (*$self->{LOG}) {
-	    *$self->{LOG}->error ("Wrong whence value");
-	}
+        if ($whence == BEGINNING_OF_FILE) {
+            $self->head_print ($newvalue);
+        } elsif ($whence == ENDING_OF_FILE) {
+            print $self $newvalue;
+        } elsif (*$self->{LOG}) {
+            *$self->{LOG}->error ("Wrong whence value");
+        }
     } else {
-	$self->set_contents (join ("", @lns));
+        $self->set_contents (join ("", @lns));
     }
     seek ($self, 0, SEEK_END);
 }
