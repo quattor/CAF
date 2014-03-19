@@ -15,8 +15,13 @@ use Fcntl qw(:seek);
 our @ISA = qw (CAF::FileWriter Exporter);
 our @EXPORT = qw(BEGINNING_OF_FILE ENDING_OF_FILE);
 
-use constant BEGINNING_OF_FILE => SEEK_SET;
-use constant ENDING_OF_FILE => SEEK_END;
+use constant BEGINNING_OF_FILE => (SEEK_SET, 0);
+use constant ENDING_OF_FILE => (SEEK_END, 0);
+
+# internal constants!
+use constant IO_SEEK_BEGIN => (0, SEEK_SET);
+use constant IO_SEEK_END => (0, SEEK_END);
+
 use constant SYSCONFIG_SEPARATOR => '=';
 
 =pod
@@ -53,7 +58,7 @@ sub new
     if (-f *$self->{filename}) {
         my $txt = LC::File::file_contents (*$self->{filename});
         $self->IO::String::open ($txt);
-        seek($self, 0, SEEK_END);
+        $self->seek(IO_SEEK_END);
     }
     return $self;
 }
@@ -131,7 +136,7 @@ sub replace_lines
     my ($self, $re, $goodre, $newvalue) = @_;
 
     my @lns;
-    seek($self, 0, SEEK_SET);
+    $self->seek(IO_SEEK_BEGIN);
 
     while (my $l = <$self>) {
         if ($l =~ $re && $l !~ $goodre) {
@@ -141,7 +146,7 @@ sub replace_lines
         }
     }
     $self->set_contents (join("", @lns));
-    seek ($self, 0, SEEK_END);
+    $self->seek(IO_SEEK_END);
 }
 
 =pod
@@ -149,43 +154,59 @@ sub replace_lines
 =item add_or_replace_sysconfig_lines(key, value, whence)
 
 Replace the C<value> in lines matching the C<key>. If
-there is no match, a new line will be added to the where C<whence> tells us.
+there is no match, a new line will be added to the where C<whence> 
+and C<offset> tells us.
 The sysconfig_separator value can be changed if it's not the usual '='.
 
 =cut
 
 
 sub add_or_replace_sysconfig_lines {
-    my ($self, $key, $value, $whence) = @_;
+    my ($self, $key, $value, $whence, $offset) = @_;
 
-    if (not defined($whence)) { $whence = ENDING_OF_FILE;}
-    $self->add_or_replace_lines($key, $key.'/s*'.SYSCONFIG_SEPARATOR.'/s*'.$value,
-                                $key.'='.$value."\n", $whence);
+    ($offset, $whence) = IO_SEEK_END if (not defined($whence)); 
+    $offset = 0 if (not defined($offset)); 
+
+    $self->add_or_replace_lines('^/s*'.$key.'/s*'.SYSCONFIG_SEPARATOR,
+                                '^'.$key.'/s*'.SYSCONFIG_SEPARATOR.'/s*'.$value,
+                                $key.SYSCONFIG_SEPARATOR.$value."\n", 
+                                $whence, $offset);
 }
 
 =pod
 
-=item add_or_replace_lines(re, goodre, newvalue, whence)
+=item add_or_replace_lines(re, goodre, newvalue, whence, offset)
 
 Replace lines matching C<re> but not C<goodre> with C<newvalue>. If
 there is no match, a new line will be added to the where C<whence>
-tells us.
+and C<offset> tells us. See C<IO::String::seek> 
+for details; e.g. use the constants tuple 
+BEGINNING_OF_FILE or ENDING_OF_FILE 
+(whence must be one of SEEK_SET, SEEK_CUR or SEEK_END). 
+
 
 =cut
 
 sub add_or_replace_lines
 {
-    my ($self, $re, $goodre, $newvalue, $whence) = @_;
+    my ($self, $re, $goodre, $newvalue, $whence, $offset) = @_;
 
+    $offset = 0 if (not defined($offset)); 
     if (*$self->{LOG}) {
         my $fname = *$self->{'filename'};
         my $nv = $newvalue;
         chop $nv;
-        *$self->{LOG}->debug (5, "add_or_replace_lines ($fname): re = '$re'\tgoodre = '$goodre'\tnewvalue = '$nv'\twhence = '$whence'");
+        *$self->{LOG}->debug (5, "add_or_replace_lines ($fname): ",
+                                 "re = '$re'\tgoodre = '$goodre'\t",
+                                 "newvalue = '$nv'\t",
+                                 "whence = '$whence'\t",
+                                 "offset = '$offset'");
     }
     my $add = 1;
     my @lns;
-    seek ($self, 0, SEEK_SET);
+    
+    my $cur_pos=$self->pos;
+    $self->seek (IO_SEEK_BEGIN);
     while (my $l = <$self>) {
         if ($l =~ $re) {
             if ($l =~ $goodre) {
@@ -198,19 +219,24 @@ sub add_or_replace_lines
             push (@lns, $l);
         }
     }
+    
 
     if ($add) {
-        if ($whence == BEGINNING_OF_FILE) {
-            $self->head_print ($newvalue);
-        } elsif ($whence == ENDING_OF_FILE) {
+        if ($whence == SEEK_SET || $whence == SEEK_CUR || $whence == SEEK_END) { 
+            if ($whence == SEEK_CUR) {
+                # restore position only relevant for SEEK_CUR
+                $self->seek ($cur_pos, SEEK_SET);
+            }
+            # seek to proper position
+            $self->seek ($offset, $whence);
             print $self $newvalue;
         } elsif (*$self->{LOG}) {
-            *$self->{LOG}->error ("Wrong whence value");
+            *$self->{LOG}->error ("Wrong whence $whence");
         }
     } else {
         $self->set_contents (join ("", @lns));
     }
-    seek ($self, 0, SEEK_END);
+    $self->seek(IO_SEEK_END);
 }
 
 
@@ -232,7 +258,7 @@ sub remove_lines
         *$self->{LOG}->debug (5, "remove_lines ($fname): re = '$re'\tgoodre = '$goodre'");
     }
     my @lns;
-    seek($self, 0, SEEK_SET);
+    $self->seek(IO_SEEK_BEGIN);
 
     while (my $l = <$self>) {
         unless ($l =~ $re && $l !~ $goodre) {
@@ -240,7 +266,7 @@ sub remove_lines
         }
     }
     $self->set_contents(join("", @lns));
-    seek($self, 0, SEEK_END);
+    $self->seek(IO_SEEK_END);
 }
 
 __END__
@@ -328,7 +354,7 @@ matches:
 
 =head1 SEE ALSO
 
-This is class inherits from L<CAF::FileWriter(3pm)>, and thus from
+This class inherits from L<CAF::FileWriter(3pm)>, and thus from
 L<IO::String(3pm)>.
 
 =cut
