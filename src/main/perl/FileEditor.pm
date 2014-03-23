@@ -256,36 +256,42 @@ sub add_or_replace_lines
 
 =pod
 
-=item get_positions(re, whence, offset)
+=item get_all_positions(re_txt, whence, offset)
 
-Return the positions before and after the first match 
-of the regular expression C<re>, starting from 
-C<whence> (default beginning) and C<offset> (default 0).
-(If the regexp does not match, C<(-1, -1)> is returned).
-The text is search without line-splittin, use multiline 
-regexp like qr/^something.*$/m for per line matching.
+Return reference to the arrays with the positions 
+before and after all matches of the regular expression 
+text C<re_txt>, starting from C<whence> (default 
+beginning) and C<offset> (default 0). (If the regexp 
+does not match, references to empty arrays are returned).
+
+A multiline global regular expression is created from the C<re_txt>
+(i.e. C</$re_txt/gm>). The text is searched without line-splitting, 
+but with multiline regexp C<^something.*$> can be used for per line matching.
 
 =cut
 
-sub get_positions
+sub get_all_positions
 {
-    my ($self, $re, $whence, $offset) = @_;
+    my ($self, $re_txt, $whence, $offset) = @_;
 
     ($offset, $whence) = IO_SEEK_BEGIN if (not defined($whence)); 
     $offset = 0 if (not defined($offset)); 
     
     my $cur_pos = $self->pos;
 
-    my ($before, $after) = (-1, -1);
+    my @before = ();
+    my @after = ();
 
     if ($whence == SEEK_SET || $whence == SEEK_CUR || $whence == SEEK_END) { 
         $self->seek($offset, $whence);
 
         my $remainder = join('', <$self>);
-        #return "$offset $whence $cur_pos $remainder", 0;
-        if ($remainder =~ $re) {
-            $before = $-[0];
-            $after = $+[0]+1;
+
+        # This has to be global match, otherwise this becomes 
+        # an infinite loop if there is a match
+        while ($remainder =~ /$re_txt/gm) {
+            push(@before, $-[0]);
+            push(@after, $+[0]+1);
         }
         
         # restore original position
@@ -294,7 +300,51 @@ sub get_positions
         *$self->{LOG}->error ("Wrong whence $whence");
     }
 
-    return $before, $after;    
+    return (\@before, \@after);    
+}
+
+
+=pod
+
+=item get_header_positions(re_txt, whence, offset)
+
+Return the position before and after the "header".
+A header is a block of lines that start with same regexp
+C<re_txt>. Default value for C<re_txt> is C<^\s*#.*$>
+(matching a block of text which start with a C<#>); 
+the default value is also used when C<re_txt> is C<undef>. 
+C<(-1, -1)> is returned if no match was found.
+
+C<whence> and C<offset> are passed to underlying C<get_all_positions>
+call.
+
+=cut
+
+sub get_header_positions
+{
+    my ($self, $re_txt, $whence, $offset) = @_;
+
+    $re_txt = '^\s*#.*$' if (not defined($re_txt));
+    my ($before, $after) = $self->get_all_positions($re_txt, $whence, $offset);
+
+    my ($start, $end)= (-1, -1);
+    
+    my $matches = scalar @$before;
+    if ($matches) {
+        # start is the first match
+        $start = $before->[0];
+
+        for my $i (0..$matches-1){
+            # the "after" position is the begin of the next line
+            if ($end == -1 || $before->[$i] == $end) {
+                $end=$after->[$i];
+            } else {
+                last;
+            };
+        };
+    }
+
+    return $start, $end;
 }
 
 
