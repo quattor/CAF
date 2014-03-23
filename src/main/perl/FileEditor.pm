@@ -223,13 +223,27 @@ sub add_or_replace_lines
 
     if ($add) {
         if ($whence == SEEK_SET || $whence == SEEK_CUR || $whence == SEEK_END) { 
+            # seek to proper position
             if ($whence == SEEK_CUR) {
                 # restore position only relevant for SEEK_CUR
                 $self->seek ($cur_pos, SEEK_SET);
             }
             # seek to proper position
+            # TODO: if offset set the position over SEEK_END, it will pad
+            #       $self->pad is default to \0, maybe we should make it " " or "\n"?
             $self->seek ($offset, $whence);
+
+            # new current position
+            my $new_cur_pos=$self->pos;
+            
+            # read in all remaining text
+            my $remainder = <$self>;
+
+            # seek back
+            $self->seek ($new_cur_pos, SEEK_SET);
+            
             print $self $newvalue;
+            print $self $remainder;
         } elsif (*$self->{LOG}) {
             *$self->{LOG}->error ("Wrong whence $whence");
         }
