@@ -237,7 +237,7 @@ sub add_or_replace_lines
             my $new_cur_pos=$self->pos;
             
             # read in all remaining text
-            my $remainder = <$self>;
+            my $remainder = join('', <$self>);
 
             # seek back
             $self->seek ($new_cur_pos, SEEK_SET);
@@ -251,6 +251,50 @@ sub add_or_replace_lines
         $self->set_contents (join ("", @lns));
     }
     $self->seek(IO_SEEK_END);
+}
+
+
+=pod
+
+=item get_positions(re, whence, offset)
+
+Return the positions before and after the first match 
+of the regular expression C<re>, starting from 
+C<whence> (default beginning) and C<offset> (default 0).
+(If the regexp does not match, C<(-1, -1)> is returned).
+The text is search without line-splittin, use multiline 
+regexp like qr/^something.*$/m for per line matching.
+
+=cut
+
+sub get_positions
+{
+    my ($self, $re, $whence, $offset) = @_;
+
+    ($offset, $whence) = IO_SEEK_BEGIN if (not defined($whence)); 
+    $offset = 0 if (not defined($offset)); 
+    
+    my $cur_pos = $self->pos;
+
+    my ($before, $after) = (-1, -1);
+
+    if ($whence == SEEK_SET || $whence == SEEK_CUR || $whence == SEEK_END) { 
+        $self->seek($offset, $whence);
+
+        my $remainder = join('', <$self>);
+        #return "$offset $whence $cur_pos $remainder", 0;
+        if ($remainder =~ $re) {
+            $before = $-[0];
+            $after = $+[0]+1;
+        }
+        
+        # restore original position
+        $self->seek ($cur_pos, SEEK_SET);
+    } elsif (*$self->{LOG}) {
+        *$self->{LOG}->error ("Wrong whence $whence");
+    }
+
+    return $before, $after;    
 }
 
 
