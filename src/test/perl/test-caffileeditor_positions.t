@@ -42,21 +42,34 @@ my $startof3rdline = 29+22; # before 3rd line = after the newline of 2nd line
 my $after3rdline =29+22+28; # after the newline of 3rd line
 
 # default whence/offset: start from beginning
-my ($before,$after) = $fh->get_positions(qr/^we goan.*$/m);
-is($before, $startof3rdline, 'Found before position'); 
-is($after, $after3rdline, 'Found after position'); 
+my ($before,$after) = $fh->get_all_positions('^we goan.*$');
+is(scalar @$before, scalar @$after, 'Before and after matches are equal');
+is(scalar @$before, 1, 'Only one match expected');
+is(scalar @$after, 1, 'Only one match expected');
+is($before->[0], $startof3rdline, 'Found before position'); 
+is($after->[0], $after3rdline, 'Found after position'); 
 
-# in case previous test fails
-$after = $after3rdline;
-$fh->seek($after, SEEK_SET);
-is($fh->pos, $after, 'Seek beyond after');
+$fh->seek($after3rdline, SEEK_SET);
 
 # shouldn't match anymore
-my ($before2,$after2) = $fh->get_positions(qr/^we goan.*$/m, SEEK_CUR);
+my ($before2, $after2) = $fh->get_all_positions('^we goan.*$', SEEK_CUR);
 
-is($fh->pos, $after, 'Current position restored');
-is($before2, -1, 'before position not found');
-is($after2, -1, 'after position not found');
+is($fh->pos, $after3rdline, 'Current position restored');
+is(scalar @$before2, 0, 'No before position found');
+is(scalar @$after2, 0, 'No after position found');
+
+
+my ($start,$end) = $fh->get_header_positions();
+is($start, 0, 'start of headers');
+is($end, $startof3rdline, 'start of headers');
+
+$fh->seek($startof3rdline, SEEK_SET);
+($start,$end) = $fh->get_header_positions(undef, SEEK_CUR);
+# restore position
+is($fh->pos, $startof3rdline, 'Current position restored');
+is($start, -1, 'No start of headers');
+is($end, -1, 'No start of headers');
+
 
 $fh->cancel();
 
