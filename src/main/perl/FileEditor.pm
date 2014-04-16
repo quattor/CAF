@@ -259,23 +259,23 @@ sub add_or_replace_lines
 
 =pod
 
-=item get_all_positions(re_txt, whence, offset)
+=item get_all_positions(regex, whence, offset)
 
 Return reference to the arrays with the positions 
-before and after all matches of the regular expression 
-text C<re_txt>, starting from C<whence> (default 
+before and after all matches of the compiled regular expression 
+C<regex>, starting from C<whence> (default 
 beginning) and C<offset> (default 0). (If the regexp 
 does not match, references to empty arrays are returned).
 
-A multiline global regular expression is created from the C<re_txt>
-(i.e. C</$re_txt/gm>). The text is searched without line-splitting, 
-but with multiline regexp C<^something.*$> can be used for per line matching.
+Global regular expression matching is performed (i.e. C<m/$regex/g>). 
+The text is searched without line-splitting, but multiline regular 
+expressions like C<qr{^something.*$}m> can be used for per line matching.
 
 =cut
 
 sub get_all_positions
 {
-    my ($self, $re_txt, $whence, $offset) = @_;
+    my ($self, $regex, $whence, $offset) = @_;
 
     ($offset, $whence) = IO_SEEK_BEGIN if (not defined($whence)); 
     $offset = 0 if (not defined($offset)); 
@@ -292,7 +292,7 @@ sub get_all_positions
 
         # This has to be global match, otherwise this becomes 
         # an infinite loop if there is a match
-        while ($remainder =~ /$re_txt/gm) {
+        while ($remainder =~ /$regex/g) {
             push(@before, $-[0]);
             push(@after, $+[0]+1);
         }
@@ -309,13 +309,14 @@ sub get_all_positions
 
 =pod
 
-=item get_header_positions(re_txt, whence, offset)
+=item get_header_positions(regex, whence, offset)
 
 Return the position before and after the "header".
-A header is a block of lines that start with same regexp
-C<re_txt>. Default value for C<re_txt> is C<^\s*#.*$>
-(matching a block of text which start with a C<#>); 
-the default value is also used when C<re_txt> is C<undef>. 
+A header is a block of lines that start with same 
+compiled regular expression C<regex>. 
+Default value for C<regex> is C<qr{^\s*#.*$}m>
+(matching a block of text with each line starting with a C<#>); 
+the default value is also used when C<regex> is C<undef>. 
 C<(-1, -1)> is returned if no match was found.
 
 C<whence> and C<offset> are passed to underlying C<get_all_positions>
@@ -325,10 +326,10 @@ call.
 
 sub get_header_positions
 {
-    my ($self, $re_txt, $whence, $offset) = @_;
+    my ($self, $regex, $whence, $offset) = @_;
 
-    $re_txt = '^\s*#.*$' if (not defined($re_txt));
-    my ($before, $after) = $self->get_all_positions($re_txt, $whence, $offset);
+    $regex = qr{^\s*#.*$}m if (not defined($regex));
+    my ($before, $after) = $self->get_all_positions($regex, $whence, $offset);
 
     my ($start, $end)= (-1, -1);
     

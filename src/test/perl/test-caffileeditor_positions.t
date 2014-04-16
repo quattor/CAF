@@ -42,7 +42,7 @@ my $startof3rdline = 29+22; # before 3rd line = after the newline of 2nd line
 my $after3rdline =29+22+28; # after the newline of 3rd line
 
 # default whence/offset: start from beginning
-my ($before,$after) = $fh->get_all_positions('^we goan.*$');
+my ($before,$after) = $fh->get_all_positions(qr{^we goan.*$}m);
 is(scalar @$before, scalar @$after, 'Before and after matches are equal');
 is(scalar @$before, 1, 'Only one match expected');
 is(scalar @$after, 1, 'Only one match expected');
@@ -52,7 +52,7 @@ is($after->[0], $after3rdline, 'Found after position');
 $fh->seek($after3rdline, SEEK_SET);
 
 # shouldn't match anymore
-my ($before2, $after2) = $fh->get_all_positions('^we goan.*$', SEEK_CUR);
+my ($before2, $after2) = $fh->get_all_positions(qr{^we goan.*$}m, SEEK_CUR);
 
 is($fh->pos, $after3rdline, 'Current position restored');
 is(scalar @$before2, 0, 'No before position found');

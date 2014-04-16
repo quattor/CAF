@@ -85,13 +85,12 @@ $fh = CAF::FileEditor->new ($filename);
 $fh->set_contents(TEXT);
 my $tt="$fh";
 my $ltt=length $tt;
-diag("$ltt $tt");
 
 my ($start,$end) = $fh->get_header_positions();
 $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, "tsjoelala\n", SEEK_SET, $end);
 like("$fh", qr/# tsjoelala tsjoelala\ntsjoelala\nwe goan hem/, 'Insert text after header');
 
-my ($before, $after) = $fh->get_all_positions('^tsjoelala.*$');
+my ($before, $after) = $fh->get_all_positions(qr{^tsjoelala.*$}m);
 # ok, $after (and $before) is a reference to an array; 
 # if you pass it instead of eg $after->[0], you pass a very big number,
 # creating a very big string
