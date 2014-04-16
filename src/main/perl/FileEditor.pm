@@ -178,12 +178,14 @@ sub add_or_replace_sysconfig_lines {
 =item add_or_replace_lines(re, goodre, newvalue, whence, offset)
 
 Replace lines matching C<re> but not C<goodre> with C<newvalue>. If
-there is no match, a new line will be added to the where C<whence>
-and C<offset> tells us. See C<IO::String::seek> 
+there is no match, a new line will be added where the C<whence>
+and C<offset> tell us. See C<IO::String::seek> 
 for details; e.g. use the constants tuple 
 BEGINNING_OF_FILE or ENDING_OF_FILE 
 (whence must be one of SEEK_SET, SEEK_CUR or SEEK_END). 
 
+Reminder: if the offset position lies beyond SEEK_END, padding will 
+occur with $self->pad, which defaults to C<\0>.
 
 =cut
 
@@ -229,8 +231,6 @@ sub add_or_replace_lines
                 $self->seek ($cur_pos, SEEK_SET);
             }
             # seek to proper position
-            # TODO: if offset set the position over SEEK_END, it will pad
-            #       $self->pad is default to \0, maybe we should make it " " or "\n"?
             $self->seek ($offset, $whence);
 
             # new current position
