@@ -11,6 +11,7 @@ use CAF::FileWriter;
 use LC::File;
 use Exporter;
 use Fcntl qw(:seek);
+use List::MoreUtils 0.33 qw(each_arrayref);
 
 our @ISA = qw (CAF::FileWriter Exporter);
 our @EXPORT = qw(BEGINNING_OF_FILE ENDING_OF_FILE);
@@ -338,14 +339,16 @@ sub get_header_positions
         # start is the first match
         $start = $before->[0];
 
-        for my $i (0..$matches-1){
+        my $ea = each_arrayref($before, $after);
+        while (my ($b, $a) = $ea->()) {
             # the "after" position is the begin of the next line
-            if ($end == -1 || $before->[$i] == $end) {
-                $end=$after->[$i];
+            if ($end == -1 || $b == $end) {
+                $end = $a;
             } else {
-                last;
-            };
-        };
+               last;
+            }
+        }
+
     }
 
     return $start, $end;
