@@ -181,8 +181,11 @@ Replace lines matching C<re> but not C<goodre> with C<newvalue>. If
 there is no match, a new line will be added where the C<whence>
 and C<offset> tell us. See C<IO::String::seek> 
 for details; e.g. use the constants tuple 
-BEGINNING_OF_FILE or ENDING_OF_FILE 
-(whence must be one of SEEK_SET, SEEK_CUR or SEEK_END). 
+BEGINNING_OF_FILE or ENDING_OF_FILE.
+
+C<whence> must be one of SEEK_SET, SEEK_CUR or SEEK_END; 
+everything else will be ignored (an error is logged if 
+logging is set)). 
 
 Reminder: if the offset position lies beyond SEEK_END, padding will 
 occur with $self->pad, which defaults to C<\0>.
