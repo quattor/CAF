@@ -234,7 +234,7 @@ sub add_or_replace_lines
                 # restore position only relevant for SEEK_CUR
                 $self->seek ($cur_pos, SEEK_SET);
             }
-            # seek to proper position
+
             $self->seek ($offset, $whence);
 
             # new current position
@@ -341,7 +341,7 @@ sub get_header_positions
 
         my $ea = each_arrayref($before, $after);
         while (my ($b, $a) = $ea->()) {
-            # the "after" position is the begin of the next line
+            # the "after" position is the beginning of the next line
             if ($end == -1 || $b == $end) {
                 $end = $a;
             } else {
