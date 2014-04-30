@@ -11,9 +11,9 @@ package CAF::Service;
 use strict;
 use warnings;
 use CAF::Process;
-use Class::Std;
 
-use base qw(CAF::Object CAF::Reporter);
+our $AUTOLOAD;
+use base qw(CAF::Object);
 
 =pod
 
@@ -81,6 +81,7 @@ sub _initialize
 {
     my ($self, $daemon, %opts) = @_;
 
+    %opts = () if !%opts;
     $self->{daemon} = $daemon;
     $self->{options} = \%opts;
     return $self;
@@ -145,36 +146,42 @@ sub restart_sunos
     return $self->_logcmd("svcadm", "restart", $daemon);
 }
 
-sub AUTOMETHOD
+
+# Choose the correct variant for each daemon action.  All the
+# OS-dependent logic is here.  See perldoc perlsub for details on how
+# AUTOLOAD works.
+sub AUTOLOAD
 {
-    my ($self, @params) = @_;
+    my $self = shift;
 
-    my $subname = $_;
+    my $name = $AUTOLOAD;
 
-    $subname =~ s{.*::}{};
+    $name =~ s{.*::}{};
 
     if ($^O eq 'linux') {
         if (-x "/sbin/service") {
-            $subname .= "_linux_sysv";
+            $name .= "_linux_sysv";
         } elsif (-x "/bin/systemctl") {
-            $subname .= "_linux_systemd";
+            $name .= "_linux_systemd";
         } else {
-            warn "Unsupported Linux init variant for $_";
-            return;
+            die "Unsuported Linux version. Unable to run $AUTOLOAD";
         }
     } elsif ($^O eq 'sunos' || $^O eq 'solaris') {
-        $subname .= "_sunos";
+        $name .= "_sunos";
     } else {
-        warn "Unsupported operating system: $^O for method $_";
-        return;
+        die "Unsupported operating system: $^O. Not running $AUTOLOAD";
     }
 
-    if ($self->can($subname)) {
-        return \&$subname;
+    if ($self->can($name)) {
+        # Run the expected method. This is ugly but it's the way to do
+        # AUTOLOAD.
+        no strict 'refs';
+        unshift(@_, $self);
+        goto &$name;
     } else {
-        warn "Unknown operation $_";
-        return;
+        die "Unknown method: $name";
     }
 }
+
 
 1;
