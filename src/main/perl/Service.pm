@@ -11,6 +11,7 @@ package CAF::Service;
 use strict;
 use warnings;
 use CAF::Process;
+use Class::Std;
 
 use base qw(CAF::Object CAF::Reporter);
 
@@ -142,6 +143,38 @@ sub restart_sunos
     }
 
     return $self->_logcmd("svcadm", "restart", $daemon);
+}
+
+sub AUTOMETHOD
+{
+    my ($self, @params) = @_;
+
+    my $subname = $_;
+
+    $subname =~ s{.*::}{};
+
+    if ($^O eq 'linux') {
+        if (-x "/sbin/service") {
+            $subname .= "_linux_sysv";
+        } elsif (-x "/bin/systemctl") {
+            $subname .= "_linux_systemd";
+        } else {
+            warn "Unsupported Linux init variant for $_";
+            return;
+        }
+    } elsif ($^O eq 'sunos' || $^O eq 'solaris') {
+        $subname .= "_sunos";
+    } else {
+        warn "Unsupported operating system: $^O for method $_";
+        return;
+    }
+
+    if ($self->can($subname)) {
+        return \&$subname;
+    } else {
+        warn "Unknown operation $_";
+        return;
+    }
 }
 
 1;
