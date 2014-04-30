@@ -5,6 +5,10 @@ use Test::More;
 use Test::Quattor;
 use CAF::Service;
 
+if (! -f "/bin/systemctl" && ! -f "/sbin/service") {
+    plan skip_all => "No supported variants found";
+}
+
 =pod
 
 =head1 SYNOPSIS
