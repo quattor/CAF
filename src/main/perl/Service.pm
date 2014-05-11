@@ -72,11 +72,6 @@ Maximum execution time, in seconds, for the restart operations. If
 it's too slow it will be killed.  If not defined, the command won't
 time out.
 
-=item C<instance>
-
-Ignored on Linux.  In Solaris, this is the daemon instance to operate
-on.
-
 =back
 
 ...
