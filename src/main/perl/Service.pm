@@ -80,10 +80,10 @@ time out.
 
 sub _initialize
 {
-    my ($self, $daemon, %opts) = @_;
+    my ($self, $services, %opts) = @_;
 
     %opts = () if !%opts;
-    $self->{services} = $daemon;
+    $self->{services} = $services;
     $self->{options} = \%opts;
     return $self;
 }
