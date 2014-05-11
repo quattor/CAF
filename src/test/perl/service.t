@@ -13,7 +13,7 @@ Test all methods for C<CAF::Service>
 
 =cut
 
-my $srv = CAF::Service->new('ntpd');
+my $srv = CAF::Service->new(['ntpd']);
 
 $srv->restart_linux_systemd();
 ok(get_command("systemctl restart ntpd"), "systemctl restart works");

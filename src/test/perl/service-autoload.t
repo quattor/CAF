@@ -17,7 +17,7 @@ Test the AUTOLOAD for C<CAF::Service>
 
 =cut
 
-my $srv = CAF::Service->new('ntpd');
+my $srv = CAF::Service->new(['ntpd']);
 
 is(eval{$srv->restart();1;}, 1, "Restart is generated dynamically");
 is(eval{$srv->lkjhljh();1;}, undef, "Stupid method still fails");

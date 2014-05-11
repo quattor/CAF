@@ -25,7 +25,7 @@ platforms
 =head1 SYNOPSIS
 
     use CAF::Service;
-    my $srv = CAF::Service->new('ntpd', log => $self, %opts);
+    my $srv = CAF::Service->new(['ntpd'], log => $self, %opts);
     $srv->reload();
     $srv->stop();
     $srv->start();
@@ -52,9 +52,15 @@ Initialize the process object. Arguments:
 
 =over
 
-=item C<$daemon>
+=item C<$services>
 
-The daemon to be started.  It takes some extra optional arguments:
+Reference to a list of services to be handled.
+
+=back
+
+It takes some extra optional arguments:
+
+=over
 
 =item C<log>
 
@@ -82,7 +88,7 @@ sub _initialize
     my ($self, $daemon, %opts) = @_;
 
     %opts = () if !%opts;
-    $self->{daemon} = $daemon;
+    $self->{services} = $daemon;
     $self->{options} = \%opts;
     return $self;
 }
@@ -114,7 +120,7 @@ sub _logcmd
 
 =item restart
 
-Restarts the daemon
+Restarts the daemon.
 
 =cut
 
@@ -122,14 +128,19 @@ sub restart_linux_sysv
 {
     my $self = shift;
 
-    return $self->_logcmd("service", $self->{daemon}, "restart");
+    my $ok = 1;
+
+    foreach my $i (@{$self->{services}}) {
+        $ok &&= $self->_logcmd("service", $i, "restart");
+    }
+    return $ok;
 }
 
 sub restart_linux_systemd
 {
     my $self = shift;
 
-    return $self->_logcmd("systemctl", "restart", $self->{daemon});
+    return $self->_logcmd("systemctl", "restart", @{$self->{services}});
 }
 
 # Stub method. To be improved by developers with experience in solaris
@@ -137,13 +148,7 @@ sub restart_sunos
 {
     my ($self, @moreopts) = @_;
 
-    my $daemon = $self->{daemon};
-
-    if ($self->{options}->{instance}) {
-        $daemon = "$self->{options}->{instance}:$daemon";
-    }
-
-    return $self->_logcmd("svcadm", "restart", $daemon);
+    return $self->_logcmd("svcadm", "restart", @{$self->{services}});
 }
 
 
