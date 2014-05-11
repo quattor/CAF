@@ -159,32 +159,36 @@ sub AUTOLOAD
 {
     my $self = shift;
 
-    my $name = $AUTOLOAD;
+    my $called = $AUTOLOAD;
 
-    $name =~ s{.*::}{};
+    # Don't mess with garbage collection!
+    return if $called =~ m{DESTROY};
+
+    $called =~ s{.*::}{};
 
     if ($^O eq 'linux') {
-        if (-x "/sbin/service") {
-            $name .= "_linux_sysv";
-        } elsif (-x "/bin/systemctl") {
-            $name .= "_linux_systemd";
+        if (-x "/bin/systemctl") {
+            $called .= "_linux_systemd";
+        } elsif (-x "/sbin/service") {
+            $called .= "_linux_sysv";
         } else {
             die "Unsuported Linux version. Unable to run $AUTOLOAD";
         }
     } elsif ($^O eq 'sunos' || $^O eq 'solaris') {
-        $name .= "_sunos";
+        $called .= "_sunos";
     } else {
         die "Unsupported operating system: $^O. Not running $AUTOLOAD";
     }
 
-    if ($self->can($name)) {
+    if ($self->can($called)) {
         # Run the expected method. This is ugly but it's the way to do
         # AUTOLOAD.
         no strict 'refs';
         unshift(@_, $self);
-        goto &$name;
+        *$AUTOLOAD = \&$called;
+        goto &$AUTOLOAD;
     } else {
-        die "Unknown method: $name";
+        die "Unknown method: $called";
     }
 }
 
