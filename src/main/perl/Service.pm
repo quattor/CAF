@@ -167,7 +167,7 @@ sub AUTOLOAD
         } elsif (-x "/sbin/service") {
             $called .= "_linux_sysv";
         } else {
-            die "Unsuported Linux version. Unable to run $AUTOLOAD";
+            die "Unsupported Linux version. Unable to run $AUTOLOAD";
         }
     } elsif ($^O eq 'solaris') {
         $called .= "_solaris";
