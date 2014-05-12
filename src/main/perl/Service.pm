@@ -139,7 +139,7 @@ sub restart_linux_systemd
 }
 
 # Stub method. To be improved by developers with experience in solaris
-sub restart_sunos
+sub restart_solaris
 {
     my ($self, @moreopts) = @_;
 
@@ -169,8 +169,8 @@ sub AUTOLOAD
         } else {
             die "Unsuported Linux version. Unable to run $AUTOLOAD";
         }
-    } elsif ($^O eq 'sunos' || $^O eq 'solaris') {
-        $called .= "_sunos";
+    } elsif ($^O eq 'solaris') {
+        $called .= "_solaris";
     } else {
         die "Unsupported operating system: $^O. Not running $AUTOLOAD";
     }
