@@ -19,5 +19,8 @@ $srv->restart_linux_systemd();
 ok(get_command("systemctl restart ntpd"), "systemctl restart works");
 $srv->restart_linux_sysv();
 ok(get_command("service ntpd restart"), "sysv restart works");
+$srv->restart_solaris();
+ok(get_command("svcadm restart ntpd"), "svcadm restart works");
+
 
 done_testing();
