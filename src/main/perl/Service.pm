@@ -68,9 +68,12 @@ A C<CAF::Reporter> object to log daemon activities to.
 
 =item C<timeout>
 
-Maximum execution time, in seconds, for the restart operations. If
+Maximum execution time, in seconds, for any service operations. If
 it's too slow it will be killed.  If not defined, the command won't
 time out.
+
+On Solaris it implies that C<svcadm> actions are executed
+synchronously.
 
 =back
 
@@ -138,12 +141,22 @@ sub restart_linux_systemd
     return $self->_logcmd("systemctl", "restart", @{$self->{services}});
 }
 
-# Stub method. To be improved by developers with experience in solaris
+# Stub method. To be improved by developers with experience in
+# solaris.
 sub restart_solaris
 {
     my ($self, @moreopts) = @_;
 
-    return $self->_logcmd("svcadm", "restart", @{$self->{services}});
+    my @opts;
+
+    if ($self->{timeout}) {
+        push(@opts, qw(-s -T), $self->{timeout});
+    }
+
+    delete($self->{timeout});
+    my $rt = $self->_logcmd("svcadm", "restart", @opts, @{$self->{services}});
+    $self->{timeout} = $opts[-1];
+    return $rt;
 }
 
 

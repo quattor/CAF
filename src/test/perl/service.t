@@ -22,5 +22,11 @@ ok(get_command("service ntpd restart"), "sysv restart works");
 $srv->restart_solaris();
 ok(get_command("svcadm restart ntpd"), "svcadm restart works");
 
+$srv->{timeout} = 42;
+$srv->restart_solaris();
+
+ok(get_command("svcadm restart -s -T $srv->{timeout} ntpd"),
+   "svcadm restart handles timeouts the Solaris way");
+
 
 done_testing();
