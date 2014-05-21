@@ -95,19 +95,63 @@ sub _logcmd
 {
     my ($self, @cmd) = @_;
 
+    my $proc = $self->create_process(@cmd);
+    $proc->execute();
+    my $logger = $self->{options}->{log};
+    my $method = $? ? "error" : "verbose";
+
+    $logger->$method("Command ", join(" ", @_), " produced stdout: ",
+                     "$proc->{OPTIONS}->{stdout} and stderr: ",
+                     $proc->{OPTIONS}->{stderr})
+        if $logger;
+    return !$?;
+}
+
+# Methods creating the appropriate CAF::Process for each platform.
+
+# On SysV-based systems we have to kill the service command if things
+# go out of control.
+sub create_process_linux_sysv
+{
+    my ($self, @cmd) = @_;
+
     my $proc = CAF::Process->new(\@cmd,
                                  log => $self->{options}->{log},
                                  timeout => $self->{options}->{timeout},
                                  stdout => \my $stdout,
                                  stderr => \my $stderr);
-    $proc->execute();
-    my $logger = $self->{options}->{log};
-    my $method = $? ? "error" : "verbose";
-
-    $logger->$method("Command ", join(" ", @_), " produced stdout: $stdout and stderr: $stderr")
-        if $logger;
-    return !$?;
+    return $proc;
 }
+
+# On Systemd-based systems, timeouts must be ignored. The correct way
+# to handle timeouts is to store them in the init file, which will
+# ensure they are respected in any context that unit may be called.
+sub create_process_linux_systemd
+{
+    my ($self, @cmd) = @_;
+
+    my $proc = CAF::Process->new(\@cmd,
+                                 log => $self->{options}->{log},
+                                 stdout => \my $stdout,
+                                 stderr => \my $stderr);
+    return $proc;
+}
+
+# On Solaris, we have to force synchronous operation in svcadm.
+sub create_process_solaris
+{
+    my ($self, @cmd) = @_;
+
+    if ($self->{timeout}) {
+        @cmd = (@cmd[0..1], "-s", "-T", $self->{timeout}, @cmd[2..$#cmd]);
+    }
+
+    my $proc = CAF::Process->new(\@cmd,
+                                 log => $self->{options}->{log},
+                                 stdout => \my $stdout,
+                                 stderr => \my $stderr);
+}
+
 
 # Note: we'll rely on Class::Std::AUTOMETHOD to select at runtime the
 # correct implementation of each command.
@@ -147,16 +191,7 @@ sub restart_solaris
 {
     my ($self, @moreopts) = @_;
 
-    my @opts;
-
-    if ($self->{timeout}) {
-        push(@opts, qw(-s -T), $self->{timeout});
-    }
-
-    delete($self->{timeout});
-    my $rt = $self->_logcmd("svcadm", "restart", @opts, @{$self->{services}});
-    $self->{timeout} = $opts[-1];
-    return $rt;
+    return $self->_logcmd("svcadm", "restart", @{$self->{services}});
 }
 
 
