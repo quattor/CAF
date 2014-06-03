@@ -137,7 +137,13 @@ sub create_process_linux_systemd
     return $proc;
 }
 
-# On Solaris, we have to force synchronous operation in svcadm.
+# On Solaris, timeouts specify how long we'll wait for the operation
+# to complete, as described in the man page of svcadm.  After this
+# timeout, the operation will continue in background, but will NOT
+# mark the service as failed.  For marking timed out services
+# operations as failed, we have to edit the method definition, which
+# is out of the scope of this method.  See the man page for smf_method
+# for more details.
 sub create_process_solaris
 {
     my ($self, @cmd) = @_;
