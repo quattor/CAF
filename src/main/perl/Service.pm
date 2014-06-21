@@ -73,7 +73,16 @@ it's too slow it will be killed.  If not defined, the command won't
 time out.
 
 On Solaris it implies that C<svcadm> actions are executed
-synchronously.
+synchronously.  After this timeout, the operation will continue in
+background, but will NOT mark the service as failed.  For marking
+timed out services operations as failed, we have to edit the method
+definition, which is out of the scope of this method.  See the man
+page for smf_method for more details.
+
+On systemd-based systems, the timeout parameter is ignored.  The
+correct way to handle timeouts in systemd is to store them in the unit
+file, which will ensure they are respected in any context that unit
+may be called.
 
 =back
 
@@ -123,9 +132,7 @@ sub create_process_linux_sysv
     return $proc;
 }
 
-# On Systemd-based systems, timeouts must be ignored. The correct way
-# to handle timeouts is to store them in the init file, which will
-# ensure they are respected in any context that unit may be called.
+# On Systemd-based systems, timeouts must be ignored.
 sub create_process_linux_systemd
 {
     my ($self, @cmd) = @_;
@@ -138,12 +145,7 @@ sub create_process_linux_systemd
 }
 
 # On Solaris, timeouts specify how long we'll wait for the operation
-# to complete, as described in the man page of svcadm.  After this
-# timeout, the operation will continue in background, but will NOT
-# mark the service as failed.  For marking timed out services
-# operations as failed, we have to edit the method definition, which
-# is out of the scope of this method.  See the man page for smf_method
-# for more details.
+# to complete, as described in the man page of svcadm.
 sub create_process_solaris
 {
     my ($self, @cmd) = @_;
