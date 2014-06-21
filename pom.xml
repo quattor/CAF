@@ -218,6 +218,8 @@
 		    <argument>target/lib/perl</argument>
 		    <argument>-I</argument>
 		    <argument>src/test/resources</argument>
+                    <argument>-I</argument>
+                    <argument>target/dependency/build-scripts</argument>
 		    <argument>src/test/perl</argument>
 		  </arguments>
 '		</configuration>
