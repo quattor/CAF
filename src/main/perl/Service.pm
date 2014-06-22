@@ -161,45 +161,31 @@ sub create_process_solaris
 }
 
 
-# Note: we'll rely on Class::Std::AUTOMETHOD to select at runtime the
-# correct implementation of each command.
+# The restart, start and stop methods are identical on each variant.
+# We can generate them all in one go.
+foreach my $method (qw(start stop restart)) {
+    no strict 'refs';
+    *{"${method}_linux_sysv"} = sub {
+        my $self = shift;
+        my $ok = 1;
 
-=head2 Public methods
+        foreach my $i (@{$self->{services}}) {
+            $ok &&= $self->_logcmd("service", $i, $method);
+        }
+        return $ok;
+    };
 
-=over
+    *{"${method}_linux_systemd"} = sub {
+        my $self = shift;
 
-=item restart
+        return $self->_logcmd("systemctl", $method, @{$self->{services}});
+    };
 
-Restarts the daemon.
+    *{"${method}_solaris"} = sub {
+        my $self = shift;
 
-=cut
-
-sub restart_linux_sysv
-{
-    my $self = shift;
-
-    my $ok = 1;
-
-    foreach my $i (@{$self->{services}}) {
-        $ok &&= $self->_logcmd("service", $i, "restart");
-    }
-    return $ok;
-}
-
-sub restart_linux_systemd
-{
-    my $self = shift;
-
-    return $self->_logcmd("systemctl", "restart", @{$self->{services}});
-}
-
-# Stub method. To be improved by developers with experience in
-# solaris.
-sub restart_solaris
-{
-    my ($self, @moreopts) = @_;
-
-    return $self->_logcmd("svcadm", "restart", @{$self->{services}});
+        return $self->_logcmd("svcadm", $method, @{$self->{services}});
+    };
 }
 
 
@@ -245,3 +231,26 @@ sub AUTOLOAD
 
 
 1;
+
+__END__
+
+=head2 Public methods
+
+=over
+
+=item C<restart>
+
+Restarts the daemons.
+
+=item C<start>
+
+Starts the daemons.
+
+
+=item C<stop>
+
+Stops the daemons
+
+=back
+
+=cut
