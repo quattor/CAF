@@ -39,11 +39,12 @@ foreach my $m (qw(start stop restart)) {
 
 *CAF::Service::create_process = \&CAF::Service::create_process_solaris;
 
-foreach my $m (qw(start stop restart)) {
-    my $method = "${m}_solaris";
-    $srv->$method();
-    ok(get_command("svcadm $m ntpd sshd"), "svcadm $m works");
-}
+$srv->restart_solaris();
+ok(get_command("svcadm restart ntpd sshd"), "svcadm restart works");
+$srv->start_solaris();
+ok(get_command("svcadm enable ntpd sshd"), "svcadm enable/start works");
+$srv->stop_solaris();
+ok(get_command("svcadm disable ntpd sshd"), "svcadm disable/stop works");
 
 $srv->{timeout} = 42;
 $srv->restart_solaris();

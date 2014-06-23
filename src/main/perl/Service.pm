@@ -181,10 +181,18 @@ foreach my $method (qw(start stop restart)) {
         return $self->_logcmd("systemctl", $method, @{$self->{services}});
     };
 
+    my $op;
+    if ($method eq 'start') {
+        $op = 'enable';
+    } elsif ($method eq 'stop') {
+        $op = 'disable';
+    } else {
+        $op = $method;
+    }
     *{"${method}_solaris"} = sub {
         my $self = shift;
 
-        return $self->_logcmd("svcadm", $method, @{$self->{services}});
+        return $self->_logcmd("svcadm", $op, @{$self->{services}});
     };
 }
 
