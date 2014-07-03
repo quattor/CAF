@@ -151,7 +151,7 @@ sub create_process_solaris
     my ($self, @cmd) = @_;
 
     if ($self->{timeout}) {
-        @cmd = (@cmd[0..1], "-s", "-T", $self->{timeout}, @cmd[2..$#cmd]);
+        @cmd = (@cmd[0..2], "-s", "-T", $self->{timeout}, @cmd[3..$#cmd]);
     }
 
     my $proc = CAF::Process->new(\@cmd,
@@ -192,7 +192,7 @@ foreach my $method (qw(start stop restart)) {
     *{"${method}_solaris"} = sub {
         my $self = shift;
 
-        return $self->_logcmd("svcadm", $op, @{$self->{services}});
+        return $self->_logcmd("svcadm", "-v", $op, @{$self->{services}});
     };
 }
 
