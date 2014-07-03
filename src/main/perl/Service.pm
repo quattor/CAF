@@ -15,6 +15,14 @@ use CAF::Process;
 our $AUTOLOAD;
 use base qw(CAF::Object);
 
+# Mapping the methods we expose here to the svcadm operations. We
+# choose the Linux terms for our API.
+use constant SOLARIS_METHODS => {
+    start => 'enable',
+    stop => 'disable',
+    restart => 'restart'
+};
+
 =pod
 
 =head1 NAME
@@ -150,10 +158,6 @@ sub create_process_solaris
 {
     my ($self, @cmd) = @_;
 
-    if ($self->{timeout}) {
-        @cmd = (@cmd[0..2], "-s", "-T", $self->{timeout}, @cmd[3..$#cmd]);
-    }
-
     my $proc = CAF::Process->new(\@cmd,
                                  log => $self->{options}->{log},
                                  stdout => \my $stdout,
@@ -161,8 +165,9 @@ sub create_process_solaris
 }
 
 
-# The restart, start and stop methods are identical on each variant.
-# We can generate them all in one go.
+
+# The restart, start and stop methods are identical on each Linux
+# variant.  We can generate them all in one go.
 foreach my $method (qw(start stop restart)) {
     no strict 'refs';
     *{"${method}_linux_sysv"} = sub {
@@ -181,19 +186,29 @@ foreach my $method (qw(start stop restart)) {
         return $self->_logcmd("systemctl", $method, @{$self->{services}});
     };
 
-    my $op;
-    if ($method eq 'start') {
-        $op = 'enable';
-    } elsif ($method eq 'stop') {
-        $op = 'disable';
-    } else {
-        $op = $method;
-    }
+    next if $method eq 'restart';
+
     *{"${method}_solaris"} = sub {
         my $self = shift;
 
-        return $self->_logcmd("svcadm", "-v", $op, @{$self->{services}});
+        my @cmd = ('svcadm', '-v', SOLARIS_METHODS->{$method});
+
+        push(@cmd, "-r") if $self->{recursive};
+        push(@cmd, "-t") if !$self->{persistent};
+
+        return $self->_logcmd(@cmd, @{$self->{services}});
     };
+}
+
+sub restart_solaris
+{
+    my $self = shift;
+
+    my @cmd = ('svcadm', '-v', 'restart');
+
+    push(@cmd, "-s") if $self->{synchronous} || $self->{timeout};
+    push(@cmd, "-T", $self->{timeout}) if $self->{timeout};
+    return $self->_logcmd(@cmd, @{$self->{services}});
 }
 
 

@@ -42,9 +42,9 @@ foreach my $m (qw(start stop restart)) {
 $srv->restart_solaris();
 ok(get_command("svcadm -v restart ntpd sshd"), "svcadm restart works");
 $srv->start_solaris();
-ok(get_command("svcadm -v enable ntpd sshd"), "svcadm enable/start works");
+ok(get_command("svcadm -v enable -t ntpd sshd"), "svcadm enable/start works");
 $srv->stop_solaris();
-ok(get_command("svcadm -v disable ntpd sshd"), "svcadm disable/stop works");
+ok(get_command("svcadm -v disable -t ntpd sshd"), "svcadm disable/stop works");
 
 $srv->{timeout} = 42;
 $srv->restart_solaris();
