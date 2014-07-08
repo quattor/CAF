@@ -92,6 +92,24 @@ correct way to handle timeouts in systemd is to store them in the unit
 file, which will ensure they are respected in any context that unit
 may be called.
 
+=item C<persistent>
+
+Used only in the Solaris variant of C<start> and C<stop>.  Make the
+enabling or disabling of this service persist in subsequent reboots.
+Implies not passing the C<-t> flag to C<svcadm>.
+
+=item C<recursive>.
+
+Used only in the Solaris variant of C<start> and C<stop>.  Starts or
+stops all the dependencies for the given daemons, too.
+
+=item C<synchronous>
+
+Used only in the Solaris variant of C<restart>.  Waits until all
+services have been restarted.
+
+If no C<timeout> was passed, it will wait forever.
+
 =back
 
 ...
@@ -268,7 +286,6 @@ Restarts the daemons.
 =item C<start>
 
 Starts the daemons.
-
 
 =item C<stop>
 
