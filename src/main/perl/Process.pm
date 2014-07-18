@@ -122,7 +122,7 @@ sub _initialize
     }
 
 
-    $self->{NoAction} = $CAF::Object::NoAction && !$opts{keeps_state};
+    $self->{NoAction} = 0 if $opts{keeps_state};
 
     $self->{COMMAND} = $command;
 
@@ -153,7 +153,7 @@ sub execute
     my $self = shift;
 
     my $na = "E";
-    if ($self->{NoAction}) {
+    if ($self->noAction()) {
         $na = "Not e";
     }
     if ($self->{log}) {
@@ -165,7 +165,7 @@ sub execute
         }
         $self->{log}->verbose (join (" ", "Command options:", @opts));
     }
-    if ($self->{NoAction}) {
+    if ($self->noAction()) {
         return 0;
     }
     return LC::Process::execute ($self->{COMMAND}, %{$self->{OPTIONS}});
@@ -190,7 +190,7 @@ sub output
 				@{$self->{COMMAND}}))
 	if $self->{log};
 
-    if ($self->{NoAction}) {
+    if ($self->noAction()) {
 	return "";
     }
 
@@ -218,7 +218,7 @@ sub toutput
 				 "|with $timeout seconds of timeout"))
 	if $self->{log};
 
-    if ($self->{NoAction}) {
+    if ($self->noAction()) {
 	return "";
     }
     return LC::Process::toutput ($timeout, @{$self->{COMMAND}});
@@ -241,7 +241,7 @@ sub run
     $self->{log}->verbose (join (" ", "Running the command:",
 				 @{$self->{COMMAND}}))
 	if $self->{log};
-    if ($self->{NoAction}) {
+    if ($self->noAction()) {
 	 return 0;
     }
     return LC::Process::run (@{$self->{COMMAND}});
@@ -266,7 +266,7 @@ sub trun
 				 "|with $timeout seconds of timeout"))
 	if $self->{log};
 
-    if ($self->{NoAction}) {
+    if ($self->noAction()) {
 	 return 0;
     }
 

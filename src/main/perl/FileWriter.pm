@@ -131,6 +131,7 @@ sub new
     *$self->{options}->{group} = $opts{group} if exists ($opts{group});
     *$self->{options}->{backup} = $opts{backup} if exists ($opts{backup});
     *$self->{save} = 1;
+    *$self->{NoAction} = $CAF::Object::NoAction;
     return bless ($self, $class);
 }
 
@@ -162,7 +163,7 @@ sub close
     my $self = shift;
     my ($str, $ret, $cmd, $diff);
 
-    if ($CAF::Object::NoAction) {
+    if ($self->noAction()) {
         $self->cancel();
     }
 
@@ -212,6 +213,20 @@ sub cancel
         *$self->{LOG}->verbose ("Not saving file ", *$self->{filename});
     }
     *$self->{save} = 0;
+}
+
+=pod
+
+=item noAction
+
+Returns the NoAction flag value (boolean)
+
+=cut
+
+sub noAction
+{
+    my $self = shift;
+    return *$self->{NoAction};
 }
 
 =pod

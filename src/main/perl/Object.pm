@@ -82,12 +82,28 @@ sub new {
   my $self = {}; # here, it gives a reference on a hash
   bless $self, $class;
   if ($self->_initialize(@_)) {
+    # Initialize instance variable to class variable if not initializedin _initialize().
+    # A derived class which must define it differently must define it before.
+    $self->{NoAction} = $CAF::Object::NoAction if !defined($self->{NoAction});
     return $self;
   } else {
     throw_error("cannot instantiate class: $class", $ec->error || '');
     undef $self;
     return undef;
   }
+}
+
+
+=item noAction
+
+Returns the NoAction flag value (boolean)
+
+=cut
+
+sub noAction
+{
+    my $self = shift;
+    return $self->{NoAction};
 }
 
 
