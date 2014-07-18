@@ -107,6 +107,34 @@ sub head_print
     return $self;
 }
 
+=pod 
+
+=item seek_begin
+
+Seek to the beginning of the file.
+
+=cut
+
+sub seek_begin
+{
+    my ($self) = @_;
+    $self->seek(IO_SEEK_BEGIN);
+}
+
+=pod 
+
+=item seek_end
+
+Seek to the end of the file.
+
+=cut
+
+sub seek_begin
+{
+    my ($self) = @_;
+    $self->seek(IO_SEEK_END);
+}
+
 =pod
 
 =item replace_lines(re, goodre, newvalue)
