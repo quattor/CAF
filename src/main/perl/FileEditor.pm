@@ -107,6 +107,34 @@ sub head_print
     return $self;
 }
 
+=pod 
+
+=item seek_begin
+
+Seek to the beginning of the file.
+
+=cut
+
+sub seek_begin
+{
+    my ($self) = @_;
+    $self->seek(IO_SEEK_BEGIN);
+}
+
+=pod 
+
+=item seek_end
+
+Seek to the end of the file.
+
+=cut
+
+sub seek_end
+{
+    my ($self) = @_;
+    $self->seek(IO_SEEK_END);
+}
+
 =pod
 
 =item replace_lines(re, goodre, newvalue)
@@ -136,7 +164,7 @@ sub replace_lines
     my ($self, $re, $goodre, $newvalue) = @_;
 
     my @lns;
-    $self->seek(IO_SEEK_BEGIN);
+    $self->seek_begin();
 
     while (my $l = <$self>) {
         if ($l =~ $re && $l !~ $goodre) {
@@ -146,7 +174,7 @@ sub replace_lines
         }
     }
     $self->set_contents (join("", @lns));
-    $self->seek(IO_SEEK_END);
+    $self->seek_end();
 }
 
 =pod
@@ -253,7 +281,7 @@ sub add_or_replace_lines
     } else {
         $self->set_contents (join ("", @lns));
     }
-    $self->seek(IO_SEEK_END);
+    $self->seek_end();
 }
 
 
@@ -370,7 +398,7 @@ sub remove_lines
         *$self->{LOG}->debug (5, "remove_lines ($fname): re = '$re'\tgoodre = '$goodre'");
     }
     my @lns;
-    $self->seek(IO_SEEK_BEGIN);
+    $self->seek_begin();
 
     while (my $l = <$self>) {
         unless ($l =~ $re && $l !~ $goodre) {
@@ -378,7 +406,7 @@ sub remove_lines
         }
     }
     $self->set_contents(join("", @lns));
-    $self->seek(IO_SEEK_END);
+    $self->seek_end();
 }
 
 __END__
