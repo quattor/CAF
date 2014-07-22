@@ -327,6 +327,21 @@ sub stringify_command
     return join(" ", @{$self->{COMMAND}});
 }
 
+=over
+
+=item get_command
+
+Return the reference to the array with the command and its arguments. 
+
+=back
+
+=cut
+
+sub get_command
+{
+    my ($self) = @_;
+    return $self->{COMMAND};
+}
 
 1;
 
