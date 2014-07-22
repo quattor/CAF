@@ -16,6 +16,8 @@ use LC::Process;
 use CAF::Reporter;
 use CAF::Object;
 
+use overload ('""' => 'stringify_command');
+
 our @ISA = qw (CAF::Object CAF::Reporter);
 
 =pod
@@ -308,6 +310,23 @@ sub setopts
 	$self->{OPTIONS}->{$i} = $opts{$i} if exists($opts{$i});
     }
 }
+
+=over
+
+=item stringify_command
+
+Return the command and its arguments as a space separated string. 
+
+=back
+
+=cut
+
+sub stringify_command
+{
+    my ($self) = @_;
+    return join(" ", @{$self->{COMMAND}});
+}
+
 
 1;
 
