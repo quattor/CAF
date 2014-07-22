@@ -117,4 +117,10 @@ ok(!$p->{NoAction},
 $p = CAF::Process->new($command, keeps_state => 0);
 ok($p->{NoAction}, "Respect NoAction if the command changes the state");
 
+$p = CAF::Process->new($command);
+my $command_str = join(" ", @$command);
+is($p->stringify_command, $command_str, "stringify_command returns joined command");
+is("My command $p.", "My command $command_str.", "overloaded stringification");
+
+
 done_testing();
