@@ -100,7 +100,7 @@ Reporter setup:
 - $quiet: if set to a true value (eg. 1), stops any output to console.
 
 - $verbose: if set to a true value (eg. 1), produce verbose output
-            (produced with the 'verbose' method)
+            (produced with the 'verbose' method). Implied by debug >= 1.
 
 - $facility: syslog facility the messages will be sent to
 
@@ -111,7 +111,7 @@ sub setup_reporter {
 
   $_REP_SETUP->{'DEBUGLV'}= defined $debuglvl && $debuglvl > 0 ? $debuglvl : 0;
   $_REP_SETUP->{'QUIET'} = defined $quiet && $quiet ? 1 : 0;
-  $_REP_SETUP->{'VERBOSE'} = defined $verbose && $verbose ? 1 : 0;
+  $_REP_SETUP->{'VERBOSE'} = ((defined $verbose && $verbose) || (defined $debuglvl && $debuglvl)) ? 1 : 0;
   $_REP_SETUP->{'FACILITY'} = $facility unless !defined $facility;
 
   return SUCCESS;
