@@ -308,7 +308,26 @@ sub syslog {
   # If syslog can't be reached do nothing, but please don't die.
   eval {
     openlog ($_REP_SETUP->{LOGFILE}->{SYSLOG}, "pid", $_REP_SETUP->{'FACILITY'});
-    Sys::Syslog::syslog ($priority, join ('', @msg));
+    # Split lines containing a line delimiter
+    my @strs;
+    foreach my $line (@msg) {
+        my @lines = split /\n/, $line;
+        push @strs, @lines;
+    }
+    # Ensure that all lines are printed separately by syslog.
+    # If there are many lines, we need to sleep periodically to
+    # avoid lines to be discarded by the rsyslog rate limiter
+    # (default rate limit is 200 messages per 5s).
+    use constant RSYSLOG_MAX_LINES => 30;
+    my $i = RSYSLOG_MAX_LINES;
+    foreach my $line (@strs) {
+        Sys::Syslog::syslog ($priority, $line);
+        if ( $i == 0 ) {
+            sleep 1;
+            $i = RSYSLOG_MAX_LINES;
+        }
+        $i--;
+    }
     closelog();
   }
 }
