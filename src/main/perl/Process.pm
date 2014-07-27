@@ -226,6 +226,80 @@ sub toutput
 
 =over
 
+=item stream_output
+
+Execute the commands using C<execute>, but the C<stderr> is 
+redirected to C<stdout>, and C<stdout> is processed with C<process>
+function. The total output is aggregated and returned when finished.
+
+Extra option is the process C<mode>. By default (or value C<undef>), 
+the new output is passed to C<process>. With mode C<line>, C<process> 
+is called for each line of output (i.e. separated by newline), and 
+the remainder of the output when the process is finished.
+
+Another option are the process C<arguments>. This is a reference to the
+array of arguments passed to the C<process> function. 
+The arguments are passed before the output to the C<process>: e.g.
+if C<arguments =\> [qw(a b)]> is used, the C<process> function is 
+called like C<process(a,b,$newoutput)> (with C<$newoutput> the 
+new streamed output)
+
+=back
+
+=cut
+
+sub stream_output
+{
+    my ($self, $process, %opts) = @_;
+
+    my ($mode, @process_args);
+    $mode = $opts{mode} if exists($opts{mode});
+    @process_args = @{$opts{arguments}} if exists($opts{arguments});
+    
+    my $total_out = "";
+    my $last = 0;
+    my $remainder = "";
+    
+    # Define this sub here. Makes no sense to define it outside this sub
+    # Use anonymous sub to avoid "Variable will not stay shared" warnings
+    my $stdout_func = sub  {
+        my ($bufout) = @_;
+        my $diff = substr($bufout, $last);
+        if (defined($mode) && $mode eq 'line') {
+            # split $diff in newlines
+            # last part is empty? or has no newline, i.e. remainder
+            my @lines = split(/\n/, $diff, -1); # keep trailing empty
+            $remainder = pop @lines; # always possible
+            # all others, print them
+            foreach my $line (@lines) {
+                $process->(@process_args, $line);
+            }
+        } else {
+            # no remainder, leave it empty string
+            $process->(@process_args, $diff);
+        }
+        $last = length($bufout) - length($remainder);
+        $total_out .= substr($diff, 0, length($diff) - length($remainder));
+
+        return 0;
+    };
+
+    $self->{OPTIONS}->{stderr} = 'stdout';
+    $self->{OPTIONS}->{stdout} = $stdout_func;
+    
+    my $execute_res = $self->execute();
+
+    # not called with empty remainder
+    if ($remainder) {
+        $process->(@process_args, $remainder);
+        $total_out .= $remainder;
+    };
+
+    return($total_out);
+}
+
+=over
+
 =item run
 
 Runs the command.
