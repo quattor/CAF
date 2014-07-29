@@ -256,7 +256,7 @@ sub stream_output
     $mode = $opts{mode} if exists($opts{mode});
     @process_args = @{$opts{arguments}} if exists($opts{arguments});
     
-    my $total_out = "";
+    my @total_out = ();
     my $last = 0;
     my $remainder = "";
     
@@ -279,7 +279,7 @@ sub stream_output
             $process->(@process_args, $diff);
         }
         $last = length($bufout) - length($remainder);
-        $total_out .= substr($diff, 0, length($diff) - length($remainder));
+        push(@total_out,substr($diff, 0, length($diff) - length($remainder)));
 
         return 0;
     };
@@ -292,10 +292,10 @@ sub stream_output
     # not called with empty remainder
     if ($remainder) {
         $process->(@process_args, $remainder);
-        $total_out .= $remainder;
+        push(@total_out, $remainder);
     };
 
-    return($total_out);
+    return(join("", @total_out));
 }
 
 =over
