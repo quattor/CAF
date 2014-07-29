@@ -8,6 +8,9 @@ use testapp;
 use CAF::Process;
 use Test::More;
 
+use Test::MockModule;
+my $mock = Test::MockModule->new ("CAF::Process");
+
 my ($p, $this_app, $str, $fh, $out, $out2);
 
 our ($run, $trun, $execute, $output, $toutput) = (0, 0, 0, 0, 0);
@@ -124,6 +127,21 @@ is("My command $p.", "My command $command_str.", "overloaded stringification");
 
 is(join(" ", @{$p->get_command}), $command_str, "get_command returns ref to command list");
 
+# is_executable tests
+sub test_executable {
+    my ($self, $executable) = @_;
+    return $executable;
+}
+
+$mock->mock ("_test_executable", \&test_executable);
+
+$p = CAF::Process->new([qw(ls)]); # let's assume that ls exists
+my $ls = $p->is_executable;
+like($ls, qr{^/.*ls$}, "Test ls basename resolved to absolute path");
+$p = CAF::Process->new([qw(doesnotexists)]); 
+ok(! defined($p->is_executable), "Test can't resolve basename");
+# no test non-existing filename (the mock function would just return the path)
+is($p->is_executable($ls), $ls, "Test absolute path and pass executable to test via argument");
 
 
 done_testing();
