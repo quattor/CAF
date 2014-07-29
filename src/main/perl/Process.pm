@@ -15,6 +15,8 @@ use LC::Exception qw (SUCCESS throw_error);
 use LC::Process;
 use CAF::Reporter;
 use CAF::Object;
+use File::Which;
+use File::Basename;
 
 use overload ('""' => 'stringify_command');
 
@@ -341,6 +343,66 @@ sub get_command
 {
     my ($self) = @_;
     return $self->{COMMAND};
+}
+
+
+# Tests if a filename is executable. However, using -x 
+# makes this not mockable, and thus this test is separated 
+# from C<is_executable> in the C<_test_executable> private 
+# method for unittesting.
+sub _test_executable
+{
+    my ($self, $executable) = @_;
+    return -x $executable;
+}
+
+=over
+
+=item is_executable
+
+Checks if C<executable> is executable.
+It returns the result of the C<-x> test on the filename 
+(or C<undef> if filename can't be resolved).
+
+When C<executable> is not defined, the first element of the 
+array with the command and its arguments is used.
+
+If the filename is equal to the C<basename>, then the 
+filename to test is resolved using the 
+C<File::Where::which> method.  
+(Use C<./script> if you want to check a script in the 
+current working directory).
+
+=back
+
+=cut
+
+sub is_executable
+{
+    my ($self, $executable) = @_;
+    if (! defined($executable)) {
+        if ($self->{COMMAND}) {
+            $executable = ${$self->{COMMAND}}[0];
+        } else {
+            $self->{log}->error ("No executable defined to test") 
+                if $self->{log};
+            return;
+        }
+    };
+
+    if ($executable eq basename($executable)) {
+        my $executable_path = which($executable);
+        if (defined($executable_path)) {
+            $self->{log}->debug (3, "Executable $executable resolved via which to $executable_path") 
+                if $self->{log};
+            $executable = $executable_path;
+        } else {
+            $self->{log}->error ("Executable $executable couldn't be resolved via which")
+                if $self->{log};
+            return;
+        }
+    }
+    return $self->_test_executable($executable);
 }
 
 1;
