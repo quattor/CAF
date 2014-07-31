@@ -360,12 +360,11 @@ sub _test_executable
 
 =item is_executable
 
-Checks if C<executable> is executable.
+Checks if the first element of the 
+array with the command and its arguments, is executable.
+
 It returns the result of the C<-x> test on the filename 
 (or C<undef> if filename can't be resolved).
-
-When C<executable> is not defined, the first element of the 
-array with the command and its arguments is used.
 
 If the filename is equal to the C<basename>, then the 
 filename to test is resolved using the 
@@ -379,30 +378,33 @@ current working directory).
 
 sub is_executable
 {
-    my ($self, $executable) = @_;
-    if (! defined($executable)) {
-        if ($self->{COMMAND}) {
-            $executable = ${$self->{COMMAND}}[0];
-        } else {
-            $self->{log}->error ("No executable defined to test") 
-                if $self->{log};
-            return;
-        }
-    };
+    my ($self) = @_;
 
+    if (! $self->{COMMAND}) {
+        $self->{log}->debug (1, "No executable defined to test") 
+            if $self->{log};
+        return;
+    }
+
+    my $executable = ${$self->{COMMAND}}[0];
+    
     if ($executable eq basename($executable)) {
         my $executable_path = which($executable);
         if (defined($executable_path)) {
-            $self->{log}->debug (3, "Executable $executable resolved via which to $executable_path") 
+            $self->{log}->debug (1, "Executable $executable resolved via which to $executable_path") 
                 if $self->{log};
             $executable = $executable_path;
         } else {
-            $self->{log}->error ("Executable $executable couldn't be resolved via which")
+            $self->{log}->debug (1, "Executable $executable couldn't be resolved via which")
                 if $self->{log};
             return;
         }
     }
-    return $self->_test_executable($executable);
+
+    my $res = $self->_test_executable($executable);
+    $self->{log}->debug (1, "Executable $executable is ", $res ? "": "not " , "executable")
+        if $self->{log};
+    return $res;
 }
 
 1;
