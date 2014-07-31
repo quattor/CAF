@@ -307,6 +307,15 @@ sub setopts
     foreach my $i (qw(timeout stdin stderr stdout shell)) {
 	$self->{OPTIONS}->{$i} = $opts{$i} if exists($opts{$i});
     }
+
+    # Initialize stdout and stderr if they exist. Otherwise, NoAction
+    # runs will spill plenty of spurious uninitialized warnings.
+    foreach my $i (qw(stdout stderr)) {
+        if (exists($self->{OPTIONS}->{$i}) && ref($self->{OPTIONS}->{$i}) &&
+            !defined(${$self->{OPTIONS}->{$i}})) {
+            ${$self->{OPTIONS}->{$i}} = "";
+        }
+    }
 }
 
 1;
