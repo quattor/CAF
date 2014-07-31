@@ -95,6 +95,9 @@ $p->execute ();
 is ($opts{stdin}, "Something", "Option from creation is respected");
 is (${$opts{stdout}}, $str, "Correct stdout");
 ok (@$cmd == @$command, "The command got options appended");
+$str = undef;
+$p->setopts (stdout => \$str);
+is($str, "", "Stdout is initialized");
 # Test the NoAction flag
 $CAF::Object::NoAction = 1;
 init_test();
