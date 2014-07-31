@@ -301,7 +301,7 @@ sub debug ($@) {
         return;
     }
 
-    if ($self->{DEBUGLV} >= $debuglvl) {
+    if (defined($self->{DEBUGLV}) && $self->{DEBUGLV} >= $debuglvl) {
         $self->syslog ('debug', @_);
         return $self->report('[DEBUG] ',@_);
     }

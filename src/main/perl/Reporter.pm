@@ -267,7 +267,7 @@ sub debug {
     return;
   }
 
-  if ($_REP_SETUP->{DEBUGLV} >= $debuglvl) {
+  if (defined($_REP_SETUP->{DEBUGLV}) && $_REP_SETUP->{DEBUGLV} >= $debuglvl) {
     $self->syslog ('debug', @_);
     return $self->report('[DEBUG] ',@_);
   }
