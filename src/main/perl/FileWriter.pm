@@ -27,8 +27,7 @@ our @ISA = qw (IO::String);
 if ($^O eq 'linux'){
     # temporarily remove PATH environment
     # allows for 'use CAF::FileWriter' under -T without warnings
-    my $path = $ENV{PATH};
-    delete $ENV{PATH};
+    delete local $ENV{PATH};
     if(CAF::Process->new(["/usr/sbin/selinuxenabled"])->run() && $? == 0) {
         *change_hook = sub {
             my $self = shift;
@@ -37,7 +36,6 @@ if ($^O eq 'linux'){
             $cmd->run();
         };
     };
-    $ENV{PATH} = $path if (defined($path));
 }
 
 
