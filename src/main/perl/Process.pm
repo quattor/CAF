@@ -15,6 +15,10 @@ use LC::Exception qw (SUCCESS throw_error);
 use LC::Process;
 use CAF::Reporter;
 use CAF::Object;
+use File::Which;
+use File::Basename;
+
+use overload ('""' => 'stringify_command');
 
 our @ISA = qw (CAF::Object CAF::Reporter);
 
@@ -316,6 +320,100 @@ sub setopts
             ${$self->{OPTIONS}->{$i}} = "";
         }
     }
+}
+
+=over
+
+=item stringify_command
+
+Return the command and its arguments as a space separated string. 
+
+=back
+
+=cut
+
+sub stringify_command
+{
+    my ($self) = @_;
+    return join(" ", @{$self->{COMMAND}});
+}
+
+=over
+
+=item get_command
+
+Return the reference to the array with the command and its arguments. 
+
+=back
+
+=cut
+
+sub get_command
+{
+    my ($self) = @_;
+    return $self->{COMMAND};
+}
+
+
+# Tests if a filename is executable. However, using -x 
+# makes this not mockable, and thus this test is separated 
+# from C<is_executable> in the C<_test_executable> private 
+# method for unittesting.
+sub _test_executable
+{
+    my ($self, $executable) = @_;
+    return -x $executable;
+}
+
+=over
+
+=item is_executable
+
+Checks if the first element of the 
+array with the command and its arguments, is executable.
+
+It returns the result of the C<-x> test on the filename 
+(or C<undef> if filename can't be resolved).
+
+If the filename is equal to the C<basename>, then the 
+filename to test is resolved using the 
+C<File::Where::which> method.  
+(Use C<./script> if you want to check a script in the 
+current working directory).
+
+=back
+
+=cut
+
+sub is_executable
+{
+    my ($self) = @_;
+
+    if (! $self->{COMMAND}) {
+        $self->{log}->debug (1, "No executable defined to test") 
+            if $self->{log};
+        return;
+    }
+
+    my $executable = ${$self->{COMMAND}}[0];
+    
+    if ($executable eq basename($executable)) {
+        my $executable_path = which($executable);
+        if (defined($executable_path)) {
+            $self->{log}->debug (1, "Executable $executable resolved via which to $executable_path") 
+                if $self->{log};
+            $executable = $executable_path;
+        } else {
+            $self->{log}->debug (1, "Executable $executable couldn't be resolved via which")
+                if $self->{log};
+            return;
+        }
+    }
+
+    my $res = $self->_test_executable($executable);
+    $self->{log}->debug (1, "Executable $executable is ", $res ? "": "not " , "executable")
+        if $self->{log};
+    return $res;
 }
 
 1;

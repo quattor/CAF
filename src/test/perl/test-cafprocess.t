@@ -8,6 +8,9 @@ use testapp;
 use CAF::Process;
 use Test::More;
 
+use Test::MockModule;
+my $mock = Test::MockModule->new ("CAF::Process");
+
 my ($p, $this_app, $str, $fh, $out, $out2);
 
 our ($run, $trun, $execute, $output, $toutput) = (0, 0, 0, 0, 0);
@@ -119,5 +122,31 @@ ok(!$p->{NoAction},
 
 $p = CAF::Process->new($command, keeps_state => 0);
 ok($p->{NoAction}, "Respect NoAction if the command changes the state");
+
+$p = CAF::Process->new($command);
+my $command_str = join(" ", @$command);
+is($p->stringify_command, $command_str, "stringify_command returns joined command");
+is("$p", $command_str, "overloaded stringification");
+
+is(join(" ", @{$p->get_command}), $command_str, "get_command returns ref to command list");
+
+# is_executable tests
+# no test non-existing filename (the mock function would just return the path)
+sub test_executable {
+    my ($self, $executable) = @_;
+    return $executable;
+}
+$mock->mock ("_test_executable", \&test_executable);
+
+$p = CAF::Process->new([qw(ls)]); # let's assume that ls exists
+my $ls = $p->is_executable;
+like($ls, qr{^/.*ls$}, "Test ls basename resolved to absolute path");
+
+$p = CAF::Process->new([$ls]); 
+is($p->is_executable, $ls, "Test absolute path");
+
+$p = CAF::Process->new([qw(doesnotexists)]); 
+ok(! defined($p->is_executable), "Test can't resolve basename");
+
 
 done_testing();
