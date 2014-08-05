@@ -148,5 +148,10 @@ is($p->is_executable, $ls, "Test absolute path");
 $p = CAF::Process->new([qw(doesnotexists)]); 
 ok(! defined($p->is_executable), "Test can't resolve basename");
 
+# empty command process
+$p = CAF::Process->new([]); 
+is("$p", "", "Empty command process is empty string");
+ok(! $p, "Empty process is logical false (autogeneration of overloaded bool via new stringify)");
+
 
 done_testing();
