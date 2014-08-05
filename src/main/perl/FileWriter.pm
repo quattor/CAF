@@ -23,17 +23,19 @@ our @ISA = qw (IO::String);
 
 # This code makes sense only in Linux with SELinux enabled.  Other
 # platforms might require other adjustments after files are written.
-if ($^O eq 'linux' &&
-    CAF::Process->new(["/usr/sbin/selinuxenabled"])->run() &&
-    $? == 0) {
-    *change_hook = sub {
-        my $self = shift;
-        my $cmd = CAF::Process->new (['/sbin/restorecon', *$self->{filename}],
-                                     log => *$self->{LOG});
-        $cmd->run();
+*change_hook = sub{};
+if ($^O eq 'linux'){
+    # temporarily remove PATH environment
+    # allows for 'use CAF::FileWriter' under -T without warnings
+    delete local $ENV{PATH};
+    if(CAF::Process->new(["/usr/sbin/selinuxenabled"])->run() && $? == 0) {
+        *change_hook = sub {
+            my $self = shift;
+            my $cmd = CAF::Process->new (['/sbin/restorecon', *$self->{filename}],
+                                         log => *$self->{LOG});
+            $cmd->run();
+        };
     };
-} else {
-    *change_hook = sub{};
 }
 
 
