@@ -132,7 +132,7 @@ sub _initialize
 
     $self->setopts (%opts);
 
-    return $self;
+    return SUCCESS;
 }
 
 =head2 Public methods
