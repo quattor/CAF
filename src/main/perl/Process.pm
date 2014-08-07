@@ -244,6 +244,21 @@ if C<arguments =\> [qw(a b)]> is used, the C<process> function is
 called like C<process(a,b,$newoutput)> (with C<$newoutput> the 
 new streamed output)
 
+Example usage: during a C<yum install>, you want to stop the yum process 
+when an error message is detected.
+
+    sub act = {
+        my ($self, $proc, $message) = @_;
+        if ($message =~ m/error/) {
+            $self->error("Error encountered, stopping process: $message");
+            $proc->stop;
+        }
+    }
+
+    $self->info("Going to start yum");
+    my $p = CAF::Process->new([qw(yum install error)], input => 'init');
+    $p->stream_output(\$act, mode => line, arguments => [$self, $p]);
+
 =back
 
 =cut
