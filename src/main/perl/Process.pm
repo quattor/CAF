@@ -251,7 +251,7 @@ new streamed output)
 Example usage: during a C<yum install>, you want to stop the yum process 
 when an error message is detected.
 
-    sub act = {
+    sub act {
         my ($self, $proc, $message) = @_;
         if ($message =~ m/error/) {
             $self->error("Error encountered, stopping process: $message");
@@ -261,7 +261,7 @@ when an error message is detected.
 
     $self->info("Going to start yum");
     my $p = CAF::Process->new([qw(yum install error)], input => 'init');
-    $p->stream_output(\$act, mode => line, arguments => [$self, $p]);
+    $p->stream_output(\&act, mode => line, arguments => [$self, $p]);
 
 =back
 
