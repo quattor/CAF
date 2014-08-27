@@ -15,6 +15,14 @@ use CAF::Process;
 our $AUTOLOAD;
 use base qw(CAF::Object);
 
+# Mapping the methods we expose here to the svcadm operations. We
+# choose the Linux terms for our API.
+use constant SOLARIS_METHODS => {
+    start => 'enable',
+    stop => 'disable',
+    restart => 'restart'
+};
+
 =pod
 
 =head1 NAME
@@ -84,6 +92,24 @@ correct way to handle timeouts in systemd is to store them in the unit
 file, which will ensure they are respected in any context that unit
 may be called.
 
+=item C<persistent>
+
+Used only in the Solaris variant of C<start> and C<stop>.  Make the
+enabling or disabling of this service persist in subsequent reboots.
+Implies not passing the C<-t> flag to C<svcadm>.
+
+=item C<recursive>.
+
+Used only in the Solaris variant of C<start> and C<stop>.  Starts or
+stops all the dependencies for the given daemons, too.
+
+=item C<synchronous>
+
+Used only in the Solaris variant of C<restart>.  Waits until all
+services have been restarted.
+
+If no C<timeout> was passed, it will wait forever.
+
 =back
 
 ...
@@ -150,10 +176,6 @@ sub create_process_solaris
 {
     my ($self, @cmd) = @_;
 
-    if ($self->{timeout}) {
-        @cmd = (@cmd[0..1], "-s", "-T", $self->{timeout}, @cmd[2..$#cmd]);
-    }
-
     my $proc = CAF::Process->new(\@cmd,
                                  log => $self->{options}->{log},
                                  stdout => \my $stdout,
@@ -161,45 +183,50 @@ sub create_process_solaris
 }
 
 
-# Note: we'll rely on Class::Std::AUTOMETHOD to select at runtime the
-# correct implementation of each command.
 
-=head2 Public methods
+# The restart, start and stop methods are identical on each Linux
+# variant.  We can generate them all in one go.
+foreach my $method (qw(start stop restart)) {
+    no strict 'refs';
+    *{"${method}_linux_sysv"} = sub {
+        my $self = shift;
+        my $ok = 1;
 
-=over
+        foreach my $i (@{$self->{services}}) {
+            $ok &&= $self->_logcmd("service", $i, $method);
+        }
+        return $ok;
+    };
 
-=item restart
+    *{"${method}_linux_systemd"} = sub {
+        my $self = shift;
 
-Restarts the daemon.
+        return $self->_logcmd("systemctl", $method, @{$self->{services}});
+    };
 
-=cut
+    next if $method eq 'restart';
 
-sub restart_linux_sysv
-{
-    my $self = shift;
+    *{"${method}_solaris"} = sub {
+        my $self = shift;
 
-    my $ok = 1;
+        my @cmd = ('svcadm', '-v', SOLARIS_METHODS->{$method});
 
-    foreach my $i (@{$self->{services}}) {
-        $ok &&= $self->_logcmd("service", $i, "restart");
-    }
-    return $ok;
+        push(@cmd, "-r") if $self->{recursive};
+        push(@cmd, "-t") if !$self->{persistent};
+
+        return $self->_logcmd(@cmd, @{$self->{services}});
+    };
 }
 
-sub restart_linux_systemd
-{
-    my $self = shift;
-
-    return $self->_logcmd("systemctl", "restart", @{$self->{services}});
-}
-
-# Stub method. To be improved by developers with experience in
-# solaris.
 sub restart_solaris
 {
-    my ($self, @moreopts) = @_;
+    my $self = shift;
 
-    return $self->_logcmd("svcadm", "restart", @{$self->{services}});
+    my @cmd = ('svcadm', '-v', 'restart');
+
+    push(@cmd, "-s") if $self->{synchronous} || $self->{timeout};
+    push(@cmd, "-T", $self->{timeout}) if $self->{timeout};
+    return $self->_logcmd(@cmd, @{$self->{services}});
 }
 
 
@@ -245,3 +272,25 @@ sub AUTOLOAD
 
 
 1;
+
+__END__
+
+=head2 Public methods
+
+=over
+
+=item C<restart>
+
+Restarts the daemons.
+
+=item C<start>
+
+Starts the daemons.
+
+=item C<stop>
+
+Stops the daemons
+
+=back
+
+=cut
