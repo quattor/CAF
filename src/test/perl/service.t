@@ -4,7 +4,6 @@ use warnings;
 use Test::More;
 use Test::Quattor;
 use CAF::Service;
-use Test::MockModule;
 
 =pod
 
@@ -14,9 +13,10 @@ Test all methods for C<CAF::Service>
 
 =cut
 
-my $mock = Test::MockModule->new("CAF::Service");
-$mock->mock("os_flavour", "linux_systemd");
-
+# We forcefully choose one of the create_process implementations,
+# since we are not interested in the behaviour of AUTOLOAD at this
+# stage.
+*CAF::Service::create_process = \&CAF::Service::create_process_linux_systemd;
 
 my $srv = CAF::Service->new(['ntpd', 'sshd']);
 
