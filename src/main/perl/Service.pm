@@ -229,6 +229,30 @@ sub restart_solaris
     return $self->_logcmd(@cmd, @{$self->{services}});
 }
 
+# Determine the OS flavour. (Also allows mocking the flavour for unittests)
+sub os_flavour 
+{
+    my $flavour;
+    if ($^O eq 'linux') {
+        $flavour = "linux";
+        if (-x "/bin/systemctl") {
+            $flavour .= "_systemd";
+        } elsif (-x "/sbin/service") {
+             $flavour .= "_sysv";
+        } else {
+            die "Unsupported Linux version. Unable to run $AUTOLOAD";
+        }
+    } elsif ($^O eq 'solaris') {
+        $flavour = "solaris";
+    } else {
+        die "Unsupported operating system: $^O. Not running $AUTOLOAD";
+    }
+
+    if (! defined($flavour)) {
+        die "Undefined flavour for operating system: $^O. Not running $AUTOLOAD";
+    }
+    return $flavour
+}
 
 # Choose the correct variant for each daemon action.  All the
 # OS-dependent logic is here.  See perldoc perlsub for details on how
@@ -243,20 +267,7 @@ sub AUTOLOAD
     return if $called =~ m{DESTROY};
 
     $called =~ s{.*::}{};
-
-    if ($^O eq 'linux') {
-        if (-x "/bin/systemctl") {
-            $called .= "_linux_systemd";
-        } elsif (-x "/sbin/service") {
-            $called .= "_linux_sysv";
-        } else {
-            die "Unsupported Linux version. Unable to run $AUTOLOAD";
-        }
-    } elsif ($^O eq 'solaris') {
-        $called .= "_solaris";
-    } else {
-        die "Unsupported operating system: $^O. Not running $AUTOLOAD";
-    }
+    $called .= "_" . os_flavour();
 
     if ($self->can($called)) {
         # Run the expected method. This is ugly but it's the way to do
