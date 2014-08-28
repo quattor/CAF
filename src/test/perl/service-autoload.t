@@ -4,10 +4,10 @@ use warnings;
 use Test::More;
 use Test::Quattor;
 use CAF::Service;
-use Test::MockModule;
 
-my $mock = Test::MockModule->new("CAF::Service");
-$mock->mock("os_flavour", "linux_systemd");
+if (! -f "/bin/systemctl" && ! -f "/sbin/service") {
+    plan skip_all => "No supported variants found";
+}
 
 =pod
 
