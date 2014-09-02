@@ -23,7 +23,6 @@ our @ISA = qw (IO::String);
 
 # This code makes sense only in Linux with SELinux enabled.  Other
 # platforms might require other adjustments after files are written.
-*change_hook = sub{};
 if ($^O eq 'linux'){
     # temporarily remove PATH environment
     # allows for 'use CAF::FileWriter' under -T without warnings
@@ -36,8 +35,9 @@ if ($^O eq 'linux'){
             $cmd->run();
         };
     };
-}
-
+} else {
+    *change_hook = sub{};
+};
 
 =pod
 
