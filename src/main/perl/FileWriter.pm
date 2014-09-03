@@ -29,6 +29,7 @@ if ($^O eq 'linux'){
     # allows for 'use CAF::FileWriter' under -T without warnings
     delete local $ENV{PATH};
     if(CAF::Process->new(["/usr/sbin/selinuxenabled"])->run() && $? == 0) {
+        no warnings 'redefine';
         *change_hook = sub {
             my $self = shift;
             my $cmd = CAF::Process->new (['/sbin/restorecon', *$self->{filename}],
