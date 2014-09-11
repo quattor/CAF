@@ -21,7 +21,7 @@ $mock->mock("os_flavour", "linux_systemd");
 my $srv = CAF::Service->new(['ntpd', 'sshd']);
 
 
-foreach my $m (qw(start stop restart)) {
+foreach my $m (qw(start stop restart reload)) {
     my $method = "${m}_linux_systemd";
     $srv->$method();
     ok(get_command("systemctl $m ntpd sshd"), "systemctl $m works");
@@ -29,7 +29,7 @@ foreach my $m (qw(start stop restart)) {
 
 
 *CAF::Service::create_process = \&CAF::Service::create_process_linux_sysv;
-foreach my $m (qw(start stop restart)) {
+foreach my $m (qw(start stop restart reload)) {
     my $method = "${m}_linux_sysv";
     $srv->$method();
     ok(get_command("service ntpd $m"), "sysv $m works");
@@ -45,6 +45,10 @@ $srv->start_solaris();
 ok(get_command("svcadm -v enable -t ntpd sshd"), "svcadm enable/start works");
 $srv->stop_solaris();
 ok(get_command("svcadm -v disable -t ntpd sshd"), "svcadm disable/stop works");
+
+$srv->reload_solaris();
+ok(get_command('svcadm -v refresh ntpd sshd'),
+   "reload mapped to svcadm's refresh operation");
 
 $srv->{timeout} = 42;
 $srv->restart_solaris();
