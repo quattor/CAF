@@ -180,6 +180,7 @@ sub create_process_solaris
                                  log => $self->{options}->{log},
                                  stdout => \my $stdout,
                                  stderr => \my $stderr);
+    return $proc;
 }
 
 
