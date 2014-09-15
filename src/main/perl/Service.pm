@@ -180,13 +180,14 @@ sub create_process_solaris
                                  log => $self->{options}->{log},
                                  stdout => \my $stdout,
                                  stderr => \my $stderr);
+    return $proc;
 }
 
 
 
 # The restart, start and stop methods are identical on each Linux
 # variant.  We can generate them all in one go.
-foreach my $method (qw(start stop restart)) {
+foreach my $method (qw(start stop restart reload)) {
     no strict 'refs';
     *{"${method}_linux_sysv"} = sub {
         my $self = shift;
@@ -204,7 +205,7 @@ foreach my $method (qw(start stop restart)) {
         return $self->_logcmd("systemctl", $method, @{$self->{services}});
     };
 
-    next if $method eq 'restart';
+    next if $method eq 'restart'  || $method eq 'reload';
 
     *{"${method}_solaris"} = sub {
         my $self = shift;
@@ -229,8 +230,15 @@ sub restart_solaris
     return $self->_logcmd(@cmd, @{$self->{services}});
 }
 
+sub reload_solaris
+{
+    my $self = shift;
+
+    return $self->_logcmd(qw(svcadm -v refresh), @{$self->{services}});
+}
+
 # Determine the OS flavour. (Also allows mocking the flavour for unittests)
-sub os_flavour 
+sub os_flavour
 {
     my $flavour;
     if ($^O eq 'linux') {
