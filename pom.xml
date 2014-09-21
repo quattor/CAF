@@ -61,6 +61,10 @@
     </contributor>
   </contributors>
 
+    <properties>
+        <unittest></unittest>
+    </properties>
+
   <profiles>
     <profile>
       <id>cfg-module-dist</id>
@@ -220,7 +224,7 @@
 		    <argument>src/test/resources</argument>
                     <argument>-I</argument>
                     <argument>target/dependency/build-scripts</argument>
-		    <argument>src/test/perl</argument>
+		    <argument>src/test/perl/${unittest}</argument>
 		  </arguments>
 '		</configuration>
 	      </execution>
