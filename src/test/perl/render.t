@@ -73,6 +73,11 @@ is($rnd->tt(), $res, "test.tt rendered contents correctly");
 is($rnd->get_text(), $res, "stringification successful");
 is("$rnd", $res, "stringification overload successful");
 
+# test filehandle options
+my $fh = $rnd->fh("/some/name");
+isa_ok($fh, "CAF::FileWriter", "CAF::Render fh method returns CAF::FileWriter");
+is("$fh", $res, "File contents as expected");
+
 
 # force the internal module for testing purposes!
 $rnd->{module} = '/my/abs/path';

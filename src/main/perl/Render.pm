@@ -12,6 +12,7 @@ use strict;
 use warnings;
 use LC::Exception qw (SUCCESS);
 use CAF::DummyLogger;
+use CAF::FileWriter;
 use Cwd qw(abs_path);
 use File::Spec::Functions qw(file_name_is_absolute);
 use Template;
@@ -249,9 +250,28 @@ sub get_text
     if (defined($res)) {
         return $res;
     } else {
-        $self->{log}->error("Failed to stringify");
+        $self->{log}->error("Failed to render");
         return;
     }
+}
+
+# Create and return a CAF::FileWriter instance
+# C<file> is the filename, C<%opts> are passed to 
+# CAF::FileWriter. (If no C<log> option is provided, 
+# the one from the CAF::Render instance is passed).
+# The rendered text is added to the filehandle 
+# (without extra newline).
+sub fh
+{
+    my ($self, $file, %opts) = @_;
+    
+    $opts{log} = $self->{log} if(!exists($opts{log}));    
+    
+    my $cfh = CAF::FileWriter->new($file, %opts);
+    
+    print $cfh $self->get_text();
+
+    return $cfh
 }
 
 
