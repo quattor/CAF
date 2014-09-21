@@ -301,6 +301,16 @@ sub render_json
     return $j->encode($self->{contents});
 }
 
+# TODO broken?
+sub render_yaml
+{
+    my ($self, $cfg) = @_;
+
+    $self->load_module("YAML::XS") or return;
+
+    return YAML::XS::Dump($cfg);
+}
+
 
 1;
 

@@ -94,5 +94,11 @@ $res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
 $rnd = CAF::Render->new('json', $contents);
 is("$rnd", $res, "json module rendered correctly");
 
+# yaml
+$res = '';
+$rnd = CAF::Render->new('yaml', $contents);
+# TODO yaml rendering fails?
+#is("$rnd", $res, "yaml module rendered correctly");
+
 
 done_testing();
