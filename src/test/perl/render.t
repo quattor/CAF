@@ -130,5 +130,15 @@ $rnd = CAF::Render->new('tiny', $contents);
 ok($rnd->load_module('Config::Tiny'), "Config::Tiny loaded");
 is("$rnd", $res, "tiny module rendered correctly");
 
+# general
+$res = <<EOF;
+<level1>
+    name_level1   value_level1
+</level1>
+name_level0   value_level0
+EOF
+$rnd = CAF::Render->new('general', $contents);
+ok($rnd->load_module('Config::General'), "Config::General loaded");
+is("$rnd", $res, "general module rendered correctly");
 
 done_testing();

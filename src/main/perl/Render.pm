@@ -345,6 +345,15 @@ sub render_tiny
 }
 
 
+sub render_general
+{
+    my ($self, $cfg) = @_;
+
+    $self->load_module("Config::General") or return;
+    my $c = Config::General->new(-SaveSorted => 1); # sort output
+    return $c->save_string($self->{contents});
+}
+
 
 1;
 
