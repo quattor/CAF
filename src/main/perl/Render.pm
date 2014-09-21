@@ -326,5 +326,25 @@ sub render_properties
 }
 
 
+sub render_tiny
+{
+    my ($self, $cfg) = @_;
+
+    $self->load_module("Config::Tiny") or return;
+
+    my $c = Config::Tiny->new();
+
+    while (my ($k, $v) = each(%{$self->{contents}})) {
+        if (ref($v)) {
+            $c->{$k} = $v;
+        } else {
+            $c->{_}->{$k} = $v;
+        }
+    }
+    return $c->write_string();
+}
+
+
+
 1;
 

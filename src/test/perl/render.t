@@ -119,5 +119,16 @@ like($line, qr{^#\s.*$}, "Start with header (contains timestamp)");
 # add extra newline
 is(join("\n", @txt,''), $res, "properties module rendered correctly");
 
+# tiny
+$res = <<EOF;
+name_level0=value_level0
+
+[level1]
+name_level1=value_level1
+EOF
+$rnd = CAF::Render->new('tiny', $contents);
+ok($rnd->load_module('Config::Tiny'), "Config::Tiny loaded");
+is("$rnd", $res, "tiny module rendered correctly");
+
 
 done_testing();
