@@ -10,6 +10,7 @@ package CAF::Render;
 
 use strict;
 use warnings;
+use LC::Exception qw (SUCCESS);
 use CAF::DummyLogger;
 use Cwd qw(abs_path);
 use File::Spec::Functions qw(file_name_is_absolute);
@@ -23,6 +24,7 @@ Readonly::Scalar my $DEFAULT_RELPATH => 'metaconfig';
 
 use base qw(CAF::Object);
 
+use overload ('""' => 'get_text');
 
 =pod
 
@@ -111,7 +113,6 @@ sub _initialize
 
     $self->{module} = $module;
     $self->{contents} = $contents;
-
     
     if (exists $opts{log} && $opts{log}) {
         $self->{log} = $opts{log};
@@ -136,7 +137,7 @@ sub _initialize
     # set render method
     $self->{method} = $self->select_module_method();
     
-    return $self;
+    return SUCCESS;
 }
 
 # Convert the C<module> in an absolute template path.
@@ -236,6 +237,21 @@ sub select_module_method {
     }
 
     return $method;
+}
+
+# Render the text
+sub get_text
+{
+    my ($self) = @_;
+
+    my $res = $self->{method}->($self);
+
+    if (defined($res)) {
+        return $res;
+    } else {
+        $self->{log}->error("Failed to stringify");
+        return;
+    }
 }
 
 

@@ -69,12 +69,16 @@ is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 # now test the CAF::Render tt call
 is($rnd->tt(), $res, "test.tt rendered contents correctly");
 
+# test stringification overload
+is($rnd->get_text(), $res, "stringification successful");
+is("$rnd", $res, "stringification overload successful");
+
+
 # force the internal module for testing purposes!
 $rnd->{module} = '/my/abs/path';
 ok(!defined($rnd->sanitize_template()), "module as template can't be absolute path");
 $rnd->{module} = 'nottest';
 ok(!defined($rnd->sanitize_template()), "no TT file nottest");
-
 
 
 done_testing();
