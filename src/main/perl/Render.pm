@@ -11,6 +11,13 @@ package CAF::Render;
 use strict;
 use warnings;
 use CAF::DummyLogger;
+use Cwd qw(abs_path);
+use File::Spec::Functions qw(file_name_is_absolute);
+
+use Readonly;
+
+Readonly::Scalar my $DEFAULT_TEMPLATE_BASE => '/usr/share/templates/quattor';
+Readonly::Scalar my $DEFAULT_RELPATH => 'metaconfig';
 
 use base qw(CAF::Object);
 
@@ -76,6 +83,17 @@ It takes some extra optional arguments:
 
 A C<CAF::Reporter> object to log to.
 
+=item C<templatebase>
+
+The basedirectory for TT template files, and the INCLUDEPATH 
+for the Template instance.
+
+=item C<relpath>
+
+The relative path w.r.t. the templatebase to look for TT template files.
+This relative path should not be part of the module name, however it 
+is not the INCLUDEPATH. (In particular, any TT C<INCLUDE> statement has 
+to use it as the relative basepath).
 
 =back
 
@@ -92,22 +110,81 @@ sub _initialize
     $self->{module} = $module;
     $self->{contents} = $contents;
 
+    
     if (exists $opts{log} && $opts{log}) {
         $self->{log} = $opts{log};
     } else {
         $self->{log} = CAF::DummyLogger->new();
     }
 
+    if (exists $opts{templatebase}) {
+        $self->{templatebase} = $opts{templatebase};
+    } else {
+        $self->{templatebase} = $DEFAULT_TEMPLATE_BASE;
+    }
+    $self->{log}->verbose("Using templatebase $self->{templatebase}");
+    
+    if (exists $opts{relpath}) {
+        $self->{relpath} = $opts{relpath};
+    } else {
+        $self->{relpath} = $DEFAULT_RELPATH;
+    }
+    $self->{log}->verbose("Using relpath $self->{relpath}");
+
+    # set render method
     $self->{method} = $self->select_module_method();
     
     return $self;
 }
 
+# Convert the C<module> in an absolute template path.
+# The extension C<.tt> is optional for the module, but mandatory for 
+# the actual template file.
+# Returns undef in case of error. 
+sub sanitize_template
+{
+    my ($self) = @_;
+
+    my $tplname = $self->{module};
+    
+    if (file_name_is_absolute($tplname)) {
+        $self->{log}->error ("Must have a relative template name (got $tplname)");
+        return undef;
+    }
+
+    if ($tplname !~ m{\.tt$}) {
+        $tplname .= ".tt";
+    }
+    
+    # module is relative to relpath
+    $tplname = "$self->{relpath}/$tplname" if $self->{relpath};
+
+    $self->{log}->debug(3, "We must ensure that all templates lie below $self->{templatebase}");
+    $tplname = abs_path("$self->{templatebase}/$tplname");
+    if (!$tplname || !-f $tplname) {
+        $self->{log}->error ("Non-existing template name $tplname given");
+        return undef;
+    }
+
+    # untaint and sanitycheck
+    # TODO empty relpath will never match
+    my $reg = "$self->{templatebase}/($self->{relpath}/.*)";
+    if ($tplname =~ m{^$reg$}) {
+        my $result_template = $1;
+        $self->{log}->verbose("Using template $result_template for module $self->{module}");
+        return $result_template;
+    } else {
+        $self->{log}->error ("Insecure template name $tplname. Final template must be under $self->{templatebase}");
+        return undef;
+    }
+}
+
 
 # Fallback/default rendering method based on C<Template::Toolkit>. 
+# C<module> is a relative path to a TT template.
 sub tt 
 {
-    
+
 }
 
 # Return the rendering method corresponding with the C<module>

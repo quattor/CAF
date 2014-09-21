@@ -5,6 +5,7 @@ use Test::More;
 use Test::Quattor;
 use CAF::Render;
 use Test::MockModule;
+use Cwd;
 
 use B qw(svref_2object);
 
@@ -40,6 +41,21 @@ ok(!defined($rnd->{log}->error('something')), "Fake logger initialised");
 $rnd = CAF::Render->new('not_a_reserved_module', $contents);
 isa_ok ($rnd, "CAF::Render", "Correct class after new method");
 is(get_name($rnd->{method}), "tt", "fallback/default render method tt selected");
+
+is($rnd->{templatebase}, '/usr/share/templates/quattor', 'Default template base');
+is($rnd->{relpath}, 'metaconfig', 'Default template relpath');
+
+$rnd = CAF::Render->new('test', $contents,
+                        templatebase => getcwd()."/src/test/resources",
+                        relpath => 'rendertest',
+                        );
+is($rnd->sanitize_template(), "rendertest/test.tt", "correct TT file with relpath prefixed");
+
+# force the internal module for testing purposes!
+$rnd->{module} = '/my/abs/path';
+ok(!defined($rnd->sanitize_template()), "module as template can't be absolute path");
+$rnd->{module} = 'nottest';
+ok(!defined($rnd->sanitize_template()), "no TT file nottest");
 
 
 done_testing();
