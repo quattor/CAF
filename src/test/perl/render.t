@@ -49,13 +49,32 @@ $rnd = CAF::Render->new('test', $contents,
                         templatebase => getcwd()."/src/test/resources",
                         relpath => 'rendertest',
                         );
-is($rnd->sanitize_template(), "rendertest/test.tt", "correct TT file with relpath prefixed");
+my $sane_tpl = $rnd->sanitize_template();
+is($sane_tpl, "rendertest/test.tt", "correct TT file with relpath prefixed");
+my $tpl = $rnd->get_template_instance(); 
+isa_ok ($tpl, "Template", "Returns Template instance");
+
+my $res = <<EOF;
+L0 value_level0
+L1 name_level1 VALUE value_level1
+EOF
+
+# test the unittest test.tt (if this test fails, the test itself is broken)
+my $str;
+if(!$tpl->process($sane_tpl, $contents, \$str)) {;
+    diag("Failed generation of test.tt with ".$tpl->error);
+};
+is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
+
+# now test the CAF::Render tt call
+is($rnd->tt(), $res, "test.tt rendered contents correctly");
 
 # force the internal module for testing purposes!
 $rnd->{module} = '/my/abs/path';
 ok(!defined($rnd->sanitize_template()), "module as template can't be absolute path");
 $rnd->{module} = 'nottest';
 ok(!defined($rnd->sanitize_template()), "no TT file nottest");
+
 
 
 done_testing();

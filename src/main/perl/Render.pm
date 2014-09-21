@@ -13,6 +13,8 @@ use warnings;
 use CAF::DummyLogger;
 use Cwd qw(abs_path);
 use File::Spec::Functions qw(file_name_is_absolute);
+use Template;
+use Template::Stash;
 
 use Readonly;
 
@@ -179,12 +181,37 @@ sub sanitize_template
     }
 }
 
+# Return a Template::Toolkit instance
+# (from ncm-ncd Component module)
+sub get_template_instance 
+{
+    my ($self) = @_;
+    $Template::Stash::PRIVATE = undef;
+    my $template = Template->new(INCLUDE_PATH => $self->{templatebase});
+    return $template;    
+}
 
 # Fallback/default rendering method based on C<Template::Toolkit>. 
 # C<module> is a relative path to a TT template.
 sub tt 
 {
+    my ($self) = @_;
 
+    my $sane_tpl = $self->sanitize_template();
+    if (!$sane_tpl) {
+        $self->{log}->error("Invalid template name from module $self->{module}: $sane_tpl");
+        return;
+    }
+
+    my $tpl = $self->get_template_instance();
+
+    my $str;
+    if (!$tpl->process($sane_tpl, $self->{contents}, \$str)) {
+        $self->{log}->error("Unable to process template for file $sane_tpl (module $self->{module}: ",
+                     $tpl->error());
+        return undef;
+    }
+    return $str;
 }
 
 # Return the rendering method corresponding with the C<module>
