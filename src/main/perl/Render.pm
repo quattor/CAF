@@ -10,6 +10,7 @@ package CAF::Render;
 
 use strict;
 use warnings;
+use CAF::DummyLogger;
 
 use base qw(CAF::Object);
 
@@ -25,7 +26,7 @@ CAF::Render - Class for rendering structured text
     use CAF::Render;
 
     my $module = 'tiny';
-    my $rnd = CAF::Render->new($module, $data, log => $self);
+    my $rnd = CAF::Render->new($module, $contents, log => $self);
     
     print "$rnd"; # stringification
 
@@ -61,9 +62,9 @@ Or, for any other value, C<Template::Toolkit> is used, and the C<module> then in
 the relative path of the template to use.
 # TODO relative to what?
 
-=item C<$data>
+=item C<$contents>
 
-C<data> is a hash reference holding the data to pass to the rendering module.
+C<contents> is a hash reference holding the contents to pass to the rendering module.
 
 =back
 
@@ -84,20 +85,53 @@ A C<CAF::Reporter> object to log to.
 
 sub _initialize
 {
-    my ($self, $module, $data, %opts) = @_;
+    my ($self, $module, $contents, %opts) = @_;
 
     %opts = () if !%opts;
 
-    $self->{_module} = $module;
-    $self->{_data} = $data;
+    $self->{module} = $module;
+    $self->{contents} = $contents;
 
-    if (exists $opts{log}) {
-        if ($opts{log}) {
-            $self->{log} = $opts{log};
-        }
+    if (exists $opts{log} && $opts{log}) {
+        $self->{log} = $opts{log};
+    } else {
+        $self->{log} = CAF::DummyLogger->new();
     }
 
+    $self->{method} = $self->select_module_method();
+    
     return $self;
+}
+
+
+# Fallback/default rendering method based on C<Template::Toolkit>. 
+sub tt 
+{
+    
+}
+
+# Return the rendering method corresponding with the C<module>
+# If no reserved method name C<render_$module> is found, fallback to 
+# C<Template::Toolkit based> C<tt> method is set.
+sub select_module_method {
+
+    my ($self) = @_;
+
+    if ($self->{module} !~ m{^([\w+/\.\-]+)$}) {
+        $self->{log}->error("Invalid configuration module: $self->{module}");
+        return;
+    }
+
+    my $method;
+
+    if ($method = $self->can("render_".lc($1))) {
+        $self->{log}->debug(3, "Rendering module $self->{module} with $method");
+    } else {
+        $method = \&tt;
+        $self->{log}->debug(3, "Using Template::Toolkit to render module $self->{module}");
+    }
+
+    return $method;
 }
 
 
