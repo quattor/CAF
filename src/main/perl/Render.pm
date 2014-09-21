@@ -12,6 +12,7 @@ use strict;
 use warnings;
 use LC::Exception qw (SUCCESS);
 use CAF::DummyLogger;
+# TODO do we need Noaction support here? no closing of filehandle is done here
 use CAF::FileWriter;
 use Cwd qw(abs_path);
 use File::Spec::Functions qw(file_name_is_absolute);
@@ -255,12 +256,13 @@ sub get_text
     }
 }
 
-# Create and return a CAF::FileWriter instance
+# Create and return an open CAF::FileWriter instance
 # C<file> is the filename, C<%opts> are passed to 
 # CAF::FileWriter. (If no C<log> option is provided, 
 # the one from the CAF::Render instance is passed).
 # The rendered text is added to the filehandle 
 # (without extra newline).
+# It's up to the consumer to cancel and/or close the instance.
 sub fh
 {
     my ($self, $file, %opts) = @_;
@@ -272,6 +274,31 @@ sub fh
     print $cfh $self->get_text();
 
     return $cfh
+}
+
+# Given Perl C<module>, load it.
+sub load_module
+{
+    my ($self, $module) = @_;
+
+    $self->{log}->verbose("Loading module $module");
+
+    eval "use $module";
+    if ($@) {
+        $self->{log}->error("Unable to load $module: $@");
+        return;
+    }
+    return 1;
+}
+
+sub render_json
+{
+    my ($self) = @_;
+
+    $self->load_module("JSON::XS") or return;
+    my $j = JSON::XS->new();
+    $j->canonical(1); # sort the keys, to create reproducable results
+    return $j->encode($self->{contents});
 }
 
 

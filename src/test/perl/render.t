@@ -54,7 +54,8 @@ is($sane_tpl, "rendertest/test.tt", "correct TT file with relpath prefixed");
 my $tpl = $rnd->get_template_instance(); 
 isa_ok ($tpl, "Template", "Returns Template instance");
 
-my $res = <<EOF;
+my $res;
+$res = <<EOF;
 L0 value_level0
 L1 name_level1 VALUE value_level1
 EOF
@@ -84,6 +85,14 @@ $rnd->{module} = '/my/abs/path';
 ok(!defined($rnd->sanitize_template()), "module as template can't be absolute path");
 $rnd->{module} = 'nottest';
 ok(!defined($rnd->sanitize_template()), "no TT file nottest");
+
+
+# reserved modules
+# json 
+$res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
+
+$rnd = CAF::Render->new('json', $contents);
+is("$rnd", $res, "json module rendered correctly");
 
 
 done_testing();
