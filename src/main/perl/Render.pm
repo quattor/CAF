@@ -291,6 +291,7 @@ sub load_module
     return 1;
 }
 
+
 sub render_json
 {
     my ($self) = @_;
@@ -301,14 +302,27 @@ sub render_json
     return $j->encode($self->{contents});
 }
 
-# TODO broken?
+
 sub render_yaml
 {
     my ($self, $cfg) = @_;
 
     $self->load_module("YAML::XS") or return;
 
-    return YAML::XS::Dump($cfg);
+    return YAML::XS::Dump($self->{contents});
+}
+
+# Warning: the rendered text has a header with localtime(),
+# so the contents will always appear changed.
+sub render_properties
+{
+    my ($self) = @_;
+
+    $self->load_module("Config::Properties") or return;
+
+    my $config = Config::Properties->new(order => 'alpha'); # order results
+    $config->setFromTree($self->{contents});
+    return $config->saveToString();
 }
 
 

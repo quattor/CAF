@@ -90,15 +90,34 @@ ok(!defined($rnd->sanitize_template()), "no TT file nottest");
 # reserved modules
 # json 
 $res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
-
 $rnd = CAF::Render->new('json', $contents);
+ok($rnd->load_module('JSON::XS'), "JSON::XS loaded");
 is("$rnd", $res, "json module rendered correctly");
 
 # yaml
-$res = '';
+$res = <<EOF;
+---
+level1:
+  name_level1: value_level1
+name_level0: value_level0
+EOF
 $rnd = CAF::Render->new('yaml', $contents);
-# TODO yaml rendering fails?
-#is("$rnd", $res, "yaml module rendered correctly");
+ok($rnd->load_module('YAML::XS'), "YAML::XS loaded");
+is("$rnd", $res, "yaml module rendered correctly");
+
+# properties
+$res = <<EOF;
+
+level1.name_level1=value_level1
+name_level0=value_level0
+EOF
+$rnd = CAF::Render->new('properties', $contents);
+ok($rnd->load_module('Config::Properties'), "Config::Properties loaded");
+my ($line, @txt) = split("\n", "$rnd");
+# first line is a header with timestamp.
+like($line, qr{^#\s.*$}, "Start with header (contains timestamp)");
+# add extra newline
+is(join("\n", @txt,''), $res, "properties module rendered correctly");
 
 
 done_testing();
