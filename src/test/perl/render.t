@@ -42,16 +42,17 @@ $rnd = CAF::Render->new('not_a_reserved_module', $contents);
 isa_ok ($rnd, "CAF::Render", "Correct class after new method");
 is(get_name($rnd->{method}), "tt", "fallback/default render method tt selected");
 
-is($rnd->{templatebase}, '/usr/share/templates/quattor', 'Default template base');
+is($rnd->{includepath}, '/usr/share/templates/quattor', 'Default template base');
 is($rnd->{relpath}, 'metaconfig', 'Default template relpath');
 
 $rnd = CAF::Render->new('test', $contents,
-                        templatebase => getcwd()."/src/test/resources",
+                        includepath => getcwd()."/src/test/resources",
                         relpath => 'rendertest',
                         );
 my $sane_tpl = $rnd->sanitize_template();
 is($sane_tpl, "rendertest/test.tt", "correct TT file with relpath prefixed");
-my $tpl = $rnd->get_template_instance(); 
+
+my $tpl = CAF::Render::get_template_instance($rnd->{includepath});
 isa_ok ($tpl, "Template", "Returns Template instance");
 
 my $res;
@@ -60,21 +61,49 @@ L0 value_level0
 L1 name_level1 VALUE value_level1
 EOF
 
-# test the unittest test.tt (if this test fails, the test itself is broken)
+=pod
+
+=head2 Validate the test.tt itself
+
+Test the unittest test.tt (if this test fails, the test itself is broken)
+
+=cut
+
 my $str;
-if(!$tpl->process($sane_tpl, $contents, \$str)) {;
-    diag("Failed generation of test.tt with ".$tpl->error);
-};
+ok($tpl->process($sane_tpl, $contents, \$str, "Generation of test.tt")) or diag("Failed generation of test.tt TT error: " . $tpl->error());
 is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
-# now test the CAF::Render tt call
+=pod 
+
+=head2 Test tt method
+
+Test the CAF::Render tt call
+
+=cut
+
 is($rnd->tt(), $res, "test.tt rendered contents correctly");
 
-# test stringification overload
+
+=pod
+
+=head2 Test render text
+
+Test rendering the text and stringification overload
+
+=cut
+
 is($rnd->get_text(), $res, "stringification successful");
 is("$rnd", $res, "stringification overload successful");
 
-# test filehandle options
+
+=pod
+
+=head2 Test filehandle
+
+Test filehandle options
+
+=cut
+
 my $fh = $rnd->fh("/some/name");
 isa_ok($fh, "CAF::FileWriter", "CAF::Render fh method returns CAF::FileWriter");
 is("$fh", $res, "File contents as expected");
@@ -87,14 +116,31 @@ $rnd->{module} = 'nottest';
 ok(!defined($rnd->sanitize_template()), "no TT file nottest");
 
 
-# reserved modules
-# json 
+=pod
+
+=head2 Reserved modules
+
+Test the reserved modules
+
+=head3 json
+
+Test json/JSON::XS
+
+=cut
+
 $res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
 $rnd = CAF::Render->new('json', $contents);
 ok($rnd->load_module('JSON::XS'), "JSON::XS loaded");
 is("$rnd", $res, "json module rendered correctly");
 
-# yaml
+=pod
+
+=head3 yaml
+
+Test yaml/YAML::XS
+
+=cut
+
 $res = <<EOF;
 ---
 level1:
@@ -105,7 +151,14 @@ $rnd = CAF::Render->new('yaml', $contents);
 ok($rnd->load_module('YAML::XS'), "YAML::XS loaded");
 is("$rnd", $res, "yaml module rendered correctly");
 
-# properties
+=pod
+
+=head3 properties
+
+Test properties/Config::Properties
+
+=cut
+
 $res = <<EOF;
 
 level1.name_level1=value_level1
@@ -119,7 +172,14 @@ like($line, qr{^#\s.*$}, "Start with header (contains timestamp)");
 # add extra newline
 is(join("\n", @txt,''), $res, "properties module rendered correctly");
 
-# tiny
+=pod
+
+=head3 tiny
+
+Test tiny/Config::Tiny
+
+=cut
+
 $res = <<EOF;
 name_level0=value_level0
 
@@ -130,7 +190,14 @@ $rnd = CAF::Render->new('tiny', $contents);
 ok($rnd->load_module('Config::Tiny'), "Config::Tiny loaded");
 is("$rnd", $res, "tiny module rendered correctly");
 
-# general
+=pod
+
+=head3 general
+
+Test general/Config::General
+
+=cut
+
 $res = <<EOF;
 <level1>
     name_level1   value_level1

@@ -12,7 +12,6 @@ use strict;
 use warnings;
 use LC::Exception qw (SUCCESS);
 use CAF::DummyLogger;
-# TODO do we need Noaction support here? no closing of filehandle is done here
 use CAF::FileWriter;
 use Cwd qw(abs_path);
 use File::Spec::Functions qw(file_name_is_absolute);
@@ -21,7 +20,7 @@ use Template::Stash;
 
 use Readonly;
 
-Readonly::Scalar my $DEFAULT_TEMPLATE_BASE => '/usr/share/templates/quattor';
+Readonly::Scalar my $DEFAULT_INCLUDE_PATH => '/usr/share/templates/quattor';
 Readonly::Scalar my $DEFAULT_RELPATH => 'metaconfig';
 
 use base qw(CAF::Object);
@@ -89,16 +88,16 @@ It takes some extra optional arguments:
 
 A C<CAF::Reporter> object to log to.
 
-=item C<templatebase>
+=item C<includepath>
 
-The basedirectory for TT template files, and the INCLUDEPATH 
+The basedirectory for TT template files, and the INCLUDE_PATH 
 for the Template instance.
 
 =item C<relpath>
 
-The relative path w.r.t. the templatebase to look for TT template files.
+The relative path w.r.t. the includepath to look for TT template files.
 This relative path should not be part of the module name, however it 
-is not the INCLUDEPATH. (In particular, any TT C<INCLUDE> statement has 
+is not the INCLUDE_PATH. (In particular, any TT C<INCLUDE> statement has 
 to use it as the relative basepath).
 
 =back
@@ -116,24 +115,11 @@ sub _initialize
     $self->{module} = $module;
     $self->{contents} = $contents;
     
-    if (exists $opts{log} && $opts{log}) {
-        $self->{log} = $opts{log};
-    } else {
-        $self->{log} = CAF::DummyLogger->new();
-    }
+    $self->{log} = $opts{log} || CAF::DummyLogger->new();
 
-    if (exists $opts{templatebase}) {
-        $self->{templatebase} = $opts{templatebase};
-    } else {
-        $self->{templatebase} = $DEFAULT_TEMPLATE_BASE;
-    }
-    $self->{log}->verbose("Using templatebase $self->{templatebase}");
-    
-    if (exists $opts{relpath}) {
-        $self->{relpath} = $opts{relpath};
-    } else {
-        $self->{relpath} = $DEFAULT_RELPATH;
-    }
+    $self->{includepath} = $opts{includepath} || $DEFAULT_INCLUDE_PATH;
+    $self->{relpath} = $opts{relpath} || $DEFAULT_RELPATH;
+    $self->{log}->verbose("Using includepath $self->{includepath}");
     $self->{log}->verbose("Using relpath $self->{relpath}");
 
     # set render method
@@ -164,8 +150,8 @@ sub sanitize_template
     # module is relative to relpath
     $tplname = "$self->{relpath}/$tplname" if $self->{relpath};
 
-    $self->{log}->debug(3, "We must ensure that all templates lie below $self->{templatebase}");
-    $tplname = abs_path("$self->{templatebase}/$tplname");
+    $self->{log}->debug(3, "We must ensure that all templates lie below $self->{includepath}");
+    $tplname = abs_path("$self->{includepath}/$tplname");
     if (!$tplname || !-f $tplname) {
         $self->{log}->error ("Non-existing template name $tplname given");
         return undef;
@@ -173,24 +159,25 @@ sub sanitize_template
 
     # untaint and sanitycheck
     # TODO empty relpath will never match
-    my $reg = "$self->{templatebase}/($self->{relpath}/.*)";
+    my $reg = "$self->{includepath}/($self->{relpath}/.*)";
     if ($tplname =~ m{^$reg$}) {
         my $result_template = $1;
         $self->{log}->verbose("Using template $result_template for module $self->{module}");
         return $result_template;
     } else {
-        $self->{log}->error ("Insecure template name $tplname. Final template must be under $self->{templatebase}");
+        $self->{log}->error ("Insecure template name $tplname. Final template must be under $self->{includepath}");
         return undef;
     }
 }
 
 # Return a Template::Toolkit instance
 # (from ncm-ncd Component module)
+# Mandatory parameter C<includepath> to set the INCLUDE_PATH
 sub get_template_instance 
 {
-    my ($self) = @_;
+    my ($includepath) = @_;
     $Template::Stash::PRIVATE = undef;
-    my $template = Template->new(INCLUDE_PATH => $self->{templatebase});
+    my $template = Template->new(INCLUDE_PATH => $includepath);
     return $template;    
 }
 
@@ -206,7 +193,7 @@ sub tt
         return;
     }
 
-    my $tpl = $self->get_template_instance();
+    my $tpl = get_template_instance($self->{includepath});
 
     my $str;
     if (!$tpl->process($sane_tpl, $self->{contents}, \$str)) {
