@@ -61,7 +61,7 @@ Initialize the process object. Arguments:
 
 =over
 
-=item C<$module>
+=item C<module>
 
 The rendering module to use: either one of the following reserved values 
 C<json> (using C<JSON::XS>), 
@@ -74,7 +74,7 @@ Or, for any other value, C<Template::Toolkit> is used, and the C<module> then in
 the relative path of the template to use.
 # TODO relative to what?
 
-=item C<$contents>
+=item C<contents>
 
 C<contents> is a hash reference holding the contents to pass to the rendering module.
 
@@ -100,6 +100,15 @@ This relative path should not be part of the module name, however it
 is not the INCLUDE_PATH. (In particular, any TT C<INCLUDE> statement has 
 to use it as the relative basepath).
 
+=item C<eol>
+
+If C<eol> is true, the rendered text will be verified that it ends with 
+an end-of-line, and if missing, a newline character will be added. 
+By default, C<eol> is true (this is text rendering afterall).
+
+C<eol> set to false will not strip trailing newlines (use C<chomp> 
+or something similar for that).
+
 =back
 
 ...
@@ -116,6 +125,14 @@ sub _initialize
     $self->{contents} = $contents;
     
     $self->{log} = $opts{log} || CAF::DummyLogger->new();
+
+    if (exists($opts{eol})) {
+        $self->{eol} = $opts{eol};    
+        $self->{log}->verbose("Set eol to $self->{eol}");
+    } else {
+        # Default to true
+        $self->{eol} = 1; 
+    }; 
 
     $self->{includepath} = $opts{includepath} || $DEFAULT_INCLUDE_PATH;
     $self->{relpath} = $opts{relpath} || $DEFAULT_RELPATH;
@@ -172,7 +189,7 @@ sub sanitize_template
 
 # Return a Template::Toolkit instance
 # (from ncm-ncd Component module)
-# Mandatory parameter C<includepath> to set the INCLUDE_PATH
+# Mandatory argument C<includepath> to set the INCLUDE_PATH
 sub get_template_instance 
 {
     my ($includepath) = @_;
@@ -228,6 +245,8 @@ sub select_module_method {
     return $method;
 }
 
+
+
 # Render the text
 sub get_text
 {
@@ -236,7 +255,12 @@ sub get_text
     my $res = $self->{method}->($self);
 
     if (defined($res)) {
-        return $res;
+        if($self->{eol} && $res !~ m/\n$/) {
+            $self->{log}->verbose("eol set, and rendered text was missing final newline. adding newline.");
+            return $res."\n";
+        } else {
+            return $res;
+        };    
     } else {
         $self->{log}->error("Failed to render");
         return;

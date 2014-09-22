@@ -115,6 +115,30 @@ ok(!defined($rnd->sanitize_template()), "module as template can't be absolute pa
 $rnd->{module} = 'nottest';
 ok(!defined($rnd->sanitize_template()), "no TT file nottest");
 
+=pod
+
+=head2 Test eol
+
+Test end-of-line (eol)
+
+=cut
+
+$rnd = CAF::Render->new('noeol', $contents,
+                        includepath => getcwd()."/src/test/resources",
+                        relpath => 'rendertest',
+                        eol => 0,
+                        );
+my $noeol = "noeol";
+is("$rnd", $noeol, "noeol.tt rendered as expected");
+unlike("$rnd", qr{\n$}, "No newline at end of rendered text");
+
+$rnd = CAF::Render->new('noeol', $contents,
+                        includepath => getcwd()."/src/test/resources",
+                        relpath => 'rendertest',
+                        );
+is($rnd->{eol}, 1, "eol default to true");
+is("$rnd", "$noeol\n", "noeol.tt with eol=1 rendered as expected");
+like("$rnd", qr{\n$}, "Newline at end of rendered text (with eol=1)");
 
 =pod
 
@@ -129,7 +153,7 @@ Test json/JSON::XS
 =cut
 
 $res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
-$rnd = CAF::Render->new('json', $contents);
+$rnd = CAF::Render->new('json', $contents, eol=>0);
 ok($rnd->load_module('JSON::XS'), "JSON::XS loaded");
 is("$rnd", $res, "json module rendered correctly");
 
