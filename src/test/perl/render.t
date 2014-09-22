@@ -108,6 +108,16 @@ my $fh = $rnd->fh("/some/name");
 isa_ok($fh, "CAF::FileWriter", "CAF::Render fh method returns CAF::FileWriter");
 is("$fh", $res, "File contents as expected");
 
+my $header = "HEADER"; # no newline, check TODO
+my $footer = "FOOTER"; # no newline, eol should add one
+$fh = $rnd->fh("/some/name",
+                  header => $header,
+                  footer => $footer,
+                 );
+isa_ok($fh, "CAF::FileWriter", "CAF::Render fh method returns CAF::FileWriter");
+# add newline due to eol
+is("$fh", $header.$res.$footer."\n", "File contents as expected");
+
 
 # force the internal module for testing purposes!
 $rnd->{module} = '/my/abs/path';

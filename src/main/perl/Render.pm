@@ -268,8 +268,10 @@ sub get_text
 }
 
 # Create and return an open CAF::FileWriter instance
-# C<file> is the filename, C<%opts> are passed to 
-# CAF::FileWriter. (If no C<log> option is provided, 
+# C<file> is the filename. Named options C<header> 
+# and C<footer> are supported to resp. prepend and append text.
+# All other options are passed to CAF::FileWriter. 
+# (If no C<log> option is provided, 
 # the one from the CAF::Render instance is passed).
 # The rendered text is added to the filehandle 
 # (without extra newline).
@@ -277,12 +279,27 @@ sub get_text
 sub fh
 {
     my ($self, $file, %opts) = @_;
+  
+    my $header = delete $opts{header};
+    my $footer = delete $opts{footer};
     
     $opts{log} = $self->{log} if(!exists($opts{log}));    
     
     my $cfh = CAF::FileWriter->new($file, %opts);
     
+    # TODO force newline after header?
+    print $cfh $header if defined($header);
+
     print $cfh $self->get_text();
+
+    if (defined($footer)) {
+        print $cfh $footer;
+
+        if($self->{eol} && $footer !~ m/\n$/) {
+            $self->{log}->verbose("eol set, and footer was missing final newline. adding newline.");
+            print $cfh "\n";
+        };
+    };
 
     return $cfh
 }
