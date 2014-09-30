@@ -127,11 +127,7 @@ sub _initialize {
   return undef;
 }
 
-=item error
-=item warn
-=item info
-=item verbose
-=item debug
+=item error, warn, info, verbose, debug
 
 Convenience methods to acess the log instance that might 
 be passed during initialisation and set to $self->log.
