@@ -11,7 +11,6 @@ package CAF::TextRender;
 use strict;
 use warnings;
 use LC::Exception qw (SUCCESS);
-use CAF::DummyLogger;
 use CAF::FileWriter;
 use Cwd qw(abs_path);
 use File::Spec::Functions qw(file_name_is_absolute);
@@ -124,11 +123,11 @@ sub _initialize
     $self->{module} = $module;
     $self->{contents} = $contents;
     
-    $self->{log} = $opts{log} || CAF::DummyLogger->new();
+    $self = $opts{log} if $opts{log};
 
     if (exists($opts{eol})) {
         $self->{eol} = $opts{eol};    
-        $self->{log}->verbose("Set eol to $self->{eol}");
+        $self->verbose("Set eol to $self->{eol}");
     } else {
         # Default to true
         $self->{eol} = 1; 
@@ -136,8 +135,8 @@ sub _initialize
 
     $self->{includepath} = $opts{includepath} || $DEFAULT_INCLUDE_PATH;
     $self->{relpath} = $opts{relpath} || $DEFAULT_RELPATH;
-    $self->{log}->verbose("Using includepath $self->{includepath}");
-    $self->{log}->verbose("Using relpath $self->{relpath}");
+    $self->verbose("Using includepath $self->{includepath}");
+    $self->verbose("Using relpath $self->{relpath}");
 
     # set render method
     $self->{method} = $self->select_module_method();
@@ -156,7 +155,7 @@ sub sanitize_template
     my $tplname = $self->{module};
     
     if (file_name_is_absolute($tplname)) {
-        $self->{log}->error ("Must have a relative template name (got $tplname)");
+        $self->error ("Must have a relative template name (got $tplname)");
         return undef;
     }
 
@@ -167,10 +166,10 @@ sub sanitize_template
     # module is relative to relpath
     $tplname = "$self->{relpath}/$tplname" if $self->{relpath};
 
-    $self->{log}->debug(3, "We must ensure that all templates lie below $self->{includepath}");
+    $self->debug(3, "We must ensure that all templates lie below $self->{includepath}");
     $tplname = abs_path("$self->{includepath}/$tplname");
     if (!$tplname || !-f $tplname) {
-        $self->{log}->error ("Non-existing template name $tplname given");
+        $self->error ("Non-existing template name $tplname given");
         return undef;
     }
 
@@ -179,10 +178,10 @@ sub sanitize_template
     my $reg = "$self->{includepath}/($self->{relpath}/.*)";
     if ($tplname =~ m{^$reg$}) {
         my $result_template = $1;
-        $self->{log}->verbose("Using template $result_template for module $self->{module}");
+        $self->verbose("Using template $result_template for module $self->{module}");
         return $result_template;
     } else {
-        $self->{log}->error ("Insecure template name $tplname. Final template must be under $self->{includepath}");
+        $self->error ("Insecure template name $tplname. Final template must be under $self->{includepath}");
         return undef;
     }
 }
@@ -206,7 +205,7 @@ sub tt
 
     my $sane_tpl = $self->sanitize_template();
     if (!$sane_tpl) {
-        $self->{log}->error("Invalid template name from module $self->{module}: $sane_tpl");
+        $self->error("Invalid template name from module $self->{module}: $sane_tpl");
         return;
     }
 
@@ -214,7 +213,7 @@ sub tt
 
     my $str;
     if (!$tpl->process($sane_tpl, $self->{contents}, \$str)) {
-        $self->{log}->error("Unable to process template for file $sane_tpl (module $self->{module}: ",
+        $self->error("Unable to process template for file $sane_tpl (module $self->{module}: ",
                      $tpl->error());
         return undef;
     }
@@ -229,17 +228,17 @@ sub select_module_method {
     my ($self) = @_;
 
     if ($self->{module} !~ m{^([\w+/\.\-]+)$}) {
-        $self->{log}->error("Invalid configuration module: $self->{module}");
+        $self->error("Invalid configuration module: $self->{module}");
         return;
     }
 
     my $method;
 
     if ($method = $self->can("render_".lc($1))) {
-        $self->{log}->debug(3, "Rendering module $self->{module} with $method");
+        $self->debug(3, "Rendering module $self->{module} with $method");
     } else {
         $method = \&tt;
-        $self->{log}->debug(3, "Using Template::Toolkit to render module $self->{module}");
+        $self->debug(3, "Using Template::Toolkit to render module $self->{module}");
     }
 
     return $method;
@@ -256,13 +255,13 @@ sub get_text
 
     if (defined($res)) {
         if($self->{eol} && $res !~ m/\n$/) {
-            $self->{log}->verbose("eol set, and rendered text was missing final newline. adding newline.");
+            $self->verbose("eol set, and rendered text was missing final newline. adding newline.");
             return $res."\n";
         } else {
             return $res;
         };    
     } else {
-        $self->{log}->error("Failed to render");
+        $self->error("Failed to render");
         return;
     }
 }
@@ -283,7 +282,7 @@ sub fh
     my $header = delete $opts{header};
     my $footer = delete $opts{footer};
     
-    $opts{log} = $self->{log} if(!exists($opts{log}));    
+    $opts{log} = $self if(!exists($opts{log}));    
     
     my $cfh = CAF::FileWriter->new($file, %opts);
     
@@ -296,7 +295,7 @@ sub fh
         print $cfh $footer;
 
         if($self->{eol} && $footer !~ m/\n$/) {
-            $self->{log}->verbose("eol set, and footer was missing final newline. adding newline.");
+            $self->verbose("eol set, and footer was missing final newline. adding newline.");
             print $cfh "\n";
         };
     };
@@ -309,11 +308,11 @@ sub load_module
 {
     my ($self, $module) = @_;
 
-    $self->{log}->verbose("Loading module $module");
+    $self->verbose("Loading module $module");
 
     eval "use $module";
     if ($@) {
-        $self->{log}->error("Unable to load $module: $@");
+        $self->error("Unable to load $module: $@");
         return;
     }
     return 1;

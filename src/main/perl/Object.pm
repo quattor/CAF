@@ -127,6 +127,26 @@ sub _initialize {
   return undef;
 }
 
+=item error
+=item warn
+=item info
+=item verbose
+=item debug
+
+Convenience methods to acess the log instance that might 
+be passed during initialisation and set to $self->log.
+
+=cut
+
+no strict 'refs';
+foreach my $i (qw(error warn info verbose debug)) {
+*{$i} = sub {
+            my ($self, @args) = @_;
+            return $self->{log}->$i(@args) if $self->{log};
+    }
+}
+use strict 'refs';
+
 
 =pod
 

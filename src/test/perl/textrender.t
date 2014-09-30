@@ -36,7 +36,7 @@ my $rnd;
 
 $rnd = CAF::TextRender->new('something', $contents);
 isa_ok ($rnd, "CAF::TextRender", "Correct class after new method");
-ok(!defined($rnd->{log}->error('something')), "Fake logger initialised");
+ok(!defined($rnd->error('something')), "Fake logger initialised");
 
 $rnd = CAF::TextRender->new('not_a_reserved_module', $contents);
 isa_ok ($rnd, "CAF::TextRender", "Correct class after new method");
