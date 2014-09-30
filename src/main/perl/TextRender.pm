@@ -4,9 +4,9 @@
 # ${build-info}
 #
 #
-# CAF::Render class
+# CAF::TextRender class
 
-package CAF::Render;
+package CAF::TextRender;
 
 use strict;
 use warnings;
@@ -31,14 +31,14 @@ use overload ('""' => 'get_text');
 
 =head1 NAME
 
-CAF::Render - Class for rendering structured text 
+CAF::TextRender - Class for rendering structured text 
 
 =head1 SYNOPSIS
 
-    use CAF::Render;
+    use CAF::TextRender;
 
     my $module = 'tiny';
-    my $rnd = CAF::Render->new($module, $contents, log => $self);
+    my $rnd = CAF::TextRender->new($module, $contents, log => $self);
     
     print "$rnd"; # stringification
 
@@ -272,7 +272,7 @@ sub get_text
 # and C<footer> are supported to resp. prepend and append text.
 # All other options are passed to CAF::FileWriter. 
 # (If no C<log> option is provided, 
-# the one from the CAF::Render instance is passed).
+# the one from the CAF::TextRender instance is passed).
 # The rendered text is added to the filehandle 
 # (without extra newline).
 # It's up to the consumer to cancel and/or close the instance.

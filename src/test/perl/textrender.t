@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Quattor;
-use CAF::Render;
+use CAF::TextRender;
 use Test::MockModule;
 use Cwd;
 
@@ -21,7 +21,7 @@ sub get_name {
 
 =head1 SYNOPSIS
 
-Test all methods for C<CAF::Render>
+Test all methods for C<CAF::TextRender>
 
 =cut
 
@@ -34,25 +34,25 @@ my $contents = {
 
 my $rnd;
 
-$rnd = CAF::Render->new('something', $contents);
-isa_ok ($rnd, "CAF::Render", "Correct class after new method");
+$rnd = CAF::TextRender->new('something', $contents);
+isa_ok ($rnd, "CAF::TextRender", "Correct class after new method");
 ok(!defined($rnd->{log}->error('something')), "Fake logger initialised");
 
-$rnd = CAF::Render->new('not_a_reserved_module', $contents);
-isa_ok ($rnd, "CAF::Render", "Correct class after new method");
+$rnd = CAF::TextRender->new('not_a_reserved_module', $contents);
+isa_ok ($rnd, "CAF::TextRender", "Correct class after new method");
 is(get_name($rnd->{method}), "tt", "fallback/default render method tt selected");
 
 is($rnd->{includepath}, '/usr/share/templates/quattor', 'Default template base');
 is($rnd->{relpath}, 'metaconfig', 'Default template relpath');
 
-$rnd = CAF::Render->new('test', $contents,
-                        includepath => getcwd()."/src/test/resources",
-                        relpath => 'rendertest',
-                        );
+$rnd = CAF::TextRender->new('test', $contents,
+                            includepath => getcwd()."/src/test/resources",
+                            relpath => 'rendertest',
+                            );
 my $sane_tpl = $rnd->sanitize_template();
 is($sane_tpl, "rendertest/test.tt", "correct TT file with relpath prefixed");
 
-my $tpl = CAF::Render::get_template_instance($rnd->{includepath});
+my $tpl = CAF::TextRender::get_template_instance($rnd->{includepath});
 isa_ok ($tpl, "Template", "Returns Template instance");
 
 my $res;
@@ -77,7 +77,7 @@ is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
 =head2 Test tt method
 
-Test the CAF::Render tt call
+Test the CAF::TextRender tt call
 
 =cut
 
@@ -105,16 +105,16 @@ Test filehandle options
 =cut
 
 my $fh = $rnd->fh("/some/name");
-isa_ok($fh, "CAF::FileWriter", "CAF::Render fh method returns CAF::FileWriter");
+isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 is("$fh", $res, "File contents as expected");
 
 my $header = "HEADER"; # no newline, check TODO
 my $footer = "FOOTER"; # no newline, eol should add one
 $fh = $rnd->fh("/some/name",
-                  header => $header,
-                  footer => $footer,
-                 );
-isa_ok($fh, "CAF::FileWriter", "CAF::Render fh method returns CAF::FileWriter");
+               header => $header,
+               footer => $footer,
+               );
+isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 # add newline due to eol
 is("$fh", $header.$res.$footer."\n", "File contents as expected");
 
@@ -133,19 +133,19 @@ Test end-of-line (eol)
 
 =cut
 
-$rnd = CAF::Render->new('noeol', $contents,
-                        includepath => getcwd()."/src/test/resources",
-                        relpath => 'rendertest',
-                        eol => 0,
-                        );
+$rnd = CAF::TextRender->new('noeol', $contents,
+                            includepath => getcwd()."/src/test/resources",
+                            relpath => 'rendertest',
+                            eol => 0,
+                            );
 my $noeol = "noeol";
 is("$rnd", $noeol, "noeol.tt rendered as expected");
 unlike("$rnd", qr{\n$}, "No newline at end of rendered text");
 
-$rnd = CAF::Render->new('noeol', $contents,
-                        includepath => getcwd()."/src/test/resources",
-                        relpath => 'rendertest',
-                        );
+$rnd = CAF::TextRender->new('noeol', $contents,
+                            includepath => getcwd()."/src/test/resources",
+                            relpath => 'rendertest',
+                            );
 is($rnd->{eol}, 1, "eol default to true");
 is("$rnd", "$noeol\n", "noeol.tt with eol=1 rendered as expected");
 like("$rnd", qr{\n$}, "Newline at end of rendered text (with eol=1)");
@@ -163,7 +163,7 @@ Test json/JSON::XS
 =cut
 
 $res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
-$rnd = CAF::Render->new('json', $contents, eol=>0);
+$rnd = CAF::TextRender->new('json', $contents, eol=>0);
 ok($rnd->load_module('JSON::XS'), "JSON::XS loaded");
 is("$rnd", $res, "json module rendered correctly");
 
@@ -181,7 +181,7 @@ level1:
   name_level1: value_level1
 name_level0: value_level0
 EOF
-$rnd = CAF::Render->new('yaml', $contents);
+$rnd = CAF::TextRender->new('yaml', $contents);
 ok($rnd->load_module('YAML::XS'), "YAML::XS loaded");
 is("$rnd", $res, "yaml module rendered correctly");
 
@@ -198,7 +198,7 @@ $res = <<EOF;
 level1.name_level1=value_level1
 name_level0=value_level0
 EOF
-$rnd = CAF::Render->new('properties', $contents);
+$rnd = CAF::TextRender->new('properties', $contents);
 ok($rnd->load_module('Config::Properties'), "Config::Properties loaded");
 my ($line, @txt) = split("\n", "$rnd");
 # first line is a header with timestamp.
@@ -220,7 +220,7 @@ name_level0=value_level0
 [level1]
 name_level1=value_level1
 EOF
-$rnd = CAF::Render->new('tiny', $contents);
+$rnd = CAF::TextRender->new('tiny', $contents);
 ok($rnd->load_module('Config::Tiny'), "Config::Tiny loaded");
 is("$rnd", $res, "tiny module rendered correctly");
 
@@ -238,7 +238,7 @@ $res = <<EOF;
 </level1>
 name_level0   value_level0
 EOF
-$rnd = CAF::Render->new('general', $contents);
+$rnd = CAF::TextRender->new('general', $contents);
 ok($rnd->load_module('Config::General'), "Config::General loaded");
 is("$rnd", $res, "general module rendered correctly");
 
