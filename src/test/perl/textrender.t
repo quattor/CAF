@@ -104,13 +104,13 @@ Test filehandle options
 
 =cut
 
-my $fh = $rnd->fh("/some/name");
+my $fh = $rnd->filewriter("/some/name");
 isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 is("$fh", $res, "File contents as expected");
 
 my $header = "HEADER"; # no newline, check TODO
 my $footer = "FOOTER"; # no newline, eol should add one
-$fh = $rnd->fh("/some/name",
+$fh = $rnd->filewriter("/some/name",
                header => $header,
                footer => $footer,
                );

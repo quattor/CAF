@@ -275,7 +275,7 @@ sub get_text
 # The rendered text is added to the filehandle 
 # (without extra newline).
 # It's up to the consumer to cancel and/or close the instance.
-sub fh
+sub filewriter
 {
     my ($self, $file, %opts) = @_;
   
