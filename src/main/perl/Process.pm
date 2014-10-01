@@ -458,9 +458,7 @@ sub get_executable
 {
     my ($self) = @_;
 
-    if ($self->{COMMAND}) {
-        return ${$self->{COMMAND}}[0];
-    }
+    return ${$self->{COMMAND}}[0];
 
 }
 
@@ -499,12 +497,6 @@ sub is_executable
 {
     my ($self) = @_;
 
-    if (! $self->{COMMAND}) {
-        $self->{log}->debug (1, "No executable defined to test") 
-            if $self->{log};
-        return;
-    }
-
     my $executable = $self->get_executable();
     
     if ($executable eq basename($executable)) {
@@ -533,8 +525,7 @@ sub is_executable
 Execute after verifying the executable (i.e. the first 
 element of the command) exists and is executable.
 
-If this is not the case, an error is logged and the 
-method returns 1.
+If this is not the case the method returns 1.
 
 =back
 
@@ -548,7 +539,7 @@ sub execute_if_exists
     if ($self->is_executable()) {
         return $self->execute();
     } else {
-        $self->{log}->error("Command ".$self->get_executable()." not found or not executable")
+        $self->{log}->verbose("Command ".$self->get_executable()." not found or not executable")
             if $self->{log};
         return 1;
     }
