@@ -444,6 +444,27 @@ sub get_command
 }
 
 
+=over
+
+=item get_executable
+
+Return the executable (i.e. the first element of the command). 
+
+=back
+
+=cut
+
+sub get_executable
+{
+    my ($self) = @_;
+
+    if ($self->{COMMAND}) {
+        return ${$self->{COMMAND}}[0];
+    }
+
+}
+
+
 # Tests if a filename is executable. However, using -x 
 # makes this not mockable, and thus this test is separated 
 # from C<is_executable> in the C<_test_executable> private 
@@ -466,7 +487,7 @@ It returns the result of the C<-x> test on the filename
 
 If the filename is equal to the C<basename>, then the 
 filename to test is resolved using the 
-C<File::Where::which> method.  
+C<File::Which::which> method.  
 (Use C<./script> if you want to check a script in the 
 current working directory).
 
@@ -484,7 +505,7 @@ sub is_executable
         return;
     }
 
-    my $executable = ${$self->{COMMAND}}[0];
+    my $executable = $self->get_executable();
     
     if ($executable eq basename($executable)) {
         my $executable_path = which($executable);
@@ -504,6 +525,35 @@ sub is_executable
         if $self->{log};
     return $res;
 }
+
+=over
+
+=item execute_if_exists
+
+Execute after verifying the executable (i.e. the first 
+element of the command) exists and is executable.
+
+If this is not the case, an error is logged and the 
+method returns 1.
+
+=back
+
+=cut
+
+
+sub execute_if_exists 
+{
+    my ($self) = @_;
+
+    if ($self->is_executable()) {
+        return $self->execute();
+    } else {
+        $self->{log}->error("Command ".$self->get_executable()." not found or not executable")
+            if $self->{log};
+        return 1;
+    }
+}
+
 
 1;
 
