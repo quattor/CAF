@@ -11,6 +11,7 @@ package CAF::Service;
 use strict;
 use warnings;
 use CAF::Process;
+use LC::Exception qw (SUCCESS);
 
 our $AUTOLOAD;
 use base qw(CAF::Object);
@@ -123,7 +124,7 @@ sub _initialize
     %opts = () if !%opts;
     $self->{services} = $services;
     $self->{options} = \%opts;
-    return $self;
+    return SUCCESS;
 }
 
 sub _logcmd
