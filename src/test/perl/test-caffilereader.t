@@ -7,8 +7,6 @@ use lib "$Bin/";
 use testapp;
 use CAF::FileReader;
 use Test::More;
-use Carp qw(confess);
-use CAF::FileEditor;
 
 =pod
 
@@ -29,6 +27,8 @@ my $fh = CAF::FileReader->open("/etc/resolv.conf");
 isa_ok($fh, "CAF::FileReader");
 ok("$fh", "Contents are read");
 is("$fh", TEXT, "Expected contents are read");
+is(*$fh->{save}, 0, "Modifications to the file won't be saved");
+
 
 
 done_testing();

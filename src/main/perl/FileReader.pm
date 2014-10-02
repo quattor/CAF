@@ -15,13 +15,12 @@ use Fcntl qw(:seek);
 
 =head1 NAME
 
-CAF::FileWriter - Class for securely writing to files in CAF
-applications.
+CAF::FileReader - Class for only reading files in CAF applications.
 
 Normal use:
 
     use CAF::FileReader;
-    my $fh = CAF::FileWriter->open ("my/path");
+    my $fh = CAF::FileReader->open ("my/path");
     while (my $line = <$fh>) {
        # Do something
     }
