@@ -1,10 +1,11 @@
 # -*- perl -*-
-#!/usr/bin/perl
+
 use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/";
 use testapp;
+use CAF::FileWriter;
 use CAF::FileReader;
 use Test::More;
 
@@ -22,13 +23,11 @@ EOF
 
 our $text = TEXT;
 
-my $fh = CAF::FileReader->open("/etc/resolv.conf");
+my $fh = CAF::FileReader->new("/etc/resolv.conf");
 
 isa_ok($fh, "CAF::FileReader");
 ok("$fh", "Contents are read");
 is("$fh", TEXT, "Expected contents are read");
 is(*$fh->{save}, 0, "Modifications to the file won't be saved");
-
-
 
 done_testing();

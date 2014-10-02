@@ -30,6 +30,9 @@ Normal use:
 This class should be used whenever a file is to be opened for reading,
 and no modifications are expected.
 
+Printing to this file is allowed, but changes will be discarded (in
+effect, the C<FileWriter> is C<cancel>-ed.
+
 =cut
 
 sub new
@@ -43,5 +46,10 @@ sub new
     $self->cancel();
     return $self;
 }
+
+# Alias open to new.
+no warnings 'redefine';
+*__PACKAGE__::open = \&new;
+use warnings;
 
 1;
