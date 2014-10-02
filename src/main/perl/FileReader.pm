@@ -9,7 +9,6 @@ package CAF::FileReader;
 use strict;
 use warnings;
 use base qw(CAF::FileEditor);
-use Fcntl qw(:seek);
 
 =pod
 
@@ -41,7 +40,7 @@ sub new
 
     my $self = $class->SUPER::new(@opts);
 
-    seek($self, 0, SEEK_SET);
+    $self->seek_begin();
 
     $self->cancel();
     return $self;
