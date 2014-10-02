@@ -23,7 +23,16 @@ sub init_test
     %opts = ();
 }
 
-my $command = [qw (a random command which I do not care)];
+# is_executable tests
+# no test non-existing filename (the mock function would just return the path)
+sub test_executable {
+    my ($self, $executable) = @_;
+    return $executable;
+}
+$mock->mock ("_test_executable", \&test_executable);
+
+# the executable should be resolvable via which (lets assume ls is in PATH)
+my $command = [qw (ls a random command which I do not care)];
 
 open ($fh, ">", \$str);
 $this_app = testapp->new ($0, qw (--verbose));
@@ -60,34 +69,46 @@ $p = CAF::Process->new ($command, log => $this_app,
 			stdin => "Something");
 $p->execute ();
 is ($execute, 2, "execute with options correctly run");
-like ($str, qr/Executing.*a random command.*stdin.*Something/,
+like ($str, qr/Executing.*ls a random command.*stdin.*Something/,
       "execute used the correct options and was correctly logged");
 is ($opts{stdin}, "Something", "Execute applied the correct options");
-$str = "";
 
+$str = "";
+open ($fh, ">", \$str);
+$this_app->set_report_logfile ($fh);
+$p = CAF::Process->new ($command, log => $this_app,
+            stdin => "Something");
+ok($p->is_executable(), "Command is executable");
+my $res = $p->execute_if_exists ();
+is ($execute, 3, "execute_if_exists runs execute");
+like ($str, qr/Executing.*ls a random command.*stdin.*Something/,
+      "execute_if_exists does the same as execute");
+is ($opts{stdin}, "Something", "execute_if_exists does the same thing as execute");
+
+$str = "";
 open ($fh, ">", \$str);
 $this_app->set_report_logfile ($fh);
 $p->run ();
 is ($run, 2, "Logged run correctly run");
-like ($str, qr/Running the command: a random command/,
+like ($str, qr/Running the command: ls a random command/,
       "run logged");
 $p->output ();
 is ($output, 2, "output with options correctly run");
-like ($str, qr/Getting output of.*a random command/,
+like ($str, qr/Getting output of.*ls a random command/,
       "output used the correct options and was correctly logged");
 $str = "";
 open ($fh, ">", \$str);
 $this_app->set_report_logfile ($fh);
 $p->trun (10);
 is ($trun, 2, "Logged trun correctly run");
-like ($str, qr/Running command.*a random command.*with 10 seconds/,
+like ($str, qr/Running command.*ls a random command.*with 10 seconds/,
       "trun logged");
 $str = "";
 open ($fh, ">", \$str);
 $this_app->set_report_logfile ($fh);
 $p->toutput (10);
 is ($toutput, 2, "Logged toutput correctly run");
-like ($str, qr/Returning the output.*a random command.*with 10 seconds/,
+like ($str, qr/Returning the output.*ls a random command.*with 10 seconds/,
       "toutput logged");
 init_test();
 # Let's test the rest of the commands
@@ -129,16 +150,10 @@ is($p->stringify_command, $command_str, "stringify_command returns joined comman
 is("$p", $command_str, "overloaded stringification");
 
 is(join(" ", @{$p->get_command}), $command_str, "get_command returns ref to command list");
-
-# is_executable tests
-# no test non-existing filename (the mock function would just return the path)
-sub test_executable {
-    my ($self, $executable) = @_;
-    return $executable;
-}
-$mock->mock ("_test_executable", \&test_executable);
+is($p->get_executable, "ls", "get_executable returns executable");
 
 $p = CAF::Process->new([qw(ls)]); # let's assume that ls exists
+is($p->get_executable, "ls", "get_executable returns executable");
 my $ls = $p->is_executable;
 like($ls, qr{^/.*ls$}, "Test ls basename resolved to absolute path");
 
@@ -147,6 +162,7 @@ is($p->is_executable, $ls, "Test absolute path");
 
 $p = CAF::Process->new([qw(doesnotexists)]); 
 ok(! defined($p->is_executable), "Test can't resolve basename");
+is($p->execute_if_exists, 1, "Fails to execute non-existing executable, returns 1");
 
 # empty command process
 $p = CAF::Process->new([]); 
