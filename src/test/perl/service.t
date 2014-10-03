@@ -24,7 +24,7 @@ my $srv = CAF::Service->new(['ntpd', 'sshd']);
 foreach my $m (qw(start stop restart reload)) {
     my $method = "${m}_linux_systemd";
     $srv->$method();
-    ok(get_command("systemctl $m ntpd sshd"), "systemctl $m works");
+    ok(get_command("systemctl $m ntpd.service sshd.service"), "systemctl $m works");
 }
 
 

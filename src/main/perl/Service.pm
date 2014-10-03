@@ -202,8 +202,8 @@ foreach my $method (qw(start stop restart reload)) {
 
     *{"${method}_linux_systemd"} = sub {
         my $self = shift;
-
-        return $self->_logcmd("systemctl", $method, @{$self->{services}});
+        return $self->_logcmd("systemctl", $method, 
+                              map { m/\.(service|target)$/ ? $_ : "$_.service" } @{$self->{services}} );
     };
 
     next if $method eq 'restart'  || $method eq 'reload';
