@@ -70,7 +70,8 @@ Test the unittest test.tt (if this test fails, the test itself is broken)
 =cut
 
 my $str;
-ok($tpl->process($sane_tpl, $contents, \$str, "Generation of test.tt")) or diag("Failed generation of test.tt TT error: " . $tpl->error());
+ok($tpl->process($sane_tpl, $contents, \$str, "Generation of test.tt")) or diag("Failed generation of test.tt TT error: " . $tpl->error(),
+    "Test TT verified");
 is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
 =pod 
@@ -95,6 +96,52 @@ Test rendering the text and stringification overload
 is($rnd->get_text(), $res, "stringification successful");
 is("$rnd", $res, "stringification overload successful");
 
+=pod 
+
+=head2 Test cache
+
+Test the get_text caching by modifying the internal cache directly.
+
+=cut
+
+ok(exists($rnd->{_cache}), "Cache exists");
+is($rnd->{_cache}, $res, "Latests result is cached");
+
+my $modified = "NOCACHE";
+# never ever do this in the code itself.
+$rnd->{_cache} = $modified;
+is($rnd->get_text(), $modified, "Cache is used (returning the content of _cache rather then the rendered text)");
+is($rnd->get_text(1), $res, "Cache is cleared (returning re-rendered text)");
+is($rnd->{_cache}, $res, "Latests result is cached again.");
+
+my $nocachernd = CAF::TextRender->new('test', $contents,
+                                      includepath => getcwd()."/src/test/resources",
+                                      relpath => 'rendertest',
+                                      usecache => 0,
+                                      );
+isa_ok ($nocachernd, "CAF::TextRender", "Correct class after new method (no cache)");
+is($nocachernd->get_text(), $res, "No cache rendering successful");
+ok(! exists($nocachernd->{_cache}), "No cache exists");
+
+=pod
+
+=head2 Test does_render
+
+Test does_render to test if the rendering is/will be succesful.
+
+=cut
+
+ok($rnd->does_render(), "does_render returns true");
+
+my $brokenrnd = CAF::TextRender->new('test_broken', $contents,
+                                      includepath => getcwd()."/src/test/resources",
+                                      relpath => 'rendertest',
+                                      );
+isa_ok ($brokenrnd, "CAF::TextRender", "Correct class after new method (but with broken TT)");
+ok(! $brokenrnd->does_render(), "does_render returns false");
+# not cached
+ok(! defined($brokenrnd->get_text()), "get_text returns undef, rendering failed");
+diag($brokenrnd->get_text());
 
 =pod
 
