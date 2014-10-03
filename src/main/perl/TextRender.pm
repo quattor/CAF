@@ -21,6 +21,7 @@ use Readonly;
 
 Readonly::Scalar my $DEFAULT_INCLUDE_PATH => '/usr/share/templates/quattor';
 Readonly::Scalar my $DEFAULT_RELPATH => 'metaconfig';
+Readonly::Scalar my $DEFAULT_USECACHE => 1;
 
 use base qw(CAF::Object);
 
@@ -41,7 +42,12 @@ CAF::TextRender - Class for rendering structured text
     
     print "$rnd"; # stringification
 
-    my $fh = $rnd->fh('/some/path'); # return CAF::FileWriter instance
+    if($rnd->does_render) {
+        my $fh = $rnd->filewriter('/some/path'); # return CAF::FileWriter instance
+    } else {
+        die "Problem rendering the text";
+    }
+
 
 =head1 DESCRIPTION
 
@@ -108,6 +114,11 @@ By default, C<eol> is true (this is text rendering afterall).
 C<eol> set to false will not strip trailing newlines (use C<chomp> 
 or something similar for that).
 
+=item C<usecache>
+
+If C<usecache> is false, the text is always re-rendered. 
+Default is to cache the rendered text (C<usecache> is true).
+
 =back
 
 ...
@@ -123,7 +134,7 @@ sub _initialize
     $self->{module} = $module;
     $self->{contents} = $contents;
     
-    $self = $opts{log} if $opts{log};
+    $self->{log} = $opts{log} if $opts{log};
 
     if (exists($opts{eol})) {
         $self->{eol} = $opts{eol};    
@@ -137,6 +148,13 @@ sub _initialize
     $self->{relpath} = $opts{relpath} || $DEFAULT_RELPATH;
     $self->verbose("Using includepath $self->{includepath}");
     $self->verbose("Using relpath $self->{relpath}");
+
+    if(exists($opts{usecache})) {
+        $self->{usecache} = $opts{usecache};
+    } else {
+        $self->{usecache} = $DEFAULT_USECACHE;
+    }
+    $self->verbose("No caching") if (! $self->{usecache});
 
     # set render method
     $self->{method} = $self->select_module_method();
@@ -244,36 +262,63 @@ sub select_module_method {
     return $method;
 }
 
-
-
-# Render the text
+# Render the text. Undef is returned in case of rendering error.
+# By default, the rendered result is cached.
+# To force re-rendering the text, clear the current cache by  
+# passing true as first argument 
+# (or disable caching completely with the option C<usecache> 
+# set to false during initialisation).
 sub get_text
 {
-    my ($self) = @_;
+    my ($self, $clearcache) = @_;
+
+    if ($clearcache) {
+        $self->verbose("get_text clearing cache");
+        delete $self->{_cache};
+    };
+
+    if (exists($self->{_cache})) {
+        $self->debug(1, "Returning the cached value");
+        return $self->{_cache} 
+    };
 
     my $res = $self->{method}->($self);
 
     if (defined($res)) {
         if($self->{eol} && $res !~ m/\n$/) {
             $self->verbose("eol set, and rendered text was missing final newline. adding newline.");
-            return $res."\n";
-        } else {
-            return $res;
-        };    
+            # TODO: will this make copy? and is that acceptable?
+            $res .= "\n";
+        }
+        if($self->{usecache}) {
+            $self->{_cache} = $res;
+        };
+        return $res;
     } else {
         $self->error("Failed to render");
         return;
     }
 }
 
-# Create and return an open CAF::FileWriter instance
-# C<file> is the filename. Named options C<header> 
+# C<does_render> returns 1 if the C<get_text> returns text (i.e. no undef).
+# Otherwise, it returns 0.
+sub does_render 
+{
+    my ($self) = @_;
+    my $res = $self->get_text();
+    return defined($res);
+}
+
+# Create and return an open CAF::FileWriter instance with
+# C<file> as the filename. Options C<header> 
 # and C<footer> are supported to resp. prepend and append text.
+# If C<eol> was set during initialisation, the footer will also be 
+# checked for EOL. (EOL is also added to the rendered text if 
+# C<eol> is set, even if there is a footer.)
 # All other options are passed to CAF::FileWriter. 
 # (If no C<log> option is provided, 
 # the one from the CAF::TextRender instance is passed).
 # The rendered text is added to the filehandle 
-# (without extra newline).
 # It's up to the consumer to cancel and/or close the instance.
 sub filewriter
 {
@@ -283,6 +328,9 @@ sub filewriter
     my $footer = delete $opts{footer};
     
     $opts{log} = $self if(!exists($opts{log}));    
+    
+    # TODO test if rendering is possible with does_render
+    #      and return undef in case of failure.
     
     my $cfh = CAF::FileWriter->new($file, %opts);
     
