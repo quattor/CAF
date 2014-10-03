@@ -125,23 +125,24 @@ ok(! exists($nocachernd->{_cache}), "No cache exists");
 
 =pod
 
-=head2 Test does_render
+=head2 Test render failure
 
-Test does_render to test if the rendering is/will be succesful.
+Test failing render (stringification returns undef).
 
 =cut
 
-ok($rnd->does_render(), "does_render returns true");
+ok(defined("$rnd"), "render succes, stringification returns something defined");
 
 my $brokenrnd = CAF::TextRender->new('test_broken', $contents,
                                       includepath => getcwd()."/src/test/resources",
                                       relpath => 'rendertest',
                                       );
 isa_ok ($brokenrnd, "CAF::TextRender", "Correct class after new method (but with broken TT)");
-ok(! $brokenrnd->does_render(), "does_render returns false");
-# not cached
 ok(! defined($brokenrnd->get_text()), "get_text returns undef, rendering failed");
-diag($brokenrnd->get_text());
+is("$brokenrnd", "", "render failed, stringification returns empty string");
+
+# not cached
+ok(!exists($brokenrnd->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
 
 =pod
 
@@ -164,6 +165,9 @@ $fh = $rnd->filewriter("/some/name",
 isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 # add newline due to eol
 is("$fh", $header.$res.$footer."\n", "File contents as expected");
+
+# test undef returned on render failure
+ok(! defined($brokenrnd->filewriter("/my/file")), "render failed, filewriter returns undef");
 
 
 # force the internal module for testing purposes!

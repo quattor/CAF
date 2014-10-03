@@ -25,7 +25,7 @@ Readonly::Scalar my $DEFAULT_USECACHE => 1;
 
 use base qw(CAF::Object);
 
-use overload ('""' => 'get_text');
+use overload ('""' => '_stringify');
 
 =pod
 
@@ -42,11 +42,8 @@ CAF::TextRender - Class for rendering structured text
     
     print "$rnd"; # stringification
 
-    if($rnd->does_render) {
-        my $fh = $rnd->filewriter('/some/path'); # return CAF::FileWriter instance
-    } else {
-        die "Problem rendering the text";
-    }
+    my $fh = $rnd->filewriter('/some/path'); # return CAF::FileWriter instance
+    die "Problem rendering the text" if (! defined($fh));
 
 
 =head1 DESCRIPTION
@@ -300,18 +297,23 @@ sub get_text
     }
 }
 
-# C<does_render> returns 1 if the C<get_text> returns text (i.e. no undef).
-# Otherwise, it returns 0.
-sub does_render 
+# Handle possible undef from get_text to avoid 'Use of uninitialized value' warnings
+sub _stringify
 {
     my ($self) = @_;
-    my $res = $self->get_text();
-    return defined($res);
+    # Always default cache behaviour
+    my $text = $self->get_text();    
+    if(defined($text)) {
+        return $text;
+    } else {
+        return "";
+    }
 }
 
 # Create and return an open CAF::FileWriter instance with
-# C<file> as the filename. Options C<header> 
-# and C<footer> are supported to resp. prepend and append text.
+# C<file> as the filename. If the rendering fails, undef is returned.
+# Options C<header> and C<footer> are supported 
+# to resp. prepend and append text.
 # If C<eol> was set during initialisation, the footer will also be 
 # checked for EOL. (EOL is also added to the rendered text if 
 # C<eol> is set, even if there is a footer.)
@@ -323,21 +325,24 @@ sub does_render
 sub filewriter
 {
     my ($self, $file, %opts) = @_;
+
+    # use get_text, not stringification to handle render failure
+    my $text = $self->get_text();
+    # A failure in rendering occured.
+    # There is an error logged in get_text, no reason to do it here again
+    return if (!defined($text));
   
     my $header = delete $opts{header};
     my $footer = delete $opts{footer};
     
     $opts{log} = $self if(!exists($opts{log}));    
     
-    # TODO test if rendering is possible with does_render
-    #      and return undef in case of failure.
-    
     my $cfh = CAF::FileWriter->new($file, %opts);
     
     # TODO force newline after header?
     print $cfh $header if defined($header);
 
-    print $cfh $self->get_text();
+    print $cfh $text;
 
     if (defined($footer)) {
         print $cfh $footer;
