@@ -39,12 +39,14 @@ CAF::TextRender - Class for rendering structured text
 
     my $module = 'tiny';
     my $rnd = CAF::TextRender->new($module, $contents, log => $self);
-    
     print "$rnd"; # stringification
 
-    my $fh = $rnd->filewriter('/some/path'); # return CAF::FileWriter instance
+    $module = "general";
+    $rnd = CAF::TextRender->new($module, $contents, log => $self);
+    # return CAF::FileWriter instance (rendered text already added)
+    my $fh = $rnd->filewriter('/some/path');
     die "Problem rendering the text" if (! defined($fh));
-
+    $fh->close();
 
 =head1 DESCRIPTION
 
@@ -74,7 +76,6 @@ C<general> (using C<Config::General>)
 
 Or, for any other value, C<Template::Toolkit> is used, and the C<module> then indicates 
 the relative path of the template to use.
-# TODO relative to what?
 
 =item C<contents>
 
@@ -118,7 +119,7 @@ Default is to cache the rendered text (C<usecache> is true).
 
 =back
 
-...
+=back
 
 =cut
 
@@ -259,12 +260,24 @@ sub select_module_method {
     return $method;
 }
 
-# Render the text. Undef is returned in case of rendering error.
-# By default, the rendered result is cached.
-# To force re-rendering the text, clear the current cache by  
-# passing true as first argument 
-# (or disable caching completely with the option C<usecache> 
-# set to false during initialisation).
+=pod
+
+=head2 C<get_text>
+
+C<get_text> renders and returns the text. 
+
+In case of a rendering error, C<get_text> returns C<undef> 
+(and an error is logged if log instance is present).
+This is the main difference from the auto-stringification that 
+returns an empty string in case of a rendering error.
+
+By default, the rendered result is cached. To force re-rendering the text, 
+clear the current cache by passing C<1> as first argument 
+(or disable caching completely with the option C<usecache> 
+set to false during the <CAF::TextRender> initialisation).
+
+=cut
+
 sub get_text
 {
     my ($self, $clearcache) = @_;
@@ -284,7 +297,6 @@ sub get_text
     if (defined($res)) {
         if($self->{eol} && $res !~ m/\n$/) {
             $self->verbose("eol set, and rendered text was missing final newline. adding newline.");
-            # TODO: will this make copy? and is that acceptable?
             $res .= "\n";
         }
         if($self->{usecache}) {
@@ -310,26 +322,38 @@ sub _stringify
     }
 }
 
-# Create and return an open CAF::FileWriter instance with
-# C<file> as the filename. If the rendering fails, undef is returned.
-# Options C<header> and C<footer> are supported 
-# to resp. prepend and append text.
-# If C<eol> was set during initialisation, the footer will also be 
-# checked for EOL. (EOL is also added to the rendered text if 
-# C<eol> is set, even if there is a footer.)
-# All other options are passed to CAF::FileWriter. 
-# (If no C<log> option is provided, 
-# the one from the CAF::TextRender instance is passed).
-# The rendered text is added to the filehandle 
-# It's up to the consumer to cancel and/or close the instance.
+=pod
+
+=head2 C<filewriter>
+
+Create and return an open C<CAF::FileWriter> instance with
+first argument as the filename. If the rendering fails, 
+C<undef> is returned.
+
+The rendered text is added to the filehandle. 
+It's up to the consumer to cancel 
+and/or close the instance
+
+All C<CAF::FileWriter> initialisation options are supported 
+and passed on. (If no C<log> option is provided, 
+ the one from the C<CAF::TextRender> instance is passed).
+
+Two new options C<header> and C<footer> are supported 
+ to resp. prepend and append to the rendered text.
+
+If C<eol> was set during initialisation, the footer will also be 
+checked for EOL. (EOL is also added to the rendered text if 
+C<eol> is set during initialisation, even if there is a footer 
+defined.)
+
+=cut 
+
 sub filewriter
 {
     my ($self, $file, %opts) = @_;
 
     # use get_text, not stringification to handle render failure
     my $text = $self->get_text();
-    # A failure in rendering occured.
-    # There is an error logged in get_text, no reason to do it here again
     return if (!defined($text));
   
     my $header = delete $opts{header};
