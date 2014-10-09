@@ -147,7 +147,7 @@ C<newvalue>. If there is no match, nothing will be done. For instance,
 Will replace all lines containing 'hello' but B<not> world by the
 string 'hello and good bye, world!'. But if the file contents are
 
-    There was Eru, who in Arda is called IlÃºvatar
+    There was Eru, who in Arda is called Iluvatar
 
 it will be kept as is.
 
@@ -412,6 +412,8 @@ sub remove_lines
 __END__
 
 =pod
+
+=back
 
 =head1 EXPORTED CONSTANTS
 

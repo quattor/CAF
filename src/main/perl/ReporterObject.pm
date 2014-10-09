@@ -2,14 +2,6 @@
 # ${developer-info
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::ReporterObject class
-#
-# Written by German Cancio <German.Cancio@cern.ch>
-#            and Piotr Poznanski <Piotr.Poznanski@cern.ch>
-# (C) 2003 German Cancio & EU DataGrid http://www.edg.org
-#
 
 package CAF::ReporterObject;
 
@@ -91,6 +83,8 @@ sub instance () {
 new() throws an error, as this method is not to be used (instead,
 create/get the singleton with instance())
 
+=back
+
 =cut
 
 sub new () {
@@ -128,15 +122,6 @@ sub _initialize () {
 =head1 SEE ALSO
 
 CAF::Object, LC::Exception, CAF::Reporter
-
-=head1 AUTHORS
-
-German Cancio <German.Cancio@cern.ch>,
-Piotr Poznanski <Piotr.Poznanski@cern.ch>
-
-=head1 VERSION
-
-$Id: ReporterObject.pm,v 1.2 2007/11/27 15:20:58 poleggi Exp $
 
 =cut
 

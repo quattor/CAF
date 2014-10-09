@@ -3,26 +3,7 @@
 # ${author-info}
 # ${build-info}
 #
-################################################################################
-# This is '@SELF@', a @NAME@'s file
-################################################################################
-#
-# VERSION:    @VERSION@, @DATE@
-# AUTHOR:     @AUTHOR@
-# MAINTAINER: @MAINTAINER@
-# LICENSE:    @LICENSE@
-#
-################################################################################
-# Coding style: emulate <TAB> characters with 4 spaces, thanks!
-################################################################################
-
-################################################################################
 # CAF::ReporterMany class
-#
-# Adapted by Marco Emilio Poleggi form the original CAF::Reporter by German
-# Cancio
-# (C) 2008 Marco Emilio Poleggi & EU DataGrid http://www.edg.org
-################################################################################
 
 
 package CAF::ReporterMany;
@@ -33,7 +14,6 @@ use Sys::Syslog qw (openlog closelog);
 use CAF::Reporter;
 our @ISA;
 
-################################################################################
 =pod
 
 =head1 NAME
@@ -77,18 +57,11 @@ wanting to use CAF::Reporter have to inherit from it (using @ISA).
 Usage of a log file is optional. A log file can be attached/detached
 with the set_logfile method.
 
-=over
 
 =cut
-################################################################################
 
 
-################################################################################
-#                      Public Methods/Functions
-################################################################################
 =pod
-
-=back
 
 =head2 Public methods
 
@@ -131,7 +104,6 @@ will be used.
 
 =cut
 
-################################################################################
 sub setup_reporter($$$$$) {
     my ($self, $debuglvl, $quiet, $verbose,$facility) = @_;
 
@@ -148,8 +120,6 @@ sub setup_reporter($$$$$) {
     return SUCCESS;
 }
 
-
-################################################################################
 =pod
 
 =item B<set_report_logfile>(I<$logfile>): bool
@@ -160,7 +130,7 @@ method. Typically, it should be a L<CAF::Log> instance. If $logfile is
 undefined (undef), no log file will be used.
 
 =cut
-################################################################################
+
 sub set_report_logfile ($$) {
     my ($self, $logfile) = @_;
 
@@ -170,7 +140,6 @@ sub set_report_logfile ($$) {
 }
 
 
-################################################################################
 =pod
 
 =item B<report>(I<@array>): boolean
@@ -180,7 +149,7 @@ to the console is supressed if 'quiet' is set. The strings in I<@array>
 are concatenated and sent as a single line to the output(s).
 
 =cut
-################################################################################
+
 sub report (@) {
     my $self = shift;
 
@@ -191,7 +160,6 @@ sub report (@) {
 }
 
 
-################################################################################
 =pod
 
 =item B<info>(I<@array>): boolean
@@ -199,7 +167,7 @@ sub report (@) {
 Report I<@array> using the B<report> method, but with an '[INFO]' prefix.
 
 =cut
-################################################################################
+
 sub info (@) {
     my $self = shift;
 
@@ -208,7 +176,6 @@ sub info (@) {
 }
 
 
-################################################################################
 =pod
 
 =item B<OK>(I<@array>): boolean
@@ -216,7 +183,7 @@ sub info (@) {
 Report I<@array> using the B<report> method, but with an '[OK]' prefix.
 
 =cut
-################################################################################
+
 sub OK (@) {
     my $self = shift;
 
@@ -225,7 +192,6 @@ sub OK (@) {
 }
 
 
-################################################################################
 =pod
 
 =item B<warn>(I<@array>): boolean
@@ -233,7 +199,7 @@ sub OK (@) {
 Report I<@array> using the B<report> method, but with a '[WARN]' prefix.
 
 =cut
-################################################################################
+
 sub warn (@) {
     my $self = shift;
 
@@ -242,7 +208,6 @@ sub warn (@) {
 }
 
 
-################################################################################
 =pod
 
 =item B<error>(I<@array>): boolean
@@ -250,7 +215,7 @@ sub warn (@) {
 Report I<@array> using the B<report> method, but with an '[ERROR]' prefix.
 
 =cut
-################################################################################
+
 sub error (@) {
     my $self = shift;
 
@@ -259,7 +224,6 @@ sub error (@) {
 }
 
 
-################################################################################
 =pod
 
 =item B<verbose>(I<@array>): boolean
@@ -268,7 +232,7 @@ Reports I<@array> using the B<report> method, but only if 'verbose' is set
 to 1. Output is prefixed with '[VERB]'.
 
 =cut
-################################################################################
+
 sub verbose (@) {
     my $self = shift;
 
@@ -280,7 +244,6 @@ sub verbose (@) {
 }
 
 
-################################################################################
 =pod
 
 =item B<debug>(I<$debuglvl, @array>): boolean
@@ -289,7 +252,7 @@ Reports B<@array> using the B<report> method iff the current debug level is
 higher or equal than I<$debuglvl>.
 
 =cut
-################################################################################
+
 sub debug ($@) {
     my $self = shift;
     my $debuglvl = shift;
@@ -309,7 +272,6 @@ sub debug ($@) {
 }
 
 
-################################################################################
 =pod
 
 =item B<log>(I<@array>): boolean
@@ -317,7 +279,7 @@ sub debug ($@) {
 Write I<@array> to the log file, if any.
 
 =cut
-################################################################################
+
 sub log (@) {
     my $self = shift;
 
@@ -327,7 +289,6 @@ sub log (@) {
 }
 
 
-################################################################################
 =pod
 
 =item B<syslog>(I<$priority, @array>);
@@ -335,7 +296,7 @@ sub log (@) {
 Write I<@array> to the syslog, with the given priority.
 
 =cut
-################################################################################
+
 sub syslog {
     my ($self, $priority, @msg) = @_;
 
@@ -354,21 +315,11 @@ __END__
 
 =pod
 
+=back
+
 =head1 SEE ALSO
 
 L<LC::Exception>, L<CAF::Application>, L<CAF::Log>, L<CAF::Reporter>.
-
-=head1 AUTHORS
-
-German Cancio <German.Cancio@cern.ch>
-
-Marco Emilio Poleggi <marcoep@gmail.com>
-
-Syslog support by Luis Fernando Muñoz Mejías <luisf.munnoz@uam.es>
-
-=head1 VERSION
-
-$Id: ReporterMany.pm,v 1.4 2008/10/21 15:52:58 munoz Exp $
 
 =cut
 
