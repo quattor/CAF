@@ -38,13 +38,13 @@ CAF::TextRender - Class for rendering structured text
     use CAF::TextRender;
 
     my $module = 'tiny';
-    my $rnd = CAF::TextRender->new($module, $contents, log => $self);
-    print "$rnd"; # stringification
+    my $trd = CAF::TextRender->new($module, $contents, log => $self);
+    print "$trd"; # stringification
 
     $module = "general";
-    $rnd = CAF::TextRender->new($module, $contents, log => $self);
+    $trd = CAF::TextRender->new($module, $contents, log => $self);
     # return CAF::FileWriter instance (rendered text already added)
-    my $fh = $rnd->filewriter('/some/path');
+    my $fh = $trd->filewriter('/some/path');
     die "Problem rendering the text" if (! defined($fh));
     $fh->close();
 
