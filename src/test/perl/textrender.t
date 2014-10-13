@@ -32,27 +32,27 @@ my $contents = {
     }
 };
 
-my $rnd;
+my $trd;
 
-$rnd = CAF::TextRender->new('something', $contents);
-isa_ok ($rnd, "CAF::TextRender", "Correct class after new method");
-ok(!defined($rnd->error('something')), "Fake logger initialised");
+$trd = CAF::TextRender->new('something', $contents);
+isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
+ok(!defined($trd->error('something')), "Fake logger initialised");
 
-$rnd = CAF::TextRender->new('not_a_reserved_module', $contents);
-isa_ok ($rnd, "CAF::TextRender", "Correct class after new method");
-is(get_name($rnd->{method}), "tt", "fallback/default render method tt selected");
+$trd = CAF::TextRender->new('not_a_reserved_module', $contents);
+isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
+is(get_name($trd->{method}), "tt", "fallback/default render method tt selected");
 
-is($rnd->{includepath}, '/usr/share/templates/quattor', 'Default template base');
-is($rnd->{relpath}, 'metaconfig', 'Default template relpath');
+is($trd->{includepath}, '/usr/share/templates/quattor', 'Default template base');
+is($trd->{relpath}, 'metaconfig', 'Default template relpath');
 
-$rnd = CAF::TextRender->new('test', $contents,
+$trd = CAF::TextRender->new('test', $contents,
                             includepath => getcwd()."/src/test/resources",
                             relpath => 'rendertest',
                             );
-my $sane_tpl = $rnd->sanitize_template();
+my $sane_tpl = $trd->sanitize_template();
 is($sane_tpl, "rendertest/test.tt", "correct TT file with relpath prefixed");
 
-my $tpl = CAF::TextRender::get_template_instance($rnd->{includepath});
+my $tpl = CAF::TextRender::get_template_instance($trd->{includepath});
 isa_ok ($tpl, "Template", "Returns Template instance");
 
 my $res;
@@ -70,7 +70,8 @@ Test the unittest test.tt (if this test fails, the test itself is broken)
 =cut
 
 my $str;
-ok($tpl->process($sane_tpl, $contents, \$str, "Generation of test.tt")) or diag("Failed generation of test.tt TT error: " . $tpl->error());
+ok($tpl->process($sane_tpl, $contents, \$str, "Generation of test.tt")) or diag("Failed generation of test.tt TT error: " . $tpl->error(),
+    "Test TT verified");
 is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
 =pod 
@@ -81,7 +82,7 @@ Test the CAF::TextRender tt call
 
 =cut
 
-is($rnd->tt(), $res, "test.tt rendered contents correctly");
+is($trd->tt(), $res, "test.tt rendered contents correctly");
 
 
 =pod
@@ -92,9 +93,56 @@ Test rendering the text and stringification overload
 
 =cut
 
-is($rnd->get_text(), $res, "stringification successful");
-is("$rnd", $res, "stringification overload successful");
+is($trd->get_text(), $res, "stringification successful");
+is("$trd", $res, "stringification overload successful");
 
+=pod 
+
+=head2 Test cache
+
+Test the get_text caching by modifying the internal cache directly.
+
+=cut
+
+ok(exists($trd->{_cache}), "Cache exists");
+is($trd->{_cache}, $res, "Latests result is cached");
+
+my $modified = "NOCACHE";
+# never ever do this in the code itself.
+$trd->{_cache} = $modified;
+is($trd->get_text(), $modified, "Cache is used (returning the content of _cache rather then the rendered text)");
+is($trd->get_text(1), $res, "Cache is cleared (returning re-rendered text)");
+is($trd->{_cache}, $res, "Latests result is cached again.");
+
+my $nocachetrd = CAF::TextRender->new('test', $contents,
+                                      includepath => getcwd()."/src/test/resources",
+                                      relpath => 'rendertest',
+                                      usecache => 0,
+                                      );
+isa_ok ($nocachetrd, "CAF::TextRender", "Correct class after new method (no cache)");
+is($nocachetrd->get_text(), $res, "No cache rendering successful");
+ok(! exists($nocachetrd->{_cache}), "No cache exists");
+
+=pod
+
+=head2 Test render failure
+
+Test failing render (stringification returns undef).
+
+=cut
+
+ok(defined("$trd"), "render succes, stringification returns something defined");
+
+my $brokentrd = CAF::TextRender->new('test_broken', $contents,
+                                      includepath => getcwd()."/src/test/resources",
+                                      relpath => 'rendertest',
+                                      );
+isa_ok ($brokentrd, "CAF::TextRender", "Correct class after new method (but with broken TT)");
+ok(! defined($brokentrd->get_text()), "get_text returns undef, rendering failed");
+is("$brokentrd", "", "render failed, stringification returns empty string");
+
+# not cached
+ok(!exists($brokentrd->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
 
 =pod
 
@@ -104,13 +152,13 @@ Test filehandle options
 
 =cut
 
-my $fh = $rnd->filewriter("/some/name");
+my $fh = $trd->filewriter("/some/name");
 isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 is("$fh", $res, "File contents as expected");
 
 my $header = "HEADER"; # no newline, check TODO
 my $footer = "FOOTER"; # no newline, eol should add one
-$fh = $rnd->filewriter("/some/name",
+$fh = $trd->filewriter("/some/name",
                header => $header,
                footer => $footer,
                );
@@ -118,12 +166,15 @@ isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWrite
 # add newline due to eol
 is("$fh", $header.$res.$footer."\n", "File contents as expected");
 
+# test undef returned on render failure
+ok(! defined($brokentrd->filewriter("/my/file")), "render failed, filewriter returns undef");
+
 
 # force the internal module for testing purposes!
-$rnd->{module} = '/my/abs/path';
-ok(!defined($rnd->sanitize_template()), "module as template can't be absolute path");
-$rnd->{module} = 'nottest';
-ok(!defined($rnd->sanitize_template()), "no TT file nottest");
+$trd->{module} = '/my/abs/path';
+ok(!defined($trd->sanitize_template()), "module as template can't be absolute path");
+$trd->{module} = 'nottest';
+ok(!defined($trd->sanitize_template()), "no TT file nottest");
 
 =pod
 
@@ -133,22 +184,22 @@ Test end-of-line (eol)
 
 =cut
 
-$rnd = CAF::TextRender->new('noeol', $contents,
+$trd = CAF::TextRender->new('noeol', $contents,
                             includepath => getcwd()."/src/test/resources",
                             relpath => 'rendertest',
                             eol => 0,
                             );
 my $noeol = "noeol";
-is("$rnd", $noeol, "noeol.tt rendered as expected");
-unlike("$rnd", qr{\n$}, "No newline at end of rendered text");
+is("$trd", $noeol, "noeol.tt rendered as expected");
+unlike("$trd", qr{\n$}, "No newline at end of rendered text");
 
-$rnd = CAF::TextRender->new('noeol', $contents,
+$trd = CAF::TextRender->new('noeol', $contents,
                             includepath => getcwd()."/src/test/resources",
                             relpath => 'rendertest',
                             );
-is($rnd->{eol}, 1, "eol default to true");
-is("$rnd", "$noeol\n", "noeol.tt with eol=1 rendered as expected");
-like("$rnd", qr{\n$}, "Newline at end of rendered text (with eol=1)");
+is($trd->{eol}, 1, "eol default to true");
+is("$trd", "$noeol\n", "noeol.tt with eol=1 rendered as expected");
+like("$trd", qr{\n$}, "Newline at end of rendered text (with eol=1)");
 
 =pod
 
@@ -163,9 +214,9 @@ Test json/JSON::XS
 =cut
 
 $res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
-$rnd = CAF::TextRender->new('json', $contents, eol=>0);
-ok($rnd->load_module('JSON::XS'), "JSON::XS loaded");
-is("$rnd", $res, "json module rendered correctly");
+$trd = CAF::TextRender->new('json', $contents, eol=>0);
+ok($trd->load_module('JSON::XS'), "JSON::XS loaded");
+is("$trd", $res, "json module rendered correctly");
 
 =pod
 
@@ -181,9 +232,9 @@ level1:
   name_level1: value_level1
 name_level0: value_level0
 EOF
-$rnd = CAF::TextRender->new('yaml', $contents);
-ok($rnd->load_module('YAML::XS'), "YAML::XS loaded");
-is("$rnd", $res, "yaml module rendered correctly");
+$trd = CAF::TextRender->new('yaml', $contents);
+ok($trd->load_module('YAML::XS'), "YAML::XS loaded");
+is("$trd", $res, "yaml module rendered correctly");
 
 =pod
 
@@ -198,9 +249,9 @@ $res = <<EOF;
 level1.name_level1=value_level1
 name_level0=value_level0
 EOF
-$rnd = CAF::TextRender->new('properties', $contents);
-ok($rnd->load_module('Config::Properties'), "Config::Properties loaded");
-my ($line, @txt) = split("\n", "$rnd");
+$trd = CAF::TextRender->new('properties', $contents);
+ok($trd->load_module('Config::Properties'), "Config::Properties loaded");
+my ($line, @txt) = split("\n", "$trd");
 # first line is a header with timestamp.
 like($line, qr{^#\s.*$}, "Start with header (contains timestamp)");
 # add extra newline
@@ -220,9 +271,9 @@ name_level0=value_level0
 [level1]
 name_level1=value_level1
 EOF
-$rnd = CAF::TextRender->new('tiny', $contents);
-ok($rnd->load_module('Config::Tiny'), "Config::Tiny loaded");
-is("$rnd", $res, "tiny module rendered correctly");
+$trd = CAF::TextRender->new('tiny', $contents);
+ok($trd->load_module('Config::Tiny'), "Config::Tiny loaded");
+is("$trd", $res, "tiny module rendered correctly");
 
 =pod
 
@@ -238,8 +289,8 @@ $res = <<EOF;
 </level1>
 name_level0   value_level0
 EOF
-$rnd = CAF::TextRender->new('general', $contents);
-ok($rnd->load_module('Config::General'), "Config::General loaded");
-is("$rnd", $res, "general module rendered correctly");
+$trd = CAF::TextRender->new('general', $contents);
+ok($trd->load_module('Config::General'), "Config::General loaded");
+is("$trd", $res, "general module rendered correctly");
 
 done_testing();
