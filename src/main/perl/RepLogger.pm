@@ -3,16 +3,9 @@
 # ${author-info}
 # ${build-info}
 #
-################################################################################
-#
-# $Id: RepLogger.pm,v 1.2 2008/09/26 14:06:40 poleggi Exp $
-#
-################################################################################
-
-################################################################################
 # _RepObj class is just a front-end to CAF::ReporterMany from which it inherits
 # the needed methods
-################################################################################
+
 package _RepObj;
 
 use strict;
@@ -40,12 +33,14 @@ sub _initialize() {
     return SUCCESS;
 }
 
-
 ################################################################################
+
+#
 # CAF::RepLogger class has two objects
 #   _RepObj's instance
 #   CAF::Log's instance
-################################################################################
+#
+
 package CAF::RepLogger;
 
 BEGIN{
@@ -137,14 +132,10 @@ your application is composed of more modules, each of them can instantiate
 a different RepLogger object. Conversely, a one-for-all log mode is obtained
 through the procedural interface which uses a shared configuration.
 
-=over
-
 =cut
 
-###############################################################################
+
 # Private data
-###############################################################################
-# my $ec = LC::Exception::Context->new->will_store_all;
 
 # Setup structure with defaults
 my %_replogger_setup = (
@@ -159,12 +150,9 @@ my %_replogger_setup = (
     'rep-obj'       => undef  # A _RepObj's object
 );
 
-
-###############################################################################
+#
 # Private functions
-###############################################################################
-
-###############################################################################
+#
 # who_is(): string
 #
 # return a string formatted as
@@ -174,7 +162,7 @@ my %_replogger_setup = (
 # where '[<session-ids>]' and '<module-name>::<caller-subroutine>: ' may be
 # printed or not, depending on the configuration options 'session-ids' and
 # 'stack-frame'.
-###############################################################################
+#
 sub who_is() {
 
     my $res = '';
@@ -202,9 +190,11 @@ sub who_is() {
 }
 
 
-###############################################################################
+#
 # Public functions
-###############################################################################
+#
+
+=pod
 
 =head1 Public methods/functions
 
@@ -289,7 +279,7 @@ Enable logging of messages passed to B<[log_]verb()>. Default is 0.
 =back
 
 =cut
-###############################################################################
+
 sub new($@) {
     my $class = shift;
 
@@ -305,6 +295,7 @@ sub new($@) {
 
     return $self;
 }
+
 sub setup_replogger(@) {
     my %h_setup = @_;
 
@@ -368,7 +359,7 @@ sub setup_replogger(@) {
     return SUCCESS;
 }
 
-###############################################################################
+=pod
 
 =item B<*, log_*> I<(;@messages)>
 
@@ -389,68 +380,69 @@ or
     log_debug(2, 'this is debug');
 
 =cut
-###############################################################################
+
 sub debug($$;@) {
     my $self = shift;
     $self->{'rep-obj'}->debug(shift, who_is(), @_);
 }
+
 sub log_debug($;@) {
     $_replogger_setup{'rep-obj'}->debug(shift, who_is(), @_);
 }
+
 sub error($;@) {
     my $self = shift;
     $self->{'rep-obj'}->error(who_is(), @_);
 }
+
 sub log_error(;@) {
     $_replogger_setup{'rep-obj'}->error(who_is(), @_);
 }
+
 sub info($;@) {
     my $self = shift;
     $self->{'rep-obj'}->info(who_is(), @_);
 }
+
 sub log_info(;@) {
     $_replogger_setup{'rep-obj'}->info(who_is(), @_);
 }
+
 sub ok($;@) {
     my $self = shift;
     $self->{'rep-obj'}->OK(who_is(), @_);
 }
+
 sub log_ok(;@) {
     $_replogger_setup{'rep-obj'}->OK(who_is(), @_);
 }
+
 sub verb($;@) {
     my $self = shift;
     $self->{'rep-obj'}->verbose(who_is(), @_);
 }
+
 sub log_verb(;@) {
     $_replogger_setup{'rep-obj'}->verbose(who_is(), @_);
 }
+
 sub warn($;@) {
     my $self = shift;
     $self->{'rep-obj'}->warn(who_is(), @_);
 }
+
 sub log_warn(;@) {
     $_replogger_setup{'rep-obj'}->warn(who_is(), @_);
 }
 
 1;
 
+=pod
+
 =back
 
 =head1 SEE ALSO
 
 L<CAF::Log(3)>, L<CAF::Reporter(3)>
-
-=head1 AUTHOR
-
-Marco Emilio Poleggi <Marco.Poleggi@cern.ch>
-
-=head1 LICENSE
-
-L<http://www.edg.org/license.html>
-
-=head1 VERSION
-
-$Id: RepLogger.pm,v 1.2 2008/09/26 14:06:40 poleggi Exp $
 
 =cut

@@ -1,5 +1,5 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
 #
@@ -114,6 +114,8 @@ If no C<timeout> was passed, it will wait forever.
 =back
 
 ...
+
+=back
 
 =cut
 
