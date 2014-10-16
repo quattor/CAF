@@ -154,6 +154,7 @@ sub _initialize
     }
     $self->verbose("No caching") if (! $self->{usecache});
 
+    # set render method
     $self->{method} = $self->select_module_method();
     
     return SUCCESS;
@@ -196,7 +197,7 @@ sub sanitize_template
         $self->verbose("Using template $result_template for module $self->{module}");
         return $result_template;
     } else {
-        $self->error ("Insecure template name $tplname. Final template must be under $self->{includepath}");
+        $self->error ("Insecure template name $tplname. Final template must be under $self->{includepath}/$self->{relpath}");
         return undef;
     }
 }
@@ -219,10 +220,9 @@ sub tt
     my ($self) = @_;
 
     my $sane_tpl = $self->sanitize_template();
-    if (!$sane_tpl) {
-        $self->error("Invalid template name from module $self->{module}: $sane_tpl");
-        return;
-    }
+
+    # already logged in sanitize_template
+    return if (!$sane_tpl);
 
     my $tpl = get_template_instance($self->{includepath});
 

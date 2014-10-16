@@ -78,7 +78,7 @@ Test the unittest test.tt (if this test fails, the test itself is broken)
 =cut
 
 my $str;
-ok($tpl->process($sane_tpl, $contents, \$str, "Generation of test.tt")) or diag("Failed generation of test.tt TT error: " . $tpl->error(),
+ok($tpl->process($sane_tpl, $contents, \$str), "Generation of test.tt") or diag("Failed generation of test.tt TT error: " . $tpl->error(),
     "Test TT verified");
 is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
