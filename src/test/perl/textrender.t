@@ -149,6 +149,9 @@ isa_ok ($brokentrd, "CAF::TextRender", "Correct class after new method (but with
 ok(! defined($brokentrd->get_text()), "get_text returns undef, rendering failed");
 is("$brokentrd", "", "render failed, stringification returns empty string");
 
+# not cached
+ok(!exists($brokentrd->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
+
 =pod
 
 =head2 Test invalid module
