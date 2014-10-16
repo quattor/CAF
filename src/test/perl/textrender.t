@@ -192,12 +192,85 @@ is("$fh", $header.$res.$footer."\n", "File contents as expected");
 # test undef returned on render failure
 ok(! defined($brokentrd->filewriter("/my/file")), "render failed, filewriter returns undef");
 
+=pod
+
+=head2 Successful executions
+
+=cut
+
+
+=head2 Test sanitize_template
+
+Test that a template specified by Template::Toolkit is an existing
+file in the metaconfig template directory. 
+
+It's here where the security of the module (and all its users) is
+dealt with. After this, the component is allowed to trust all its
+inputs.
+
+=cut
+
+$trd->{ERROR} = 0;
 
 # force the internal module for testing purposes!
+
+$trd->{module} = "test.tt";
+is($trd->sanitize_template(), "rendertest/test.tt",
+   "Valid template is accepted");
+
+$trd->{module} = "test";
+is($trd->sanitize_template(), "rendertest/test.tt",
+   "Valid template may have an extension added to it");
+is($trd->{ERROR}, 0, "No errors logged");
+
+
+=pod
+
+=over 4
+
+=item * Absolute paths must be rejected
+
+Otherwise, we might leak files like /etc/shadow or private keys.
+
+=cut
+
 $trd->{module} = '/my/abs/path';
-ok(!defined($trd->sanitize_template()), "module as template can't be absolute path");
-$trd->{module} = 'nottest';
-ok(!defined($trd->sanitize_template()), "no TT file nottest");
+ok(! defined($trd->sanitize_template()), "Absolute paths are rejected");
+is($trd->{ERROR}, 1, "Error is reported");
+
+=pod
+
+=item * Non-existing files must be rejected
+
+They may abuse File::Spec.
+
+=cut
+
+$trd->{module} = 'lhljkhljhlh789gg';
+ok(!defined($trd->sanitize_template()), "Non-existing filenames are rejected");
+is($trd->{ERROR}, 2, "Non-existing templates are rejected, error logged");
+
+=pod
+
+=item * Templates must end up under C<<includepath>/<relpath>>
+
+Templates in this component are jailed to that directory, again to
+prevent cross-directory traversals.
+
+=back
+
+=cut
+
+# file has to exist (and has to be a file), otherwise it doesn't reach the jail regexp
+$trd->{module} = '../unreachable.tt';
+
+my $fn = "$trd->{includepath}/$trd->{relpath}/$trd->{module}";
+ok(-f $fn, "File $fn has to exist for test to make sense");
+
+ok(!$trd->sanitize_template(),
+   "It's not possible to leave the 'include/relpath' jail");
+is($trd->{ERROR}, 3, "TT files have live under 'includepath/relpath', error logged");
+
 
 =pod
 
