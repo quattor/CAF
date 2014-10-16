@@ -154,7 +154,6 @@ sub _initialize
     }
     $self->verbose("No caching") if (! $self->{usecache});
 
-    # set render method
     $self->{method} = $self->select_module_method();
     
     return SUCCESS;
@@ -281,6 +280,11 @@ set to false during the <CAF::TextRender> initialisation).
 sub get_text
 {
     my ($self, $clearcache) = @_;
+
+    if (! defined($self->{method})) {
+        # method undefined in case of invalid module
+        return;
+    }
 
     if ($clearcache) {
         $self->verbose("get_text clearing cache");

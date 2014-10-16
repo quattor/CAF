@@ -141,8 +141,23 @@ isa_ok ($brokentrd, "CAF::TextRender", "Correct class after new method (but with
 ok(! defined($brokentrd->get_text()), "get_text returns undef, rendering failed");
 is("$brokentrd", "", "render failed, stringification returns empty string");
 
-# not cached
-ok(!exists($brokentrd->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
+=pod
+
+=head2 Test invalid module
+
+Test invalid module
+
+=cut
+
+my $invalidtrd = CAF::TextRender->new('invalid module;', $contents,
+                                      includepath => getcwd()."/src/test/resources",
+                                      relpath => 'rendertest',
+                                      );
+isa_ok ($invalidtrd, "CAF::TextRender", "Correct class after new method (but with invalid module)");
+ok(! defined($invalidtrd->{method}), "invalid module result in undefined render method");
+ok(! defined($invalidtrd->get_text()), "get_text returns undef with invalid module/undefined method");
+is("$invalidtrd", "", "invalid module, stringification returns empty string");
+
 
 =pod
 
