@@ -17,6 +17,14 @@ sub get_name {
     return $gv->NAME;
 }
 
+my $mock = Test::MockModule->new('CAF::TextRender');
+$mock->mock('error', sub {
+   my $self = shift;
+   $self->{ERROR}++;
+   return 1;  
+});
+
+
 =pod
 
 =head1 SYNOPSIS
@@ -36,7 +44,7 @@ my $trd;
 
 $trd = CAF::TextRender->new('something', $contents);
 isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
-ok(!defined($trd->error('something')), "Fake logger initialised");
+ok(!defined($trd->warn('something')), "Fake logger initialised");
 
 $trd = CAF::TextRender->new('not_a_reserved_module', $contents);
 isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
@@ -215,6 +223,20 @@ $trd = CAF::TextRender->new('noeol', $contents,
 is($trd->{eol}, 1, "eol default to true");
 is("$trd", "$noeol\n", "noeol.tt with eol=1 rendered as expected");
 like("$trd", qr{\n$}, "Newline at end of rendered text (with eol=1)");
+
+=pod
+
+=head2 Test load_module failures
+
+Test load_module failures
+
+=cut
+
+$trd->{ERROR}=0;
+ok(!$trd->load_module('foobarbaz'), "Invalid module loading fails");
+ok($@, "Invalid module loading raises an exception");
+is($trd->{ERROR}, 1, "Error was reported");
+
 
 =pod
 
