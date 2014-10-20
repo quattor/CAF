@@ -182,7 +182,7 @@ my $fh = $trd->filewriter("/some/name");
 isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 is("$fh", $res, "File contents as expected");
 
-my $header = "HEADER"; # no newline, check TODO
+my $header = "HEADER"; # no newline, eol should add one
 my $footer = "FOOTER"; # no newline, eol should add one
 $fh = $trd->filewriter("/some/name",
                header => $header,
@@ -190,7 +190,7 @@ $fh = $trd->filewriter("/some/name",
                );
 isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 # add newline due to eol
-is("$fh", $header.$res.$footer."\n", "File contents as expected");
+is("$fh", $header."\n".$res.$footer."\n", "File contents as expected");
 
 # test undef returned on render failure
 ok(! defined($brokentrd->filewriter("/my/file")), "render failed, filewriter returns undef");

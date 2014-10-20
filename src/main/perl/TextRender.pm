@@ -345,8 +345,9 @@ and passed on. (If no C<log> option is provided,
 Two new options C<header> and C<footer> are supported 
  to resp. prepend and append to the rendered text.
 
-If C<eol> was set during initialisation, the footer will also be 
-checked for EOL. (EOL is also added to the rendered text if 
+If C<eol> was set during initialisation, the header and footer 
+will also be checked for EOL. 
+(EOL is still added to the rendered text if 
 C<eol> is set during initialisation, even if there is a footer 
 defined.)
 
@@ -367,8 +368,14 @@ sub filewriter
     
     my $cfh = CAF::FileWriter->new($file, %opts);
     
-    # TODO force newline after header?
-    print $cfh $header if defined($header);
+    if (defined($header)) {
+        print $cfh $header;
+
+        if($self->{eol} && $header !~ m/\n$/) {
+            $self->verbose("eol set, and header was missing final newline. adding newline.");
+            print $cfh "\n";
+        };
+    };
 
     print $cfh $text;
 
