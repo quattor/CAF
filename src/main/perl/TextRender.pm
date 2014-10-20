@@ -172,7 +172,7 @@ sub sanitize_template
     
     if (file_name_is_absolute($tplname)) {
         $self->error ("Must have a relative template name (got $tplname)");
-        return undef;
+        return;
     }
 
     if ($tplname !~ m{\.tt$}) {
@@ -186,7 +186,7 @@ sub sanitize_template
     $tplname = abs_path("$self->{includepath}/$tplname");
     if (!$tplname || !-f $tplname) {
         $self->error ("Non-existing template name $tplname given");
-        return undef;
+        return;
     }
 
     # untaint and sanitycheck
@@ -198,7 +198,7 @@ sub sanitize_template
         return $result_template;
     } else {
         $self->error ("Insecure template name $tplname. Final template must be under $self->{includepath}/$self->{relpath}");
-        return undef;
+        return;
     }
 }
 
@@ -230,7 +230,7 @@ sub tt
     if (!$tpl->process($sane_tpl, $self->{contents}, \$str)) {
         $self->error("Unable to process template for file $sane_tpl (module $self->{module}: ",
                      $tpl->error());
-        return undef;
+        return;
     }
     return $str;
 }
