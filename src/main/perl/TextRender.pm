@@ -45,7 +45,7 @@ CAF::TextRender - Class for rendering structured text
     $trd = CAF::TextRender->new($module, $contents, log => $self);
     # return CAF::FileWriter instance (rendered text already added)
     my $fh = $trd->filewriter('/some/path');
-    die "Problem rendering the text" if (! defined($fh));
+    die "Problem rendering the text" if (!defined($fh));
     $fh->close();
 
 =head1 DESCRIPTION
@@ -281,7 +281,7 @@ sub get_text
 {
     my ($self, $clearcache) = @_;
 
-    if (! defined($self->{method})) {
+    if (!defined($self->{method})) {
         # method undefined in case of invalid module
         return;
     }
