@@ -11,7 +11,7 @@ use CAF::Object;
 use LC::Exception qw (SUCCESS throw_error);
 use CAF::Reporter;
 
-@ISA = qw(CAF::Object CAF::Reporter);
+@ISA = qw(CAF::Reporter CAF::Object);
 
 
 BEGIN {

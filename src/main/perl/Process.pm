@@ -20,6 +20,7 @@ use File::Basename;
 
 use overload ('""' => 'stringify_command');
 
+# TODO is Reporter required here? (all loggers can now use the fake object logger without worries)
 our @ISA = qw (CAF::Object CAF::Reporter);
 
 =pod
