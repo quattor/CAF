@@ -13,15 +13,13 @@ use strict;
 use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 use LC::Process;
-use CAF::Reporter;
 use CAF::Object;
 use File::Which;
 use File::Basename;
 
 use overload ('""' => 'stringify_command');
 
-# TODO is Reporter required here? (all loggers can now use the fake object logger without worries)
-our @ISA = qw (CAF::Object CAF::Reporter);
+our @ISA = qw (CAF::Object);
 
 =pod
 
