@@ -160,6 +160,19 @@ sub _initialize
     return SUCCESS;
 }
 
+
+# Handle failures. Stores the error message and log it verbose and
+# returns undef. All failures should use 'return $self->fail("message");'.
+# No error logging should occur in this module. 
+sub fail
+{
+    my ($self, $message) = @_;
+    $self->{fail} = $message;
+    $self->verbose("FAIL: $message");
+    return;
+}
+
+
 # Convert the C<module> in an absolute template path.
 # The extension C<.tt> is optional for the module, but mandatory for 
 # the actual template file.
@@ -171,8 +184,7 @@ sub sanitize_template
     my $tplname = $self->{module};
     
     if (file_name_is_absolute($tplname)) {
-        $self->error ("Must have a relative template name (got $tplname)");
-        return;
+        return $self->fail("Must have a relative template name (got $tplname)");
     }
 
     if ($tplname !~ m{\.tt$}) {
@@ -185,8 +197,7 @@ sub sanitize_template
     $self->debug(3, "We must ensure that all templates lie below $self->{includepath}");
     $tplname = abs_path("$self->{includepath}/$tplname");
     if (!$tplname || !-f $tplname) {
-        $self->error ("Non-existing template name $tplname given");
-        return;
+        return $self->fail("Non-existing template name $tplname given");
     }
 
     # untaint and sanitycheck
@@ -197,8 +208,7 @@ sub sanitize_template
         $self->verbose("Using template $result_template for module $self->{module}");
         return $result_template;
     } else {
-        $self->error ("Insecure template name $tplname. Final template must be under $self->{includepath}/$self->{relpath}");
-        return;
+        return $self->fail("Insecure template name $tplname. Final template must be under $self->{includepath}/$self->{relpath}");
     }
 }
 
@@ -221,16 +231,15 @@ sub tt
 
     my $sane_tpl = $self->sanitize_template();
 
-    # already logged in sanitize_template
+    # failire already handled in sanitize_template
     return if (!$sane_tpl);
 
     my $tpl = get_template_instance($self->{includepath});
 
     my $str;
     if (!$tpl->process($sane_tpl, $self->{contents}, \$str)) {
-        $self->error("Unable to process template for file $sane_tpl (module $self->{module}: ",
-                     $tpl->error());
-        return;
+        return $self->fail("Unable to process template for file $sane_tpl (module $self->{module}: ",
+                           $tpl->error());
     }
     return $str;
 }
@@ -243,8 +252,7 @@ sub select_module_method {
     my ($self) = @_;
 
     if ($self->{module} !~ m{^([\w+/\.\-]+)$}) {
-        $self->error("Invalid configuration module: $self->{module}");
-        return;
+        return $self->fail("Invalid configuration module: $self->{module}");
     }
 
     my $method;
@@ -281,10 +289,8 @@ sub get_text
 {
     my ($self, $clearcache) = @_;
 
-    if (!defined($self->{method})) {
-        # method undefined in case of invalid module
-        return;
-    }
+    # method undefined in case of invalid module
+    return if (!defined($self->{method}));
 
     if ($clearcache) {
         $self->verbose("get_text clearing cache");
@@ -308,8 +314,9 @@ sub get_text
         };
         return $res;
     } else {
-        $self->error("Failed to render");
-        return;
+        my $msg = "Failed to render with module $self->{module}";
+        $msg .= ": $self->{fail}" if ($self->{fail});
+        return $self->fail($msg);
     }
 }
 
@@ -400,8 +407,7 @@ sub load_module
 
     eval "use $module";
     if ($@) {
-        $self->error("Unable to load $module: $@");
-        return;
+        return $self->fail("Unable to load $module: $@");
     }
     return 1;
 }

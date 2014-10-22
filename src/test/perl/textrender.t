@@ -213,8 +213,6 @@ inputs.
 
 =cut
 
-$trd->{ERROR} = 0;
-
 # force the internal module for testing purposes!
 
 $trd->{module} = "test.tt";
@@ -224,7 +222,6 @@ is($trd->sanitize_template(), "rendertest/test.tt",
 $trd->{module} = "test";
 is($trd->sanitize_template(), "rendertest/test.tt",
    "Valid template may have an extension added to it");
-is($trd->{ERROR}, 0, "No errors logged");
 
 
 =pod
@@ -239,7 +236,7 @@ Otherwise, we might leak files like /etc/shadow or private keys.
 
 $trd->{module} = '/my/abs/path';
 ok(! defined($trd->sanitize_template()), "Absolute paths are rejected");
-is($trd->{ERROR}, 1, "Error is reported");
+like($trd->{fail}, qr{Must have a relative template name}, "Error is reported");
 
 =pod
 
@@ -251,7 +248,7 @@ They may abuse File::Spec.
 
 $trd->{module} = 'lhljkhljhlh789gg';
 ok(!defined($trd->sanitize_template()), "Non-existing filenames are rejected");
-is($trd->{ERROR}, 2, "Non-existing templates are rejected, error logged");
+like($trd->{fail}, qr{Non-existing template name}, "Non-existing templates are rejected, error logged");
 
 =pod
 
@@ -272,7 +269,7 @@ ok(-f $fn, "File $fn has to exist for test to make sense");
 
 ok(!$trd->sanitize_template(),
    "It's not possible to leave the 'include/relpath' jail");
-is($trd->{ERROR}, 3, "TT files have live under 'includepath/relpath', error logged");
+like($trd->{fail}, qr{Insecure template name.*Final template must be under}, "TT files have live under 'includepath/relpath', error logged");
 
 
 =pod
@@ -308,10 +305,9 @@ Test load_module failures
 
 =cut
 
-$trd->{ERROR}=0;
 ok(!$trd->load_module('foobarbaz'), "Invalid module loading fails");
 ok($@, "Invalid module loading raises an exception");
-is($trd->{ERROR}, 1, "Error was reported");
+like($trd->{fail}, qr{Unable to load foobarbaz}, "Unable to load error was reported");
 
 
 =pod
@@ -405,5 +401,9 @@ EOF
 $trd = CAF::TextRender->new('general', $contents);
 ok($trd->load_module('Config::General'), "Config::General loaded");
 is("$trd", $res, "general module rendered correctly");
+
+# No error logging in the module
+ok(! exists($trd->{ERROR}), "No errors logged anywhere");
+
 
 done_testing();
