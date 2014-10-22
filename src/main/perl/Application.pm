@@ -22,7 +22,7 @@ use CAF::Log;
 use File::Basename;
 use POSIX;
 
-@ISA=qw(CAF::Object CAF::Reporter);
+@ISA=qw(CAF::Reporter CAF::Object);
 
 my $ec = LC::Exception::Context->new->will_store_all;
 

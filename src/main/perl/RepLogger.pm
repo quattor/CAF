@@ -15,7 +15,7 @@ use CAF::ReporterMany;
 use LC::Exception qw(SUCCESS);
 my $ec = LC::Exception::Context->new->will_store_all;
 
-@ISA = qw(CAF::Object CAF::ReporterMany);
+@ISA = qw(CAF::ReporterMany CAF::Object);
 
 sub new () {
     my $class = shift;

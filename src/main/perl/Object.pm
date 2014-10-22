@@ -11,14 +11,11 @@ package CAF::Object;
 
 use strict;
 our @ISA;
-#use CAF::Reporter;
 use LC::Exception qw (SUCCESS throw_error);
 
 our $NoAction;
 
 my $ec = LC::Exception::Context->new->will_store_all;
-
-#@ISA = qw(CAF::Reporter);
 
 =pod
 
@@ -131,6 +128,10 @@ sub _initialize {
 
 Convenience methods to acess the log instance that might 
 be passed during initialisation and set to $self->log.
+
+(When constructing classes via multiple inheritance, 
+C<CAF::Reporter> should precede C<CAF::Object> if you want 
+to use an absolute rather than a conditional logger). 
 
 =cut
 

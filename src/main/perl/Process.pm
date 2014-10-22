@@ -13,14 +13,13 @@ use strict;
 use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 use LC::Process;
-use CAF::Reporter;
 use CAF::Object;
 use File::Which;
 use File::Basename;
 
 use overload ('""' => 'stringify_command');
 
-our @ISA = qw (CAF::Object CAF::Reporter);
+our @ISA = qw (CAF::Object);
 
 =pod
 

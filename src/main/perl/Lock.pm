@@ -23,7 +23,7 @@ use FileHandle;
 use Exporter;
 use vars qw(@ISA @EXPORT @EXPORT_OK);
 
-@ISA = qw(CAF::Object CAF::Reporter Exporter);
+@ISA = qw(CAF::Reporter CAF::Object Exporter);
 
 @EXPORT_OK = qw(FORCE_ALWAYS FORCE_IF_STALE);
 
