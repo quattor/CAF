@@ -45,7 +45,7 @@ CAF::TextRender - Class for rendering structured text
     $trd = CAF::TextRender->new($module, $contents, log => $self);
     # return CAF::FileWriter instance (rendered text already added)
     my $fh = $trd->filewriter('/some/path');
-    die "Problem rendering the text" if (! defined($fh));
+    die "Problem rendering the text" if (!defined($fh));
     $fh->close();
 
 =head1 DESCRIPTION
@@ -160,6 +160,19 @@ sub _initialize
     return SUCCESS;
 }
 
+
+# Handle failures. Stores the error message and log it verbose and
+# returns undef. All failures should use 'return $self->fail("message");'.
+# No error logging should occur in this module. 
+sub fail
+{
+    my ($self, $message) = @_;
+    $self->{fail} = $message;
+    $self->verbose("FAIL: $message");
+    return;
+}
+
+
 # Convert the C<module> in an absolute template path.
 # The extension C<.tt> is optional for the module, but mandatory for 
 # the actual template file.
@@ -171,8 +184,7 @@ sub sanitize_template
     my $tplname = $self->{module};
     
     if (file_name_is_absolute($tplname)) {
-        $self->error ("Must have a relative template name (got $tplname)");
-        return undef;
+        return $self->fail("Must have a relative template name (got $tplname)");
     }
 
     if ($tplname !~ m{\.tt$}) {
@@ -185,8 +197,7 @@ sub sanitize_template
     $self->debug(3, "We must ensure that all templates lie below $self->{includepath}");
     $tplname = abs_path("$self->{includepath}/$tplname");
     if (!$tplname || !-f $tplname) {
-        $self->error ("Non-existing template name $tplname given");
-        return undef;
+        return $self->fail("Non-existing template name $tplname given");
     }
 
     # untaint and sanitycheck
@@ -197,8 +208,7 @@ sub sanitize_template
         $self->verbose("Using template $result_template for module $self->{module}");
         return $result_template;
     } else {
-        $self->error ("Insecure template name $tplname. Final template must be under $self->{includepath}");
-        return undef;
+        return $self->fail("Insecure template name $tplname. Final template must be under $self->{includepath}/$self->{relpath}");
     }
 }
 
@@ -220,18 +230,16 @@ sub tt
     my ($self) = @_;
 
     my $sane_tpl = $self->sanitize_template();
-    if (!$sane_tpl) {
-        $self->error("Invalid template name from module $self->{module}: $sane_tpl");
-        return;
-    }
+
+    # failire already handled in sanitize_template
+    return if (!$sane_tpl);
 
     my $tpl = get_template_instance($self->{includepath});
 
     my $str;
     if (!$tpl->process($sane_tpl, $self->{contents}, \$str)) {
-        $self->error("Unable to process template for file $sane_tpl (module $self->{module}: ",
-                     $tpl->error());
-        return undef;
+        return $self->fail("Unable to process template for file $sane_tpl (module $self->{module}: ",
+                           $tpl->error());
     }
     return $str;
 }
@@ -244,8 +252,7 @@ sub select_module_method {
     my ($self) = @_;
 
     if ($self->{module} !~ m{^([\w+/\.\-]+)$}) {
-        $self->error("Invalid configuration module: $self->{module}");
-        return;
+        return $self->fail("Invalid configuration module: $self->{module}");
     }
 
     my $method;
@@ -282,6 +289,9 @@ sub get_text
 {
     my ($self, $clearcache) = @_;
 
+    # method undefined in case of invalid module
+    return if (!defined($self->{method}));
+
     if ($clearcache) {
         $self->verbose("get_text clearing cache");
         delete $self->{_cache};
@@ -304,8 +314,9 @@ sub get_text
         };
         return $res;
     } else {
-        $self->error("Failed to render");
-        return;
+        my $msg = "Failed to render with module $self->{module}";
+        $msg .= ": $self->{fail}" if ($self->{fail});
+        return $self->fail($msg);
     }
 }
 
@@ -341,8 +352,9 @@ and passed on. (If no C<log> option is provided,
 Two new options C<header> and C<footer> are supported 
  to resp. prepend and append to the rendered text.
 
-If C<eol> was set during initialisation, the footer will also be 
-checked for EOL. (EOL is also added to the rendered text if 
+If C<eol> was set during initialisation, the header and footer 
+will also be checked for EOL. 
+(EOL is still added to the rendered text if 
 C<eol> is set during initialisation, even if there is a footer 
 defined.)
 
@@ -363,8 +375,14 @@ sub filewriter
     
     my $cfh = CAF::FileWriter->new($file, %opts);
     
-    # TODO force newline after header?
-    print $cfh $header if defined($header);
+    if (defined($header)) {
+        print $cfh $header;
+
+        if($self->{eol} && $header !~ m/\n$/) {
+            $self->verbose("eol set, and header was missing final newline. adding newline.");
+            print $cfh "\n";
+        };
+    };
 
     print $cfh $text;
 
@@ -389,8 +407,7 @@ sub load_module
 
     eval "use $module";
     if ($@) {
-        $self->error("Unable to load $module: $@");
-        return;
+        return $self->fail("Unable to load $module: $@");
     }
     return 1;
 }

@@ -17,6 +17,14 @@ sub get_name {
     return $gv->NAME;
 }
 
+my $mock = Test::MockModule->new('CAF::TextRender');
+$mock->mock('error', sub {
+   my $self = shift;
+   $self->{ERROR}++;
+   return 1;  
+});
+
+
 =pod
 
 =head1 SYNOPSIS
@@ -36,7 +44,7 @@ my $trd;
 
 $trd = CAF::TextRender->new('something', $contents);
 isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
-ok(!defined($trd->error('something')), "Fake logger initialised");
+ok(!defined($trd->warn('something')), "Fake logger initialised");
 
 $trd = CAF::TextRender->new('not_a_reserved_module', $contents);
 isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
@@ -70,7 +78,7 @@ Test the unittest test.tt (if this test fails, the test itself is broken)
 =cut
 
 my $str;
-ok($tpl->process($sane_tpl, $contents, \$str, "Generation of test.tt")) or diag("Failed generation of test.tt TT error: " . $tpl->error(),
+ok($tpl->process($sane_tpl, $contents, \$str), "Generation of test.tt") or diag("Failed generation of test.tt TT error: " . $tpl->error(),
     "Test TT verified");
 is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
@@ -146,6 +154,24 @@ ok(!exists($brokentrd->{_cache}), "Render failed, no caching of the event. (Fail
 
 =pod
 
+=head2 Test invalid module
+
+Test invalid module
+
+=cut
+
+my $invalidtrd = CAF::TextRender->new('invalid module;', $contents,
+                                      includepath => getcwd()."/src/test/resources",
+                                      relpath => 'rendertest',
+                                      );
+isa_ok ($invalidtrd, "CAF::TextRender", "Correct class after new method (but with invalid module)");
+ok(! defined($invalidtrd->{method}), "invalid module result in undefined render method");
+ok(! defined($invalidtrd->get_text()), "get_text returns undef with invalid module/undefined method");
+is("$invalidtrd", "", "invalid module, stringification returns empty string");
+
+
+=pod
+
 =head2 Test filehandle
 
 Test filehandle options
@@ -156,7 +182,7 @@ my $fh = $trd->filewriter("/some/name");
 isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 is("$fh", $res, "File contents as expected");
 
-my $header = "HEADER"; # no newline, check TODO
+my $header = "HEADER"; # no newline, eol should add one
 my $footer = "FOOTER"; # no newline, eol should add one
 $fh = $trd->filewriter("/some/name",
                header => $header,
@@ -164,17 +190,87 @@ $fh = $trd->filewriter("/some/name",
                );
 isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
 # add newline due to eol
-is("$fh", $header.$res.$footer."\n", "File contents as expected");
+is("$fh", $header."\n".$res.$footer."\n", "File contents as expected");
 
 # test undef returned on render failure
 ok(! defined($brokentrd->filewriter("/my/file")), "render failed, filewriter returns undef");
 
+=pod
+
+=head2 Successful executions
+
+=cut
+
+
+=head2 Test sanitize_template
+
+Test that a template specified by Template::Toolkit is an existing
+file in the metaconfig template directory. 
+
+It's here where the security of the module (and all its users) is
+dealt with. After this, the component is allowed to trust all its
+inputs.
+
+=cut
 
 # force the internal module for testing purposes!
+
+$trd->{module} = "test.tt";
+is($trd->sanitize_template(), "rendertest/test.tt",
+   "Valid template is accepted");
+
+$trd->{module} = "test";
+is($trd->sanitize_template(), "rendertest/test.tt",
+   "Valid template may have an extension added to it");
+
+
+=pod
+
+=over 4
+
+=item * Absolute paths must be rejected
+
+Otherwise, we might leak files like /etc/shadow or private keys.
+
+=cut
+
 $trd->{module} = '/my/abs/path';
-ok(!defined($trd->sanitize_template()), "module as template can't be absolute path");
-$trd->{module} = 'nottest';
-ok(!defined($trd->sanitize_template()), "no TT file nottest");
+ok(! defined($trd->sanitize_template()), "Absolute paths are rejected");
+like($trd->{fail}, qr{Must have a relative template name}, "Error is reported");
+
+=pod
+
+=item * Non-existing files must be rejected
+
+They may abuse File::Spec.
+
+=cut
+
+$trd->{module} = 'lhljkhljhlh789gg';
+ok(!defined($trd->sanitize_template()), "Non-existing filenames are rejected");
+like($trd->{fail}, qr{Non-existing template name}, "Non-existing templates are rejected, error logged");
+
+=pod
+
+=item * Templates must end up under C<<includepath>/<relpath>>
+
+Templates in this component are jailed to that directory, again to
+prevent cross-directory traversals.
+
+=back
+
+=cut
+
+# file has to exist (and has to be a file), otherwise it doesn't reach the jail regexp
+$trd->{module} = '../unreachable.tt';
+
+my $fn = "$trd->{includepath}/$trd->{relpath}/$trd->{module}";
+ok(-f $fn, "File $fn has to exist for test to make sense");
+
+ok(!$trd->sanitize_template(),
+   "It's not possible to leave the 'include/relpath' jail");
+like($trd->{fail}, qr{Insecure template name.*Final template must be under}, "TT files have live under 'includepath/relpath', error logged");
+
 
 =pod
 
@@ -200,6 +296,19 @@ $trd = CAF::TextRender->new('noeol', $contents,
 is($trd->{eol}, 1, "eol default to true");
 is("$trd", "$noeol\n", "noeol.tt with eol=1 rendered as expected");
 like("$trd", qr{\n$}, "Newline at end of rendered text (with eol=1)");
+
+=pod
+
+=head2 Test load_module failures
+
+Test load_module failures
+
+=cut
+
+ok(!$trd->load_module('foobarbaz'), "Invalid module loading fails");
+ok($@, "Invalid module loading raises an exception");
+like($trd->{fail}, qr{Unable to load foobarbaz}, "Unable to load error was reported");
+
 
 =pod
 
@@ -292,5 +401,9 @@ EOF
 $trd = CAF::TextRender->new('general', $contents);
 ok($trd->load_module('Config::General'), "Config::General loaded");
 is("$trd", $res, "general module rendered correctly");
+
+# No error logging in the module
+ok(! exists($trd->{ERROR}), "No errors logged anywhere");
+
 
 done_testing();
