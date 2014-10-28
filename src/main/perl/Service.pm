@@ -132,6 +132,9 @@ sub _initialize
     my ($self, $services, %opts) = @_;
 
     %opts = () if !%opts;
+
+    $opts{sleep} = DEFAULT_SLEEP if(!exists($opts{sleep}));
+
     $self->{services} = $services;
     $self->{options} = \%opts;
     return SUCCESS;
@@ -277,7 +280,8 @@ sub reload_solaris
 
 =item C<stop_sleep_start>
 
-Stops the daemon, sleep, and then start the dameon again
+Stops the daemon, sleep, and then start the dameon again. 
+Only when both C<stop> and C<start> are successful, return success.
 
 =cut
 
@@ -289,19 +293,12 @@ sub stop_sleep_start
 {
     my ($self, $sleep) = @_;
     
-    if (!defined($sleep)) {
-        if (defined($self->{options}->{sleep})) {
-            $sleep = $self->{options}->{sleep};
-        } else {
-            $sleep = DEFAULT_SLEEP;
-        }
-    }
+    $sleep = $self->{options}->{sleep} if (!defined($sleep));
 
 	my $stop = $self->stop();
 	sleep($sleep);
 	my $start = $self->start();
 	
-	# Only when both stop and start are successful, return success.
 	return $stop && $start;
 }
 
