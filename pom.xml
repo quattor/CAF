@@ -3,13 +3,13 @@
   <groupId>org.quattor.client.libraries</groupId>
   <artifactId>perl-CAF</artifactId>
   <packaging>pom</packaging>
-  <version>14.8.1-SNAPSHOT</version>
+  <version>14.10.0-rc1</version>
   <name>Configuration Cache Manager for Quattor</name>
   <parent>
     <groupId>org.quattor.maven</groupId>
     <artifactId>build-profile</artifactId>
     <version>1.38</version>
-    <relativePath/>
+    <relativePath />
   </parent>
   <licenses>
     <license>
@@ -53,7 +53,7 @@
     </contributor>
   </contributors>
   <properties>
-    <unittest></unittest>
+    <unittest />
   </properties>
   <profiles>
     <profile>
@@ -157,9 +157,9 @@
                 <configuration>
                   <tasks name="Rename">
                     <move filtering="true" todir="${project.build.directory}/doc/pod/CAF">
-                      <fileset dir="${project.build.directory}/doc/pod/CAF"/>
+                      <fileset dir="${project.build.directory}/doc/pod/CAF" />
                       <mapper>
-                        <globmapper from="*.pm" to="*.pod"/>
+                        <globmapper from="*.pm" to="*.pod" />
                       </mapper>
                     </move>
                     <echo>Renaming stuff?</echo>
