@@ -251,8 +251,8 @@ foreach my $method (qw(start stop restart reload)) {
 
         my @cmd = ('svcadm', '-v', SOLARIS_METHODS->{$method});
 
-        push(@cmd, "-r") if $self->{recursive};
-        push(@cmd, "-t") if !$self->{persistent};
+        push(@cmd, "-r") if $self->{options}->{recursive};
+        push(@cmd, "-t") if !$self->{options}->{persistent};
 
         return $self->_logcmd(@cmd, @{$self->{services}});
     };
@@ -264,8 +264,9 @@ sub restart_solaris
 
     my @cmd = ('svcadm', '-v', 'restart');
 
-    push(@cmd, "-s") if $self->{synchronous} || $self->{timeout};
-    push(@cmd, "-T", $self->{timeout}) if $self->{timeout};
+    # TODO timeout=0? -> defined() or not?
+    push(@cmd, "-s") if $self->{options}->{synchronous} || $self->{options}->{timeout};
+    push(@cmd, "-T", $self->{options}->{timeout}) if defined($self->{options}->{timeout});
     return $self->_logcmd(@cmd, @{$self->{services}});
 }
 
