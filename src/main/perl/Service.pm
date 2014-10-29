@@ -16,6 +16,8 @@ use LC::Exception qw (SUCCESS);
 our $AUTOLOAD;
 use base qw(CAF::Object);
 
+use constant DEFAULT_SLEEP => 5;
+
 # Mapping the methods we expose here to the svcadm operations. We
 # choose the Linux terms for our API.
 use constant SOLARIS_METHODS => {
@@ -39,7 +41,7 @@ platforms
     $srv->stop();
     $srv->start();
     $srv->restart();
-    $srv->stop_sleep_start($delay);
+    $srv->stop_sleep_start();
 
 Will do the right thing with SystemV Init scripts, Systemd units and
 Solaris' C<svcadm>.
@@ -93,6 +95,11 @@ correct way to handle timeouts in systemd is to store them in the unit
 file, which will ensure they are respected in any context that unit
 may be called.
 
+=item C<sleep>.
+
+Used only in C<stop_sleep_start>. Determines the number of 
+seconds to sleep after C<stop> before proceeding with C<start>.
+
 =item C<persistent>
 
 Used only in the Solaris variant of C<start> and C<stop>.  Make the
@@ -117,6 +124,7 @@ If no C<timeout> was passed, it will wait forever.
 
 =back
 
+
 =cut
 
 sub _initialize
@@ -124,11 +132,16 @@ sub _initialize
     my ($self, $services, %opts) = @_;
 
     %opts = () if !%opts;
+
+    $opts{sleep} = DEFAULT_SLEEP if(!exists($opts{sleep}));
+
     $self->{services} = $services;
     $self->{options} = \%opts;
     return SUCCESS;
 }
 
+# Execute and log the result. Logs with error on failure, 
+# verbose on success. Returns 0 on error, 1 on success.
 sub _logcmd
 {
     my ($self, @cmd) = @_;
@@ -186,6 +199,29 @@ sub create_process_solaris
     return $proc;
 }
 
+=pod
+ 
+=head2 Public methods
+
+=over
+
+=item C<restart>
+
+Restarts the daemons.
+
+=item C<start>
+
+Starts the daemons.
+
+=item C<stop>
+
+Stops the daemons
+
+=item C<reload>
+
+Reloads the daemons
+
+=cut
 
 
 # The restart, start and stop methods are identical on each Linux
@@ -239,6 +275,33 @@ sub reload_solaris
 
     return $self->_logcmd(qw(svcadm -v refresh), @{$self->{services}});
 }
+
+=pod
+
+=item C<stop_sleep_start>
+
+Stops the daemon, sleep, and then start the dameon again. 
+Only when both C<stop> and C<start> are successful, return success.
+
+=cut
+
+# The C<stop_sleep_start> method reuses the C<stop> and C<start> methods.
+# It accepts an argument that is the time to sleep, and precedes the 
+# sleep defined during initialization or the module default. 
+# Returns 1 if C<stop> and C<start> were successful, 0 otherwise.
+sub stop_sleep_start
+{
+    my ($self, $sleep) = @_;
+    
+    $sleep = $self->{options}->{sleep} if (!defined($sleep));
+
+	my $stop = $self->stop();
+	sleep($sleep);
+	my $start = $self->start();
+	
+	return $stop && $start;
+}
+
 
 # Determine the OS flavour. (Also allows mocking the flavour for unittests)
 sub os_flavour
@@ -297,21 +360,7 @@ sub AUTOLOAD
 
 __END__
 
-=head2 Public methods
-
-=over
-
-=item C<restart>
-
-Restarts the daemons.
-
-=item C<start>
-
-Starts the daemons.
-
-=item C<stop>
-
-Stops the daemons
+=pod
 
 =back
 
