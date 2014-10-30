@@ -87,10 +87,10 @@ $srv->reload_solaris();
 ok(get_command('svcadm -v refresh ntpd sshd'),
    "reload mapped to svcadm's refresh operation");
 
-$srv->{timeout} = 42;
+$srv->{options}->{timeout} = 42;
 $srv->restart_solaris();
 
-ok(get_command("svcadm -v restart -s -T $srv->{timeout} ntpd sshd"),
+ok(get_command("svcadm -v restart -s -T $srv->{options}->{timeout} ntpd sshd"),
    "svcadm restart handles timeouts the Solaris way");
 
 command_history_reset;
@@ -98,5 +98,17 @@ $srv->stop_sleep_start(1);
 ok(command_history_ok(["svcadm -v disable -t ntpd sshd",
                        "svcadm -v enable -t ntpd sshd" 
                       ]), "stop_sleep_start svcadm disable/stop works");
+
+my $srvopts = CAF::Service->new(['ntpd', 'sshd'], 
+                                timeout => 0,
+                                persistent => 1,
+                                recursive => 1,
+                                synchronous => 1);
+
+$srvopts->restart_solaris();
+$srvopts->start_solaris();
+ok(get_command("svcadm -v enable -r ntpd sshd"), "timeout=0/recursive/persistent svcadm enable/start works");
+ok(get_command("svcadm -v restart -s -T $srvopts->{options}->{timeout} ntpd sshd"),
+   "timeout=0/recursive/persistent svcadm restart the Solaris way");
 
 done_testing();
