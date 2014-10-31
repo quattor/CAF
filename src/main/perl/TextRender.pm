@@ -14,8 +14,17 @@ use LC::Exception qw (SUCCESS);
 use CAF::FileWriter;
 use Cwd qw(abs_path);
 use File::Spec::Functions qw(file_name_is_absolute);
+
+# Support for TT (the default/fallback)
 use Template;
 use Template::Stash;
+
+# Mandatory support for other formats
+use JSON::XS;
+use YAML::XS;
+use Config::Properties;
+use Config::Tiny;
+use Config::General;
 
 use Readonly;
 
@@ -399,6 +408,13 @@ sub filewriter
 }
 
 # Given Perl C<module>, load it.
+# 
+# To be used like '$self->load_module("External::Module") or return;'
+# in any new render_X method that does and/or can not have the module 
+# to use as a mandatory module (via a 'use External::Module;').
+# When adding such functionality, it will be left to the consumer to enforce
+# the dependecy in the packaging (e.g. by setting a 'use External::Module;' 
+# in the consumer code or by adding a '<require>' entry in the maven pom.xml)
 sub load_module
 {
     my ($self, $module) = @_;
@@ -417,7 +433,6 @@ sub render_json
 {
     my ($self) = @_;
 
-    $self->load_module("JSON::XS") or return;
     my $j = JSON::XS->new();
     $j->canonical(1); # sort the keys, to create reproducable results
     return $j->encode($self->{contents});
@@ -428,8 +443,6 @@ sub render_yaml
 {
     my ($self, $cfg) = @_;
 
-    $self->load_module("YAML::XS") or return;
-
     return YAML::XS::Dump($self->{contents});
 }
 
@@ -438,8 +451,6 @@ sub render_yaml
 sub render_properties
 {
     my ($self) = @_;
-
-    $self->load_module("Config::Properties") or return;
 
     my $config = Config::Properties->new(order => 'alpha'); # order results
     $config->setFromTree($self->{contents});
@@ -450,8 +461,6 @@ sub render_properties
 sub render_tiny
 {
     my ($self, $cfg) = @_;
-
-    $self->load_module("Config::Tiny") or return;
 
     my $c = Config::Tiny->new();
 
@@ -470,7 +479,6 @@ sub render_general
 {
     my ($self, $cfg) = @_;
 
-    $self->load_module("Config::General") or return;
     my $c = Config::General->new(-SaveSorted => 1); # sort output
     return $c->save_string($self->{contents});
 }
