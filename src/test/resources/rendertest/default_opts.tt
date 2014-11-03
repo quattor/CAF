@@ -1,0 +1,9 @@
+[%- # Test STRICT and RECURISVE -%]
+[%- # STRICT: do not fail when using unknown variables 
+    unknown -%]
+[%- # RECURSIVE don't fail when detecting recursive includes
+    # INCLUDE statement copies all variables; make sure to stop the recursion condition somehow
+    IF recursion;
+        INCLUDE "rendertest/default_opts.tt" data=recursion.data recursion=0;
+    END -%]
+[% data %]

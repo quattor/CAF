@@ -32,6 +32,9 @@ Readonly::Scalar my $DEFAULT_INCLUDE_PATH => '/usr/share/templates/quattor';
 Readonly::Scalar my $DEFAULT_RELPATH => 'metaconfig';
 Readonly::Scalar my $DEFAULT_USECACHE => 1;
 
+Readonly::Scalar my $DEFAULT_TT_STRICT => 0;
+Readonly::Scalar my $DEFAULT_TT_RECURSION => 1;
+
 use base qw(CAF::Object);
 
 use overload ('""' => '_stringify');
@@ -126,6 +129,12 @@ or something similar for that).
 If C<usecache> is false, the text is always re-rendered. 
 Default is to cache the rendered text (C<usecache> is true).
 
+=item C<ttoptions>
+
+A hash-reference C<ttoptions> with Template Toolkit options, 
+except for INCLUDE_PATH which is forced via C<includepath> option. 
+By default, STRICT (default 0) and RECURSION (default 1) are set.
+
 =back
 
 =back
@@ -163,6 +172,15 @@ sub _initialize
     }
     $self->verbose("No caching") if (! $self->{usecache});
 
+    # Set TT options
+    $self->{ttoptions} = {
+        STRICT => $DEFAULT_TT_STRICT,
+        RECURSION => $DEFAULT_TT_RECURSION,
+    };
+    while (my ($key, $value) = each %{$opts{ttoptions}}) {
+        $self->{ttoptions}->{$key} = $value;
+    }
+
     # set render method
     $self->{method} = $self->select_module_method();
     
@@ -175,9 +193,9 @@ sub _initialize
 # No error logging should occur in this module. 
 sub fail
 {
-    my ($self, $message) = @_;
-    $self->{fail} = $message;
-    $self->verbose("FAIL: $message");
+    my ($self, @messages) = @_;
+    $self->{fail} = join('', @messages);
+    $self->verbose("FAIL: ", $self->{fail});
     return;
 }
 
@@ -224,11 +242,16 @@ sub sanitize_template
 # Return a Template::Toolkit instance
 # (from ncm-ncd Component module)
 # Mandatory argument C<includepath> to set the INCLUDE_PATH
+# Other options can be passed via named arguments.
 sub get_template_instance 
 {
-    my ($includepath) = @_;
+    my ($includepath, %opts) = @_;
     $Template::Stash::PRIVATE = undef;
-    my $template = Template->new(INCLUDE_PATH => $includepath);
+
+    # force the includepath
+    $opts{INCLUDE_PATH} = $includepath;
+
+    my $template = Template->new(%opts);
     return $template;    
 }
 
@@ -243,7 +266,7 @@ sub tt
     # failire already handled in sanitize_template
     return if (!$sane_tpl);
 
-    my $tpl = get_template_instance($self->{includepath});
+    my $tpl = get_template_instance($self->{includepath}, %{$self->{ttoptions}});
 
     my $str;
     if (!$tpl->process($sane_tpl, $self->{contents}, \$str)) {

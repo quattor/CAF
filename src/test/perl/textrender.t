@@ -104,6 +104,35 @@ Test rendering the text and stringification overload
 is($trd->get_text(), $res, "stringification successful");
 is("$trd", $res, "stringification overload successful");
 
+=head2 Test TT default STRICT and RECURSION options
+
+Test default STRICT  = 0 and RECURSION = 1 settings
+
+=cut
+
+my $defttoptstrd = CAF::TextRender->new('default_opts', { data => 'level0', recursion => { data => 'level1' }},
+                                        includepath => getcwd()."/src/test/resources",
+                                        relpath => 'rendertest',
+                                        );
+isa_ok ($defttoptstrd, "CAF::TextRender", "Correct class after new method (default tt options)");
+is("$defttoptstrd", "level1\nlevel0\n", "Template rendered (no fail due to STRICT) and RECURSION supported correctly");
+ok(! $defttoptstrd->{fail}, "No error is reported");
+
+
+=head2 Test TT options
+
+Test passing TT options such as CONSTANTS via the ttoptions hash-ref
+
+=cut
+
+my $ttoptstrd = CAF::TextRender->new('const', {},
+                                      includepath => getcwd()."/src/test/resources",
+                                      relpath => 'rendertest',
+                                      ttoptions => { CONSTANTS => { magic => 'magic' } }
+                                      );
+isa_ok ($ttoptstrd, "CAF::TextRender", "Correct class after new method (tt options; empty contents)");
+is("$ttoptstrd", "magic\n", "Template rendered constants correctly");
+
 =pod 
 
 =head2 Test cache
@@ -148,6 +177,8 @@ my $brokentrd = CAF::TextRender->new('test_broken', $contents,
 isa_ok ($brokentrd, "CAF::TextRender", "Correct class after new method (but with broken TT)");
 ok(! defined($brokentrd->get_text()), "get_text returns undef, rendering failed");
 is("$brokentrd", "", "render failed, stringification returns empty string");
+like($brokentrd->{fail}, qr{Failed to render with module .*: Unable to process template for file }, "Error is reported");
+
 
 # not cached
 ok(!exists($brokentrd->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
