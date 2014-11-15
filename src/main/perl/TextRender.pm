@@ -222,9 +222,12 @@ sub sanitize_template
     $tplname = "$self->{relpath}/$tplname" if $self->{relpath};
 
     $self->debug(3, "We must ensure that all templates lie below $self->{includepath}");
-    $tplname = abs_path("$self->{includepath}/$tplname");
+    my $abs_tplname = "$self->{includepath}/$tplname";
+    $tplname = abs_path($abs_tplname);
     if (!$tplname || !-f $tplname) {
-        return $self->fail("Non-existing template name $tplname given");
+        # abs_path returns undef on non-existing path; use this to avoid uninitialized warning
+        $tplname = '<undef>' if ! defined($tplname);
+        return $self->fail("Non-existing template name $tplname given (abs_path of $abs_tplname)");
     }
 
     # untaint and sanitycheck
