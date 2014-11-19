@@ -135,6 +135,8 @@ sub _initialize
 
     $opts{sleep} = DEFAULT_SLEEP if(!exists($opts{sleep}));
 
+    $self->{log} = delete $opts{log};
+
     $self->{services} = $services;
     $self->{options} = \%opts;
     return SUCCESS;
@@ -148,13 +150,11 @@ sub _logcmd
 
     my $proc = $self->create_process(@cmd);
     $proc->execute();
-    my $logger = $self->{options}->{log};
     my $method = $? ? "error" : "verbose";
 
-    $logger->$method("Command ", join(" ", @_), " produced stdout: ",
+    $self->$method("Command ", join(" ", @_), " produced stdout: ",
                      "$proc->{OPTIONS}->{stdout} and stderr: ",
-                     $proc->{OPTIONS}->{stderr})
-        if $logger;
+                     $proc->{OPTIONS}->{stderr});
     return !$?;
 }
 
@@ -166,9 +166,15 @@ sub create_process_linux_sysv
 {
     my ($self, @cmd) = @_;
 
+    my $timeout = $self->{options}->{timeout};
+    if(!defined($timeout)) {
+        $self->debug(3, "Timeout undefined, set timeout to 0");
+        $timeout=0;
+    }
+    
     my $proc = CAF::Process->new(\@cmd,
-                                 log => $self->{options}->{log},
-                                 timeout => $self->{options}->{timeout},
+                                 log => $self->{log},
+                                 timeout => $timeout,
                                  stdout => \my $stdout,
                                  stderr => \my $stderr);
     return $proc;
@@ -180,7 +186,7 @@ sub create_process_linux_systemd
     my ($self, @cmd) = @_;
 
     my $proc = CAF::Process->new(\@cmd,
-                                 log => $self->{options}->{log},
+                                 log => $self->{log},
                                  stdout => \my $stdout,
                                  stderr => \my $stderr);
     return $proc;
@@ -193,7 +199,7 @@ sub create_process_solaris
     my ($self, @cmd) = @_;
 
     my $proc = CAF::Process->new(\@cmd,
-                                 log => $self->{options}->{log},
+                                 log => $self->{log},
                                  stdout => \my $stdout,
                                  stderr => \my $stderr);
     return $proc;
