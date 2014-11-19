@@ -292,8 +292,9 @@ sub select_module_method {
 
     my $method;
 
-    if ($method = $self->can("render_".lc($1))) {
-        $self->debug(3, "Rendering module $self->{module} with $method");
+    my $method_name = "render_".lc($1);
+    if ($method = $self->can($method_name)) {
+        $self->debug(3, "Rendering module $self->{module} with method $method_name");
     } else {
         $method = \&tt;
         $self->debug(3, "Using Template::Toolkit to render module $self->{module}");
