@@ -166,9 +166,15 @@ sub create_process_linux_sysv
 {
     my ($self, @cmd) = @_;
 
+    my $timeout = $self->{options}->{timeout};
+    if(!defined($timeout)) {
+        $self->debug(3, "Timeout undefined, set timeout to 0");
+        $timeout=0;
+    }
+    
     my $proc = CAF::Process->new(\@cmd,
                                  log => $self->{options}->{log},
-                                 timeout => $self->{options}->{timeout},
+                                 timeout => $timeout,
                                  stdout => \my $stdout,
                                  stderr => \my $stderr);
     return $proc;
