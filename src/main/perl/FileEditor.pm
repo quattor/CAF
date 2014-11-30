@@ -424,12 +424,14 @@ The following constants are automatically exported when using this module:
 =item C<BEGINNING_OF_FILE>
 
 Flag to pass to C<add_or_replace_lines>. Lines should be added at the
-beginning of the file.
+beginning of the file. (To be used in list context, as this is actually 
+C<(SEEK_SET, 0)>.)
 
 =item C<ENDING_OF_FILE>
 
 Flag to pass to C<add_or_replace_lines>. Lines should be added at the
-end of the file.
+end of the file. (To be used in list context, as this is actually 
+C<(SEEK_END, 0)>.)
 
 =back
 
