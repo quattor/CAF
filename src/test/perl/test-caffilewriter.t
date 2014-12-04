@@ -136,8 +136,7 @@ print $fh TEXT;
 is ("$fh", TEXT, "Stringify works");
 like ($fh, qr(En un lugar), "Regexp also works");
 $fh->close();
-ok(!exists ($opts{contents}), "Nothing is written when NoAction is specified");
-
+ok(exists ($opts{noaction}), "NoAction flag is passed to LC");
 
 # Check that the diff works
 close($log);
