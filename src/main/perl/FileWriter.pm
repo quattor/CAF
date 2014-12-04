@@ -135,7 +135,7 @@ sub new
     *$self->{options}->{group} = $opts{group} if exists ($opts{group});
     *$self->{options}->{backup} = $opts{backup} if exists ($opts{backup});
     *$self->{save} = 1;
-    *$self->{NoAction} = $CAF::Object::NoAction;
+    *$self->{options}->{noaction} = $CAF::Object::NoAction;
     return bless ($self, $class);
 }
 
@@ -167,9 +167,6 @@ sub close
     my $self = shift;
     my ($str, $ret, $cmd, $diff);
 
-    if ($self->noAction()) {
-        $self->cancel();
-    }
 
     # We have to do this because Text::Diff is not present in SL5. :(
     if (*$self->{LOG} && $CAF::Reporter::_REP_SETUP->{VERBOSE}
@@ -234,7 +231,7 @@ Returns the NoAction flag value (boolean)
 sub noAction
 {
     my $self = shift;
-    return *$self->{NoAction};
+    return *$self->{options}->{noaction};
 }
 
 =pod
