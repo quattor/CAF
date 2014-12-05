@@ -135,7 +135,8 @@ sub new
     *$self->{options}->{group} = $opts{group} if exists ($opts{group});
     *$self->{options}->{backup} = $opts{backup} if exists ($opts{backup});
     *$self->{save} = 1;
-    *$self->{options}->{noaction} = $CAF::Object::NoAction;
+    *$self->{options}->{noaction} = defined($CAF::Object::NoAction) ?
+	    $CAF::Object::NoAction : 0;
     return bless ($self, $class);
 }
 
