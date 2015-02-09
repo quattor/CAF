@@ -479,8 +479,22 @@ sub render_properties
 {
     my ($self) = @_;
 
-    my $config = Config::Properties->new(order => 'alpha'); # order results
+    # recent versions of Config::Properties support order => 'alpha' 
+    # for aplabetic key sorting when writing
+    # Default is 'keep', based on linenumbers. In the usage here, it 
+    # means first parsed entry is on first line. For an unordered hash, 
+    # this is not predicatable/reproducable. So we will sort the linenumbers
+    # and use linenumber sorted output.
+    my $config = Config::Properties->new(order => 'keep');
     $config->setFromTree($self->{contents});
+    
+    # force linenumbers
+    my $line=1;
+    foreach my $k (sort(keys %{$config->{properties}})) {
+        $config->{property_line_numbers}{$k} = $line;
+        $line++;
+    }
+    
     return $config->saveToString();
 }
 

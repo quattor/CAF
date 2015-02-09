@@ -124,9 +124,9 @@ sub _initialize {
   return undef;
 }
 
-=item error, warn, info, verbose, debug
+=item error, warn, info, verbose, debug, report
 
-Convenience methods to acess the log instance that might 
+Convenience methods to access the log instance that might 
 be passed during initialisation and set to $self->log.
 
 (When constructing classes via multiple inheritance, 
@@ -136,7 +136,7 @@ to use an absolute rather than a conditional logger).
 =cut
 
 no strict 'refs';
-foreach my $i (qw(error warn info verbose debug)) {
+foreach my $i (qw(error warn info verbose debug report)) {
 *{$i} = sub {
             my ($self, @args) = @_;
             return $self->{log}->$i(@args) if $self->{log};
