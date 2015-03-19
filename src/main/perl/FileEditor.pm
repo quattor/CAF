@@ -51,11 +51,19 @@ for C<CAF::FileWriter>
 
 =cut
 
+# FileEditor supports reading/editing a file
+sub _is_valid_source
+{
+    my ($self, $fn) = @_;
+    return -f $fn;
+}
+
+
 sub new
 {
     my $class = shift;
     my $self = $class->SUPER::new (@_);
-    if (-f *$self->{filename}) {
+    if ($self->_is_valid_source(*$self->{filename})) {
         my $txt = LC::File::file_contents (*$self->{filename});
         $self->IO::String::open ($txt);
         $self->seek(IO_SEEK_END);
