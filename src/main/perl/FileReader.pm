@@ -34,6 +34,13 @@ effect, the C<FileWriter> is C<cancel>-ed.
 
 =cut
 
+# FileReader supports reading a file or pipe
+sub _is_valid_source
+{
+    my ($self, $fn) = @_;
+    return -f $fn || -p $fn;
+}
+
 sub new
 {
     my ($class, @opts) = @_;
