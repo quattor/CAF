@@ -1,11 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::Object class
-#
 
 package CAF::Object;
 
@@ -148,26 +144,6 @@ use strict 'refs';
 =pod
 
 =back
-
-=cut
-
-#------------------------------------------------------------
-#                      Other doc
-#------------------------------------------------------------
-
-=pod
-
-=head1 SEE ALSO
-
-CAF::Application
-
-=head1 AUTHORS
-
-Ian Neilson, German Cancio
-
-=head1 VERSION
-
-$Id: Object.pm,v 1.4 2008/09/26 14:06:40 poleggi Exp $
 
 =cut
 

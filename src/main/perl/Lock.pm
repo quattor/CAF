@@ -1,14 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::Lock class
-#
-# Written by German Cancio <German.Cancio@cern.ch>,
-# (C) 2005 German Cancio / ELFms/Quattor/CERN
-#
 
 package CAF::Lock;
 
@@ -314,26 +307,6 @@ sub DESTROY {
 =pod
 
 =back
-
-=cut
-
-#------------------------------------------------------------
-#                      Other doc
-#------------------------------------------------------------
-
-=pod
-
-=head1 SEE ALSO
-
-CAF::Object, LC::Exception, CAF::Reporter
-
-=head1 AUTHORS
-
-German Cancio <German.Cancio@cern.ch>
-
-=head1 VERSION
-
-$Id: Lock.pm,v 1.4 2005/05/06 21:12:31 gcancio Exp $
 
 =cut
 

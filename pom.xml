@@ -51,6 +51,9 @@
       <name>Ben Jones</name>
       <email>ben.jones@morganstanleylcom</email>
     </contributor>
+    <contributor>
+      <name>Ian Neilson</name>
+    </contributor>
   </contributors>
   <properties>
     <unittest />

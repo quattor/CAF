@@ -1,10 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-# CAF::ReporterMany class
-
 
 package CAF::ReporterMany;
 

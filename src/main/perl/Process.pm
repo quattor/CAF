@@ -1,11 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::Process class
-# Written by Luis Fernando MuÃ±oz MejÃ­as <mejias@delta.ft.uam.es>
 
 package CAF::Process;
 
