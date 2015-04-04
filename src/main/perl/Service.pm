@@ -2,9 +2,6 @@
 # ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::Service class
 
 package CAF::Service;
 

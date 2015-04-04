@@ -1,14 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::Reporter class
-#
-# Written by German Cancio <German.Cancio@cern.ch>
-# (C) 2003 German Cancio & EU DataGrid http://www.edg.org
-
 
 package CAF::Reporter;
 
@@ -339,26 +332,6 @@ sub syslog {
 =pod
 
 =back
-
-=cut
-
-#------------------------------------------------------------
-#                      Other doc
-#------------------------------------------------------------
-
-=pod
-
-=head1 SEE ALSO
-
-LC::Exception, CAF::Application, CAF::Log
-
-=head1 AUTHORS
-
-German Cancio (German.Cancio@cern.ch)
-
-=head1 VERSION
-
-$Id: Reporter.pm,v 1.12 2008/10/21 15:52:58 munoz Exp $
 
 =cut
 
