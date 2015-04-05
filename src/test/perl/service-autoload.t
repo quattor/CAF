@@ -1,6 +1,7 @@
 # -*- perl -*-
 use strict;
 use warnings;
+use lib 'src/test/resources';
 use Test::More;
 use Test::Quattor;
 use CAF::Service;

@@ -1,6 +1,7 @@
 # -*- mode: cperl -*-
 use strict;
 use warnings;
+use lib 'src/test/resources';
 use Test::More;
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 

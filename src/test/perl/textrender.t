@@ -1,11 +1,28 @@
 # -*- perl -*-
 use strict;
 use warnings;
+
 use Test::More;
-use Test::Quattor;
+
+use EDG::WP4::CCM::CCfg;
+
+BEGIN {
+
+    # Force typed json for improved testing
+    # Use BEGIN to make sure it is executed before the import from Test::Quattor
+    ok(EDG::WP4::CCM::CCfg::_setCfgValue('json_typed', 1), 'json_typed enabled');
+}
+
+use Test::Quattor qw(textrender);
 use CAF::TextRender;
 use Test::MockModule;
 use Cwd;
+use CAF::Object;
+
+# No CAF::File* testing here
+$CAF::Object::NoAction = 1;
+
+ok(EDG::WP4::CCM::CCfg::getCfgValue('json_typed'), 'json_typed (still) enabled');
 
 use B qw(svref_2object);
 
@@ -182,6 +199,23 @@ like($brokentrd->{fail}, qr{Failed to render with module .*: Unable to process t
 
 # not cached
 ok(!exists($brokentrd->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
+
+=pod
+
+=head2 Test contents failure
+
+=cut
+
+my $brokencont = CAF::TextRender->new('yaml', [qw(not_a_hash_nor_Element)]);
+isa_ok ($brokencont, "CAF::TextRender", "Correct class after new method (but with broken contents)");
+ok(! defined($brokencont->get_text()), "get_text returns undef, contents failed");
+is("$brokencont", "", "render failed, stringification returns empty string");
+like($brokencont->{fail}, 
+     qr{Contents passed is neither a hashref or a EDG::WP4::CCM::Element instance \(ref ARRAY\)}, 
+     "Error is reported");
+
+# not cached
+ok(!exists($brokencont->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
 
 =pod
 
@@ -435,6 +469,23 @@ is("$trd", $res, "general module rendered correctly");
 
 # No error logging in the module
 ok(! exists($trd->{ERROR}), "No errors logged anywhere");
+
+=pod
+
+=head2 contents is element
+
+Test the contents is element, and getTree element options
+
+=cut
+
+my $cfg = get_config_for_profile("textrender");
+my $el;
+
+$el = $cfg->getElement("/");
+$trd = CAF::TextRender->new('json', $el);
+is("$trd", 
+   '{"a":"a","b":"1","c":"1","d":true,"e":false,"f":"1.5","g":["g1","g2"],"h":{"a":"a","b":"1","c":"1","d":true,"e":false}}'."\n", 
+   "Correct JSON rendered");
 
 
 done_testing();

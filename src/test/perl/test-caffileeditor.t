@@ -1,8 +1,7 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use FindBin qw($Bin);
-use lib "$Bin/", "$Bin/..", "$Bin/../../perl-LC";
+use lib 'src/test/resources';
 use testapp;
 use CAF::FileEditor;
 use Test::More;
