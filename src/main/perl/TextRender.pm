@@ -255,7 +255,12 @@ sub _initialize
 
     $self->{log} = $opts{log} if $opts{log};
 
-    $self->{elementopts} = $opts{element};
+    if (defined($opts{element})) {
+        # Make a (modifiable) copy
+        $self->{elementopts} = { %{$opts{element}} };
+    } else {
+        $self->{elementopts} = {};
+    }
 
     if (exists($opts{eol})) {
         $self->{eol} = $opts{eol};
