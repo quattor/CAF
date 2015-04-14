@@ -596,6 +596,7 @@ and need to get its output and error:
     my $proc = CAF::Process->new (["cat", "-"], stdin => $stdin,
                                   stdout => \$stdout
                                   stderr => \$stderr);
+    $proc->execute();
 
 And we'll have the command's standard output and error on $stdout and
 $stderr.
