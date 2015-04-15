@@ -1,9 +1,8 @@
 #!/usr/bin/perl
 
-use FindBin qw($Bin);
-use lib "$Bin/";
 use strict;
 use warnings;
+use lib 'src/test/resources';
 use testapp;
 use CAF::Process;
 use Test::More;

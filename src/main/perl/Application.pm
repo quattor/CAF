@@ -1,14 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::Application class
-#
-# Written by German Cancio <German.Cancio@cern.ch>
-# (C) 2003 German Cancio & EU DataGrid http://www.edg.org
-#
 
 package CAF::Application;
 
@@ -571,26 +564,6 @@ END {
 =pod
 
 =back
-
-=cut
-
-#------------------------------------------------------------
-#                      Other doc
-#------------------------------------------------------------
-
-=pod
-
-=head1 SEE ALSO
-
-CAF::Object, LC::Exception, CAF::Reporter
-
-=head1 AUTHORS
-
-German Cancio <German.Cancio@cern.ch>
-
-=head1 VERSION
-
-$Id: Application.pm,v 1.11 2006/08/18 17:06:53 poleggi Exp $
 
 =cut
 

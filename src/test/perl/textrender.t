@@ -1,11 +1,29 @@
 # -*- perl -*-
 use strict;
 use warnings;
+
 use Test::More;
-use Test::Quattor;
+
+use EDG::WP4::CCM::CCfg;
+
+BEGIN {
+
+    # Force typed json for improved testing
+    # Use BEGIN to make sure it is executed before the import from Test::Quattor
+    ok(EDG::WP4::CCM::CCfg::_setCfgValue('json_typed', 1), 'json_typed enabled');
+}
+
+use Test::Quattor qw(textrender);
 use CAF::TextRender;
 use Test::MockModule;
 use Cwd;
+use CAF::Object;
+use YAML::XS qw();
+
+# No CAF::File* testing here
+$CAF::Object::NoAction = 1;
+
+ok(EDG::WP4::CCM::CCfg::getCfgValue('json_typed'), 'json_typed (still) enabled');
 
 use B qw(svref_2object);
 
@@ -21,7 +39,7 @@ my $mock = Test::MockModule->new('CAF::TextRender');
 $mock->mock('error', sub {
    my $self = shift;
    $self->{ERROR}++;
-   return 1;  
+   return 1;
 });
 
 
@@ -82,7 +100,7 @@ ok($tpl->process($sane_tpl, $contents, \$str), "Generation of test.tt") or diag(
     "Test TT verified");
 is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
-=pod 
+=pod
 
 =head2 Test tt method
 
@@ -133,7 +151,7 @@ my $ttoptstrd = CAF::TextRender->new('const', {},
 isa_ok ($ttoptstrd, "CAF::TextRender", "Correct class after new method (tt options; empty contents)");
 is("$ttoptstrd", "magic\n", "Template rendered constants correctly");
 
-=pod 
+=pod
 
 =head2 Test cache
 
@@ -182,6 +200,23 @@ like($brokentrd->{fail}, qr{Failed to render with module .*: Unable to process t
 
 # not cached
 ok(!exists($brokentrd->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
+
+=pod
+
+=head2 Test contents failure
+
+=cut
+
+my $brokencont = CAF::TextRender->new('yaml', [qw(not_a_hash_nor_Element)]);
+isa_ok ($brokencont, "CAF::TextRender", "Correct class after new method (but with broken contents)");
+ok(! defined($brokencont->get_text()), "get_text returns undef, contents failed");
+is("$brokencont", "", "render failed, stringification returns empty string");
+like($brokencont->{fail},
+     qr{Contents passed is neither a hashref or a EDG::WP4::CCM::Element instance \(ref ARRAY\)},
+     "Error is reported");
+
+# not cached
+ok(!exists($brokencont->{_cache}), "Render failed, no caching of the event. (Failure will be recreated)");
 
 =pod
 
@@ -236,7 +271,7 @@ ok(! defined($brokentrd->filewriter("/my/file")), "render failed, filewriter ret
 =head2 Test sanitize_template
 
 Test that a template specified by Template::Toolkit is an existing
-file in the metaconfig template directory. 
+file in the metaconfig template directory.
 
 It's here where the security of the module (and all its users) is
 dealt with. After this, the component is allowed to trust all its
@@ -435,6 +470,102 @@ is("$trd", $res, "general module rendered correctly");
 
 # No error logging in the module
 ok(! exists($trd->{ERROR}), "No errors logged anywhere");
+
+=pod
+
+=head2 contents is element
+
+Test the contents is element, and getTree element options
+
+=cut
+
+my $cfg = get_config_for_profile("textrender");
+my $el;
+
+# json module
+
+$el = $cfg->getElement("/");
+$trd = CAF::TextRender->new('json', $el);
+is("$trd",
+   '{"a":"a","b":"1","c":1,"d":true,"e":false,"f":1.5,"g":["g1","g2"],"h":{"a":"a","b":"1","c":1,"d":true,"e":false}}'."\n",
+   "Correct JSON rendered");
+
+# yaml module
+is(YAML::XS::Dump($CAF::TextRender::YAML_BOOL->{yes}),
+   "--- true\n",
+   'Correct YAML boolean true');
+is(YAML::XS::Dump($CAF::TextRender::YAML_BOOL->{no}),
+   "--- false\n",
+   'Correct YAML boolean false');
+# so this works, still require the workaround
+# not quoted / true
+my $fakeyamlbool = ' '.$CAF::TextRender::ELEMENT_CONVERT{yaml_boolean}->(1)."\nx";
+is(CAF::TextRender::_yaml_replace_boolean_prefix(undef, $fakeyamlbool),
+   " true\nx",
+   'Search and replace YAML boolean true');
+# double quoted / true
+$fakeyamlbool = ' "'.$CAF::TextRender::ELEMENT_CONVERT{yaml_boolean}->(1)."\"\nx";
+is(CAF::TextRender::_yaml_replace_boolean_prefix(undef, $fakeyamlbool),
+   " true\nx",
+   'Search and replace YAML boolean true');
+# single quoted / false
+$fakeyamlbool = " '".$CAF::TextRender::ELEMENT_CONVERT{yaml_boolean}->(0)."'\nx";
+is(CAF::TextRender::_yaml_replace_boolean_prefix(undef, $fakeyamlbool),
+   " false\nx",
+   'Search and replace YAML boolean true');
+
+$el = $cfg->getElement("/");
+$trd = CAF::TextRender->new('yaml', $el);
+my $yamlout = "$trd";
+$yamlout =~ s/\s//g; # squash whitespace
+is($yamlout,
+   "---a:ab:'1'c:1d:truee:falsef:1.5g:-g1-g2h:a:ab:'1'c:1d:truee:false",
+   "Correct YAML rendered");
+
+# Other conversions
+is($CAF::TextRender::ELEMENT_CONVERT{yesno_boolean}->(1),
+   'yes',
+   'yesno with true value');
+is($CAF::TextRender::ELEMENT_CONVERT{yesno_boolean}->(0),
+   'no',
+   'yesno with false value');
+is($CAF::TextRender::ELEMENT_CONVERT{YESNO_boolean}->(1),
+   'YES',
+   'YESNO with true value');
+is($CAF::TextRender::ELEMENT_CONVERT{YESNO_boolean}->(0),
+   'NO',
+   'YESNO with false value');
+is($CAF::TextRender::ELEMENT_CONVERT{singlequote_string}->("abc"),
+   "'abc'",
+   'singlequote');
+is($CAF::TextRender::ELEMENT_CONVERT{doublequote_string}->("abc"),
+   '"abc"',
+   'doublequote');
+
+# Test with tiny, has to be single level hash
+$el = $cfg->getElement("/h");
+$trd = CAF::TextRender->new('tiny', $el);
+my $tinyout = "$trd";
+$tinyout =~ s/\s//g; # squash whitespace
+is($tinyout,
+   "a=ab=1c=1d=1e=0",
+   "Correct Config::tiny without element options rendered");
+
+$el = $cfg->getElement("/h");
+$trd = CAF::TextRender->new('tiny', $el, element => {'yesno' => 1, 'singlequote' => 1});
+$tinyout = "$trd";
+$tinyout =~ s/\s//g; # squash whitespace
+is($tinyout,
+   "a='a'b='1'c=1d=yese=no",
+   "Correct Config::tiny with yesno and singlequote rendered");
+
+$el = $cfg->getElement("/h");
+$trd = CAF::TextRender->new('tiny', $el, element => {'YESNO' => 1, 'doublequote' => 1});
+$tinyout = "$trd";
+$tinyout =~ s/\s//g; # squash whitespace
+is($tinyout,
+   'a="a"b="1"c=1d=YESe=NO',
+   "Correct Config::tiny with YESNO and doublequote rendered");
 
 
 done_testing();

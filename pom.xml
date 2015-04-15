@@ -51,6 +51,9 @@
       <name>Ben Jones</name>
       <email>ben.jones@morganstanleylcom</email>
     </contributor>
+    <contributor>
+      <name>Ian Neilson</name>
+    </contributor>
   </contributors>
   <properties>
     <unittest />
@@ -211,7 +214,7 @@
                     <argument>-I</argument>
                     <argument>target/lib/perl</argument>
                     <argument>-I</argument>
-                    <argument>src/test/resources</argument>
+                    <argument>src/test/perl</argument>
                     <argument>-I</argument>
                     <argument>target/dependency/build-scripts</argument>
                     <argument>src/test/perl/${unittest}</argument>

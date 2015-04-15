@@ -2,8 +2,7 @@
 
 use strict;
 use warnings;
-use FindBin qw($Bin);
-use lib "$Bin/";
+use lib 'src/test/resources';
 use testapp;
 use CAF::Reporter;
 use CAF::Object;

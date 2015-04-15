@@ -1,21 +1,10 @@
-#!/usr/bin/perl
-
-BEGIN {
-    # remove the module path that is holding the temp LC mock
-    # we actually want to run something here
-    @INC = grep { $_ !~ m/resources$/ } @INC;
-}
-
-use FindBin qw($Bin);
-# actually running executable; don't fake LC
-use lib "$Bin/";
-
 use strict;
 use warnings;
 use testapp;
 use CAF::Process;
 use Test::More;
 use Cwd 'abs_path';
+use FindBin qw($Bin);
 
 my $exe = abs_path("$Bin/../resources/stream_output.sh");
 
