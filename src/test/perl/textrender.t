@@ -21,7 +21,7 @@ my $mock = Test::MockModule->new('CAF::TextRender');
 $mock->mock('error', sub {
    my $self = shift;
    $self->{ERROR}++;
-   return 1;  
+   return 1;
 });
 
 
@@ -82,7 +82,7 @@ ok($tpl->process($sane_tpl, $contents, \$str), "Generation of test.tt") or diag(
     "Test TT verified");
 is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
-=pod 
+=pod
 
 =head2 Test tt method
 
@@ -133,7 +133,7 @@ my $ttoptstrd = CAF::TextRender->new('const', {},
 isa_ok ($ttoptstrd, "CAF::TextRender", "Correct class after new method (tt options; empty contents)");
 is("$ttoptstrd", "magic\n", "Template rendered constants correctly");
 
-=pod 
+=pod
 
 =head2 Test cache
 
@@ -236,7 +236,7 @@ ok(! defined($brokentrd->filewriter("/my/file")), "render failed, filewriter ret
 =head2 Test sanitize_template
 
 Test that a template specified by Template::Toolkit is an existing
-file in the metaconfig template directory. 
+file in the metaconfig template directory.
 
 It's here where the security of the module (and all its users) is
 dealt with. After this, the component is allowed to trust all its
@@ -356,7 +356,7 @@ like($brokencont->{fail},
      "Error is reported");
 
 # not cached
-ok(!exists($brokencont->{_cache}), 
+ok(!exists($brokencont->{_cache}),
    "Render failed, no caching of the event. (Failure will be recreated)");
 
 =pod
