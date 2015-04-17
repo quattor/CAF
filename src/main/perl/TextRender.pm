@@ -1,10 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::TextRender class
 
 package CAF::TextRender;
 
@@ -183,6 +180,10 @@ sub _initialize
 
     # set render method
     $self->{method} = $self->select_module_method();
+
+    # set contents, after module is selected (some modules trigger
+    # allow module aware contents changes
+    $self->{contents} = $self->make_contents();    
     
     return SUCCESS;
 }
@@ -303,6 +304,25 @@ sub select_module_method {
     return $method;
 }
 
+# Return the validated contents (or allow subclasses to do so).
+# The base implementation verifies if the contents are a hashref.
+# Otherwise it fails
+sub make_contents
+{
+    my ($self) = @_;
+
+    my $contents;
+
+    my $ref = ref($self->{contents});
+
+    if ($ref && ($ref eq 'HASH')) {
+        return $self->{contents};
+    } else {
+        return $self->fail("Contents is not a hashref ",
+                           "(ref ", (defined($ref) ? "$ref" : "<undef>"), ")");
+    }
+}
+
 =pod
 
 =head2 C<get_text>
@@ -327,6 +347,9 @@ sub get_text
 
     # method undefined in case of invalid module
     return if (!defined($self->{method}));
+
+    # contents undefined in case of invalid contents
+    return if (!defined($self->{contents}));
 
     if ($clearcache) {
         $self->verbose("get_text clearing cache");
@@ -518,7 +541,7 @@ sub render_tiny
 
 sub render_general
 {
-    my ($self, $cfg) = @_;
+    my ($self) = @_;
 
     my $c = Config::General->new(-SaveSorted => 1); # sort output
     return $c->save_string($self->{contents});

@@ -343,6 +343,24 @@ like($trd->{fail}, qr{Unable to load foobarbaz}, "Unable to load error was repor
 
 =pod
 
+=head2 Test contents failure
+
+=cut
+
+my $brokencont = CAF::TextRender->new('yaml', [qw(array_ref)]);
+isa_ok ($brokencont, "CAF::TextRender", "Correct class after new method (but with broken contents)");
+ok(! defined($brokencont->get_text()), "get_text returns undef, contents failed");
+is("$brokencont", "", "render failed, stringification returns empty string");
+like($brokencont->{fail},
+     qr{Contents is not a hashref \(ref ARRAY\)},
+     "Error is reported");
+
+# not cached
+ok(!exists($brokencont->{_cache}), 
+   "Render failed, no caching of the event. (Failure will be recreated)");
+
+=pod
+
 =head2 Reserved modules
 
 Test the reserved modules
