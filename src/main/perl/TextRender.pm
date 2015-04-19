@@ -23,6 +23,10 @@ use Config::Properties;
 use Config::Tiny;
 use Config::General;
 
+use base qw(CAF::Object Exporter);
+
+our @EXPORT_OK = qw($YAML_BOOL $YAML_BOOL_PREFIX);
+
 use Readonly;
 
 Readonly::Scalar my $DEFAULT_INCLUDE_PATH => '/usr/share/templates/quattor';
@@ -32,9 +36,30 @@ Readonly::Scalar my $DEFAULT_USECACHE => 1;
 Readonly::Scalar my $DEFAULT_TT_STRICT => 0;
 Readonly::Scalar my $DEFAULT_TT_RECURSION => 1;
 
-use base qw(CAF::Object);
-
 use overload ('""' => '_stringify');
+
+# YAML::XS boolean true has the most bizarre internal structure
+# (a 0 length struct with value 1 according to Devel::Peek)
+#     perl -MYAML::XS -e 'use Devel::Peek qw(); $x=Load("a: true\n");
+#                         print Devel::Peek::Dump($x->{a}),"\n";'
+#     SV = PVNV(0x1ad9cf0) at 0x1ad81b8
+#       REFCNT = 2147483642
+#       FLAGS = (IOK,NOK,POK,READONLY,pIOK,pNOK,pPOK)
+#       IV = 1
+#       NV = 1
+#       PV = 0x33c99670c2 "1"
+#       CUR = 1
+#       LEN = 0
+#
+# For YAML false, perl false (i.e. 0 == 1) could be used, but since we need
+# the special trickery for true, why not also use this for false.
+# The YAML_BOOL is a hashref holding the YAML::XS true and false,
+# use e.g. $YAML_BOOL->{yes} for the true value (don't use true as key name,
+# some parsers make it the internal true value too)
+Readonly our $YAML_BOOL => Load("yes: true\nno: false\n");
+# However, making a hashref destroys this structure;
+# so also supporting a simple search and replace method for now.
+Readonly our $YAML_BOOL_PREFIX => '___CAF_TEXTRENDER_IS_YAML_BOOLEAN_';
 
 =pod
 
@@ -77,11 +102,34 @@ Initialize the process object. Arguments:
 =item C<module>
 
 The rendering module to use: either one of the following reserved values
-C<json> (using C<JSON::XS>),
-C<yaml> (using C<YAML::XS>),
-C<properties> (using C<Config::Properties>),
-C<tiny> (using C<Config::Tiny>),
-C<general> (using C<Config::General>)
+
+=over
+
+=item json
+
+JSON format (using C<JSON::XS>) (JSON true and false have to be resp. C<\1> and c<\0>)
+
+=item yaml
+
+YAML (using C<YAML::XS>) (YAML true and false, either resp. C<$YAML_BOOL->{yes}> and
+C<$YAML_BOOL->{no}>; or the strings C<$YAML_BOOL_PREFIX."true"> and
+C<$YAML_BOOL_PREFIX."false"> (There are known problems with creating hashrefs using the
+C<$YAML_BOOL->{yes}> value for true; Perl seems to mess up the structure when creating
+the hashrefs))
+
+=item properties
+
+Java properties format (using C<Config::Properties>),
+
+=item tiny
+
+.INI format (using C<Config::Tiny>)
+
+=item general
+
+(using C<Config::General>)
+
+=back
 
 Or, for any other value, C<Template::Toolkit> is used, and the C<module> then indicates
 the relative path of the template to use.
@@ -488,12 +536,26 @@ sub render_json
     return $j->encode($self->{contents});
 }
 
+# search and replace the YAML boolean PREFIX
+# private function, call diretcly for testing only
+sub _yaml_replace_boolean_prefix
+{
+    my ($self, $yamltxt) = @_;
+    # Implicit quoting could be enabled in the YAML::XS Dump.
+    $yamltxt =~ s/('|")?$YAML_BOOL_PREFIX(true|false)\1?/$2/g;
+    if ($yamltxt =~ m/$YAML_BOOL_PREFIX/) {
+        # just in case
+        return $self->fail("Failed to search and replace the YAML_BOOL_PREFIX $YAML_BOOL_PREFIX");
+    };
+    return $yamltxt;
+}
 
 sub render_yaml
 {
     my ($self, $cfg) = @_;
 
-    return YAML::XS::Dump($self->{contents});
+    my $txt = YAML::XS::Dump($self->{contents});
+    return $self->_yaml_replace_boolean_prefix($txt);
 }
 
 # Warning: the rendered text has a header with localtime(),

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Quattor;
-use CAF::TextRender;
+use CAF::TextRender qw($YAML_BOOL $YAML_BOOL_PREFIX);
 use Test::MockModule;
 use Cwd;
 
@@ -376,6 +376,12 @@ $trd = CAF::TextRender->new('json', $contents, eol=>0);
 ok($trd->load_module('JSON::XS'), "JSON::XS loaded");
 is("$trd", $res, "json module rendered correctly");
 
+# true/false tests
+$trd = CAF::TextRender->new('json', {'yes' => \1, 'no' => \0}, eol=>0);
+is("$trd", '{"no":false,"yes":true}',
+   "json module renders booleans true/false correctly");
+
+
 =pod
 
 =head3 yaml
@@ -393,6 +399,33 @@ EOF
 $trd = CAF::TextRender->new('yaml', $contents);
 ok($trd->load_module('YAML::XS'), "YAML::XS loaded");
 is("$trd", $res, "yaml module rendered correctly");
+
+
+# true/false tests
+$trd = CAF::TextRender->new('yaml', $YAML_BOOL, eol=>0);
+my $txt = "$trd";
+$txt =~ s/\s//g;
+is($txt, '---no:falseyes:true',
+   "yaml module renders booleans true/false correctly");
+
+# but this goes wrong
+$trd = CAF::TextRender->new('yaml',
+                            {'yes' => $YAML_BOOL->{'yes'}, 'no' => $YAML_BOOL->{'no'}},
+                            eol=>0);
+$txt = "$trd";
+$txt =~ s/\s//g;
+is("$txt", "---no:''yes:1",
+   "yaml module renders booleans true/false incorrect when constructing hashref");
+
+# so use the CAF::TextRender prefixing
+$trd = CAF::TextRender->new('yaml',
+                            {'yes' => $YAML_BOOL_PREFIX."true", 'no' =>   $YAML_BOOL_PREFIX."false"},
+                            eol=>0);
+$txt = "$trd";
+$txt =~ s/\s//g;
+is("$txt", '---no:falseyes:true',
+   "yaml module renders booleans true/false correctly when using prefixing");
+
 
 =pod
 
