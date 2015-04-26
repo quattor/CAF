@@ -49,6 +49,8 @@ ok(!defined($trd->warn('something')), "Fake logger initialised");
 $trd = CAF::TextRender->new('not_a_reserved_module', $contents);
 isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
 is(get_name($trd->{method}), "tt", "fallback/default render method tt selected");
+ok($trd->{method_is_tt},
+   "method_is_tt set for fallback/default render method tt selected");
 
 is($trd->{includepath}, '/usr/share/templates/quattor', 'Default template base');
 is($trd->{relpath}, 'metaconfig', 'Default template relpath');
@@ -374,6 +376,7 @@ Test json/JSON::XS
 $res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
 $trd = CAF::TextRender->new('json', $contents, eol=>0);
 ok($trd->load_module('JSON::XS'), "JSON::XS loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for json");
 is("$trd", $res, "json module rendered correctly");
 
 # true/false tests
@@ -398,6 +401,7 @@ name_level0: value_level0
 EOF
 $trd = CAF::TextRender->new('yaml', $contents);
 ok($trd->load_module('YAML::XS'), "YAML::XS loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for yaml");
 is("$trd", $res, "yaml module rendered correctly");
 
 
@@ -442,6 +446,7 @@ name_level0=value_level0
 EOF
 $trd = CAF::TextRender->new('properties', $contents);
 ok($trd->load_module('Config::Properties'), "Config::Properties loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for properties");
 my ($line, @txt) = split("\n", "$trd");
 # first line is a header with timestamp.
 like($line, qr{^#\s.*$}, "Start with header (contains timestamp)");
@@ -464,6 +469,7 @@ name_level1=value_level1
 EOF
 $trd = CAF::TextRender->new('tiny', $contents);
 ok($trd->load_module('Config::Tiny'), "Config::Tiny loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for tiny");
 is("$trd", $res, "tiny module rendered correctly");
 
 =pod
@@ -481,6 +487,7 @@ $res = <<EOF;
 name_level0   value_level0
 EOF
 $trd = CAF::TextRender->new('general', $contents);
+ok(! $trd->{method_is_tt}, "method_is_tt false for general");
 ok($trd->load_module('Config::General'), "Config::General loaded");
 is("$trd", $res, "general module rendered correctly");
 

@@ -227,7 +227,7 @@ sub _initialize
     }
 
     # set render method
-    $self->{method} = $self->select_module_method();
+    ($self->{method}, $self->{method_is_tt}) = $self->select_module_method();
 
     # set contents, after module is selected (some modules trigger
     # allow module aware contents changes
@@ -331,6 +331,7 @@ sub tt
 # Return the rendering method corresponding with the C<module>
 # If no reserved method name C<render_$module> is found, fallback to
 # C<Template::Toolkit based> C<tt> method is set.
+# Also returns a boolean to indicate the selected method is the fallback C<tt>.
 sub select_module_method {
 
     my ($self) = @_;
@@ -340,16 +341,18 @@ sub select_module_method {
     }
 
     my $method;
+    my $method_is_tt = 0;
 
     my $method_name = "render_".lc($1);
     if ($method = $self->can($method_name)) {
         $self->debug(3, "Rendering module $self->{module} with method $method_name");
     } else {
         $method = \&tt;
+        $method_is_tt = 1;
         $self->debug(3, "Using Template::Toolkit to render module $self->{module}");
     }
 
-    return $method;
+    return $method, $method_is_tt;
 }
 
 # Return the validated contents (or allow subclasses to do so).
