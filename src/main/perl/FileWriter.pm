@@ -1,11 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::Process class
-# Written by Luis Fernando Muñoz Mejías <mejias@delta.ft.uam.es>
 
 package CAF::FileWriter;
 

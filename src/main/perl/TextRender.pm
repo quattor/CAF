@@ -1,10 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::TextRender class
 
 package CAF::TextRender;
 
@@ -26,6 +23,10 @@ use Config::Properties;
 use Config::Tiny;
 use Config::General;
 
+use base qw(CAF::Object Exporter);
+
+our @EXPORT_OK = qw($YAML_BOOL $YAML_BOOL_PREFIX);
+
 use Readonly;
 
 Readonly::Scalar my $DEFAULT_INCLUDE_PATH => '/usr/share/templates/quattor';
@@ -35,15 +36,38 @@ Readonly::Scalar my $DEFAULT_USECACHE => 1;
 Readonly::Scalar my $DEFAULT_TT_STRICT => 0;
 Readonly::Scalar my $DEFAULT_TT_RECURSION => 1;
 
-use base qw(CAF::Object);
-
 use overload ('""' => '_stringify');
+
+# YAML::XS boolean true has the most bizarre internal structure
+# (a 0 length struct with value 1 according to Devel::Peek)
+#     perl -MYAML::XS -e 'use Devel::Peek qw(); $x=Load("a: true\n");
+#                         print Devel::Peek::Dump($x->{a}),"\n";'
+#     SV = PVNV(0x1ad9cf0) at 0x1ad81b8
+#       REFCNT = 2147483642
+#       FLAGS = (IOK,NOK,POK,READONLY,pIOK,pNOK,pPOK)
+#       IV = 1
+#       NV = 1
+#       PV = 0x33c99670c2 "1"
+#       CUR = 1
+#       LEN = 0
+#
+# For YAML false, perl false (i.e. 0 == 1) could be used, but since we need
+# the special trickery for true, why not also use this for false.
+# The YAML_BOOL is a hashref holding the YAML::XS true and false,
+# use e.g. $YAML_BOOL->{yes} for the true value (don't use true as key name,
+# some parsers make it the internal true value too)
+Readonly our $YAML_BOOL => Load("yes: true\nno: false\n");
+# However, making a hashref destroys this structure;
+# so also supporting a simple search and replace method for now.
+# The search and replace only supports $YAML_BOOL_PREFIX(true|false),
+# all other matches are considered a failure.
+Readonly our $YAML_BOOL_PREFIX => '___CAF_TEXTRENDER_IS_YAML_BOOLEAN_';
 
 =pod
 
 =head1 NAME
 
-CAF::TextRender - Class for rendering structured text 
+CAF::TextRender - Class for rendering structured text
 
 =head1 SYNOPSIS
 
@@ -62,7 +86,7 @@ CAF::TextRender - Class for rendering structured text
 
 =head1 DESCRIPTION
 
-This class simplyfies the generation of structured text like config files. 
+This class simplyfies the generation of structured text like config files.
 (It is based on 14.8.0 ncm-metaconfig).
 
 =cut
@@ -79,14 +103,37 @@ Initialize the process object. Arguments:
 
 =item C<module>
 
-The rendering module to use: either one of the following reserved values 
-C<json> (using C<JSON::XS>), 
-C<yaml> (using C<YAML::XS>), 
-C<properties> (using C<Config::Properties>), 
-C<tiny> (using C<Config::Tiny>),
-C<general> (using C<Config::General>)
+The rendering module to use: either one of the following reserved values
 
-Or, for any other value, C<Template::Toolkit> is used, and the C<module> then indicates 
+=over
+
+=item json
+
+JSON format (using C<JSON::XS>) (JSON true and false have to be resp. C<\1> and c<\0>)
+
+=item yaml
+
+YAML (using C<YAML::XS>) (YAML true and false, either resp. C<$YAML_BOOL->{yes}> and
+C<$YAML_BOOL->{no}>; or the strings C<$YAML_BOOL_PREFIX."true"> and
+C<$YAML_BOOL_PREFIX."false"> (There are known problems with creating hashrefs using the
+C<$YAML_BOOL->{yes}> value for true; Perl seems to mess up the structure when creating
+the hashrefs))
+
+=item properties
+
+Java properties format (using C<Config::Properties>),
+
+=item tiny
+
+.INI format (using C<Config::Tiny>)
+
+=item general
+
+(using C<Config::General>)
+
+=back
+
+Or, for any other value, C<Template::Toolkit> is used, and the C<module> then indicates
 the relative path of the template to use.
 
 =item C<contents>
@@ -105,34 +152,34 @@ A C<CAF::Reporter> object to log to.
 
 =item C<includepath>
 
-The basedirectory for TT template files, and the INCLUDE_PATH 
+The basedirectory for TT template files, and the INCLUDE_PATH
 for the Template instance.
 
 =item C<relpath>
 
 The relative path w.r.t. the includepath to look for TT template files.
-This relative path should not be part of the module name, however it 
-is not the INCLUDE_PATH. (In particular, any TT C<INCLUDE> statement has 
+This relative path should not be part of the module name, however it
+is not the INCLUDE_PATH. (In particular, any TT C<INCLUDE> statement has
 to use it as the relative basepath).
 
 =item C<eol>
 
-If C<eol> is true, the rendered text will be verified that it ends with 
-an end-of-line, and if missing, a newline character will be added. 
+If C<eol> is true, the rendered text will be verified that it ends with
+an end-of-line, and if missing, a newline character will be added.
 By default, C<eol> is true (this is text rendering afterall).
 
-C<eol> set to false will not strip trailing newlines (use C<chomp> 
+C<eol> set to false will not strip trailing newlines (use C<chomp>
 or something similar for that).
 
 =item C<usecache>
 
-If C<usecache> is false, the text is always re-rendered. 
+If C<usecache> is false, the text is always re-rendered.
 Default is to cache the rendered text (C<usecache> is true).
 
 =item C<ttoptions>
 
-A hash-reference C<ttoptions> with Template Toolkit options, 
-except for INCLUDE_PATH which is forced via C<includepath> option. 
+A hash-reference C<ttoptions> with Template Toolkit options,
+except for INCLUDE_PATH which is forced via C<includepath> option.
 By default, STRICT (default 0) and RECURSION (default 1) are set.
 
 =back
@@ -149,16 +196,16 @@ sub _initialize
 
     $self->{module} = $module;
     $self->{contents} = $contents;
-    
+
     $self->{log} = $opts{log} if $opts{log};
 
     if (exists($opts{eol})) {
-        $self->{eol} = $opts{eol};    
+        $self->{eol} = $opts{eol};
         $self->verbose("Set eol to $self->{eol}");
     } else {
         # Default to true
-        $self->{eol} = 1; 
-    }; 
+        $self->{eol} = 1;
+    };
 
     $self->{includepath} = $opts{includepath} || $DEFAULT_INCLUDE_PATH;
     $self->{relpath} = $opts{relpath} || $DEFAULT_RELPATH;
@@ -182,15 +229,19 @@ sub _initialize
     }
 
     # set render method
-    $self->{method} = $self->select_module_method();
-    
+    ($self->{method}, $self->{method_is_tt}) = $self->select_module_method();
+
+    # set contents, after module is selected (some modules trigger
+    # allow module aware contents changes
+    $self->{contents} = $self->make_contents();
+
     return SUCCESS;
 }
 
 
 # Handle failures. Stores the error message and log it verbose and
 # returns undef. All failures should use 'return $self->fail("message");'.
-# No error logging should occur in this module. 
+# No error logging should occur in this module.
 sub fail
 {
     my ($self, @messages) = @_;
@@ -201,15 +252,15 @@ sub fail
 
 
 # Convert the C<module> in an absolute template path.
-# The extension C<.tt> is optional for the module, but mandatory for 
+# The extension C<.tt> is optional for the module, but mandatory for
 # the actual template file.
-# Returns undef in case of error. 
+# Returns undef in case of error.
 sub sanitize_template
 {
     my ($self) = @_;
 
     my $tplname = $self->{module};
-    
+
     if (file_name_is_absolute($tplname)) {
         return $self->fail("Must have a relative template name (got $tplname)");
     }
@@ -217,7 +268,7 @@ sub sanitize_template
     if ($tplname !~ m{\.tt$}) {
         $tplname .= ".tt";
     }
-    
+
     # module is relative to relpath
     $tplname = "$self->{relpath}/$tplname" if $self->{relpath};
 
@@ -246,7 +297,7 @@ sub sanitize_template
 # (from ncm-ncd Component module)
 # Mandatory argument C<includepath> to set the INCLUDE_PATH
 # Other options can be passed via named arguments.
-sub get_template_instance 
+sub get_template_instance
 {
     my ($includepath, %opts) = @_;
     $Template::Stash::PRIVATE = undef;
@@ -255,12 +306,12 @@ sub get_template_instance
     $opts{INCLUDE_PATH} = $includepath;
 
     my $template = Template->new(%opts);
-    return $template;    
+    return $template;
 }
 
-# Fallback/default rendering method based on C<Template::Toolkit>. 
+# Fallback/default rendering method based on C<Template::Toolkit>.
 # C<module> is a relative path to a TT template.
-sub tt 
+sub tt
 {
     my ($self) = @_;
 
@@ -280,8 +331,9 @@ sub tt
 }
 
 # Return the rendering method corresponding with the C<module>
-# If no reserved method name C<render_$module> is found, fallback to 
+# If no reserved method name C<render_$module> is found, fallback to
 # C<Template::Toolkit based> C<tt> method is set.
+# Also returns a boolean to indicate the selected method is the fallback C<tt>.
 sub select_module_method {
 
     my ($self) = @_;
@@ -291,32 +343,53 @@ sub select_module_method {
     }
 
     my $method;
+    my $method_is_tt = 0;
 
     my $method_name = "render_".lc($1);
     if ($method = $self->can($method_name)) {
         $self->debug(3, "Rendering module $self->{module} with method $method_name");
     } else {
         $method = \&tt;
+        $method_is_tt = 1;
         $self->debug(3, "Using Template::Toolkit to render module $self->{module}");
     }
 
-    return $method;
+    return $method, $method_is_tt;
+}
+
+# Return the validated contents (or allow subclasses to do so).
+# The base implementation verifies if the contents are a hashref.
+# Otherwise it fails
+sub make_contents
+{
+    my ($self) = @_;
+
+    my $contents;
+
+    my $ref = ref($self->{contents});
+
+    if ($ref && ($ref eq 'HASH')) {
+        return $self->{contents};
+    } else {
+        return $self->fail("Contents is not a hashref ",
+                           "(ref ", (defined($ref) ? "$ref" : "<undef>"), ")");
+    }
 }
 
 =pod
 
 =head2 C<get_text>
 
-C<get_text> renders and returns the text. 
+C<get_text> renders and returns the text.
 
-In case of a rendering error, C<get_text> returns C<undef> 
+In case of a rendering error, C<get_text> returns C<undef>
 (and an error is logged if log instance is present).
-This is the main difference from the auto-stringification that 
+This is the main difference from the auto-stringification that
 returns an empty string in case of a rendering error.
 
-By default, the rendered result is cached. To force re-rendering the text, 
-clear the current cache by passing C<1> as first argument 
-(or disable caching completely with the option C<usecache> 
+By default, the rendered result is cached. To force re-rendering the text,
+clear the current cache by passing C<1> as first argument
+(or disable caching completely with the option C<usecache>
 set to false during the <CAF::TextRender> initialisation).
 
 =cut
@@ -328,6 +401,9 @@ sub get_text
     # method undefined in case of invalid module
     return if (!defined($self->{method}));
 
+    # contents undefined in case of invalid contents
+    return if (!defined($self->{contents}));
+
     if ($clearcache) {
         $self->verbose("get_text clearing cache");
         delete $self->{_cache};
@@ -335,7 +411,7 @@ sub get_text
 
     if (exists($self->{_cache})) {
         $self->debug(1, "Returning the cached value");
-        return $self->{_cache} 
+        return $self->{_cache}
     };
 
     my $res = $self->{method}->($self);
@@ -361,7 +437,7 @@ sub _stringify
 {
     my ($self) = @_;
     # Always default cache behaviour
-    my $text = $self->get_text();    
+    my $text = $self->get_text();
     if(defined($text)) {
         return $text;
     } else {
@@ -374,27 +450,27 @@ sub _stringify
 =head2 C<filewriter>
 
 Create and return an open C<CAF::FileWriter> instance with
-first argument as the filename. If the rendering fails, 
+first argument as the filename. If the rendering fails,
 C<undef> is returned.
 
-The rendered text is added to the filehandle. 
-It's up to the consumer to cancel 
+The rendered text is added to the filehandle.
+It's up to the consumer to cancel
 and/or close the instance
 
-All C<CAF::FileWriter> initialisation options are supported 
-and passed on. (If no C<log> option is provided, 
+All C<CAF::FileWriter> initialisation options are supported
+and passed on. (If no C<log> option is provided,
  the one from the C<CAF::TextRender> instance is passed).
 
-Two new options C<header> and C<footer> are supported 
+Two new options C<header> and C<footer> are supported
  to resp. prepend and append to the rendered text.
 
-If C<eol> was set during initialisation, the header and footer 
-will also be checked for EOL. 
-(EOL is still added to the rendered text if 
-C<eol> is set during initialisation, even if there is a footer 
+If C<eol> was set during initialisation, the header and footer
+will also be checked for EOL.
+(EOL is still added to the rendered text if
+C<eol> is set during initialisation, even if there is a footer
 defined.)
 
-=cut 
+=cut
 
 sub filewriter
 {
@@ -403,14 +479,14 @@ sub filewriter
     # use get_text, not stringification to handle render failure
     my $text = $self->get_text();
     return if (!defined($text));
-  
+
     my $header = delete $opts{header};
     my $footer = delete $opts{footer};
-    
-    $opts{log} = $self if(!exists($opts{log}));    
-    
+
+    $opts{log} = $self if(!exists($opts{log}));
+
     my $cfh = CAF::FileWriter->new($file, %opts);
-    
+
     if (defined($header)) {
         print $cfh $header;
 
@@ -435,12 +511,12 @@ sub filewriter
 }
 
 # Given Perl C<module>, load it.
-# 
+#
 # To be used like '$self->load_module("External::Module") or return;'
-# in any new render_X method that does and/or can not have the module 
+# in any new render_X method that does and/or can not have the module
 # to use as a mandatory module (via a 'use External::Module;').
 # When adding such functionality, it will be left to the consumer to enforce
-# the dependecy in the packaging (e.g. by setting a 'use External::Module;' 
+# the dependecy in the packaging (e.g. by setting a 'use External::Module;'
 # in the consumer code or by adding a '<require>' entry in the maven pom.xml)
 sub load_module
 {
@@ -465,12 +541,27 @@ sub render_json
     return $j->encode($self->{contents});
 }
 
+# Search and replace the YAML boolean PREFIX
+# Private function, call directly for testing only
+sub _yaml_replace_boolean_prefix
+{
+    my ($self, $yamltxt) = @_;
+    # Implicit quoting could be enabled in the YAML::XS Dump.
+    $yamltxt =~ s/('|")?$YAML_BOOL_PREFIX(true|false)\1?/$2/g;
+    if ($yamltxt =~ m/$YAML_BOOL_PREFIX/) {
+        # The YAML boolean PREFIX should only be used with the regexp above
+        # If there is any prefix match left, this is considered a failure.
+        return $self->fail("Failed to search and replace the YAML_BOOL_PREFIX $YAML_BOOL_PREFIX");
+    };
+    return $yamltxt;
+}
 
 sub render_yaml
 {
     my ($self, $cfg) = @_;
 
-    return YAML::XS::Dump($self->{contents});
+    my $txt = YAML::XS::Dump($self->{contents});
+    return $self->_yaml_replace_boolean_prefix($txt);
 }
 
 # Warning: the rendered text has a header with localtime(),
@@ -479,22 +570,22 @@ sub render_properties
 {
     my ($self) = @_;
 
-    # recent versions of Config::Properties support order => 'alpha' 
+    # recent versions of Config::Properties support order => 'alpha'
     # for aplabetic key sorting when writing
-    # Default is 'keep', based on linenumbers. In the usage here, it 
-    # means first parsed entry is on first line. For an unordered hash, 
+    # Default is 'keep', based on linenumbers. In the usage here, it
+    # means first parsed entry is on first line. For an unordered hash,
     # this is not predicatable/reproducable. So we will sort the linenumbers
     # and use linenumber sorted output.
     my $config = Config::Properties->new(order => 'keep');
     $config->setFromTree($self->{contents});
-    
+
     # force linenumbers
     my $line=1;
     foreach my $k (sort(keys %{$config->{properties}})) {
         $config->{property_line_numbers}{$k} = $line;
         $line++;
     }
-    
+
     return $config->saveToString();
 }
 
@@ -518,7 +609,7 @@ sub render_tiny
 
 sub render_general
 {
-    my ($self, $cfg) = @_;
+    my ($self) = @_;
 
     my $c = Config::General->new(-SaveSorted => 1); # sort output
     return $c->save_string($self->{contents});
@@ -526,4 +617,3 @@ sub render_general
 
 
 1;
-

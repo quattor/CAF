@@ -1,14 +1,7 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-#
-# CAF::Log class
-#
-# Written by German Cancio <German.Cancio@cern.ch>
-# (C) 2003 German Cancio & EU DataGrid http://www.edg.org
-#
 
 package CAF::Log;
 
@@ -197,25 +190,6 @@ sub DESTROY {
 
 =cut
 
-#------------------------------------------------------------
-#                      Other doc
-#------------------------------------------------------------
-
-=pod
-
-=head1 SEE ALSO
-
-CAF::Object, LC::Exception, CAF::Reporter
-
-=head1 AUTHORS
-
-German Cancio <German.Cancio@cern.ch>
-
-=head1 VERSION
-
-$Id: Log.pm,v 1.6 2008/07/28 14:42:47 munoz Exp $
-
-=cut
 
 END {
     # report all stored warnings

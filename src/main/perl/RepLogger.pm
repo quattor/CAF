@@ -1,11 +1,11 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
+
 #
 # _RepObj class is just a front-end to CAF::ReporterMany from which it inherits
 # the needed methods
-
 package _RepObj;
 
 use strict;

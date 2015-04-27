@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Quattor;
-use CAF::TextRender;
+use CAF::TextRender qw($YAML_BOOL $YAML_BOOL_PREFIX);
 use Test::MockModule;
 use Cwd;
 
@@ -21,7 +21,7 @@ my $mock = Test::MockModule->new('CAF::TextRender');
 $mock->mock('error', sub {
    my $self = shift;
    $self->{ERROR}++;
-   return 1;  
+   return 1;
 });
 
 
@@ -49,6 +49,8 @@ ok(!defined($trd->warn('something')), "Fake logger initialised");
 $trd = CAF::TextRender->new('not_a_reserved_module', $contents);
 isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
 is(get_name($trd->{method}), "tt", "fallback/default render method tt selected");
+ok($trd->{method_is_tt},
+   "method_is_tt set for fallback/default render method tt selected");
 
 is($trd->{includepath}, '/usr/share/templates/quattor', 'Default template base');
 is($trd->{relpath}, 'metaconfig', 'Default template relpath');
@@ -82,7 +84,7 @@ ok($tpl->process($sane_tpl, $contents, \$str), "Generation of test.tt") or diag(
     "Test TT verified");
 is($str, $res, "test.tt rendered contents correctly (test.tt is ok)");
 
-=pod 
+=pod
 
 =head2 Test tt method
 
@@ -133,7 +135,7 @@ my $ttoptstrd = CAF::TextRender->new('const', {},
 isa_ok ($ttoptstrd, "CAF::TextRender", "Correct class after new method (tt options; empty contents)");
 is("$ttoptstrd", "magic\n", "Template rendered constants correctly");
 
-=pod 
+=pod
 
 =head2 Test cache
 
@@ -236,7 +238,7 @@ ok(! defined($brokentrd->filewriter("/my/file")), "render failed, filewriter ret
 =head2 Test sanitize_template
 
 Test that a template specified by Template::Toolkit is an existing
-file in the metaconfig template directory. 
+file in the metaconfig template directory.
 
 It's here where the security of the module (and all its users) is
 dealt with. After this, the component is allowed to trust all its
@@ -343,6 +345,24 @@ like($trd->{fail}, qr{Unable to load foobarbaz}, "Unable to load error was repor
 
 =pod
 
+=head2 Test contents failure
+
+=cut
+
+my $brokencont = CAF::TextRender->new('yaml', [qw(array_ref)]);
+isa_ok ($brokencont, "CAF::TextRender", "Correct class after new method (but with broken contents)");
+ok(! defined($brokencont->get_text()), "get_text returns undef, contents failed");
+is("$brokencont", "", "render failed, stringification returns empty string");
+like($brokencont->{fail},
+     qr{Contents is not a hashref \(ref ARRAY\)},
+     "Error is reported");
+
+# not cached
+ok(!exists($brokencont->{_cache}),
+   "Render failed, no caching of the event. (Failure will be recreated)");
+
+=pod
+
 =head2 Reserved modules
 
 Test the reserved modules
@@ -356,7 +376,14 @@ Test json/JSON::XS
 $res = '{"level1":{"name_level1":"value_level1"},"name_level0":"value_level0"}';
 $trd = CAF::TextRender->new('json', $contents, eol=>0);
 ok($trd->load_module('JSON::XS'), "JSON::XS loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for json");
 is("$trd", $res, "json module rendered correctly");
+
+# true/false tests
+$trd = CAF::TextRender->new('json', {'yes' => \1, 'no' => \0}, eol=>0);
+is("$trd", '{"no":false,"yes":true}',
+   "json module renders booleans true/false correctly");
+
 
 =pod
 
@@ -374,7 +401,35 @@ name_level0: value_level0
 EOF
 $trd = CAF::TextRender->new('yaml', $contents);
 ok($trd->load_module('YAML::XS'), "YAML::XS loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for yaml");
 is("$trd", $res, "yaml module rendered correctly");
+
+
+# true/false tests
+$trd = CAF::TextRender->new('yaml', $YAML_BOOL, eol=>0);
+my $txt = "$trd";
+$txt =~ s/\s//g;
+is($txt, '---no:falseyes:true',
+   "yaml module renders booleans true/false correctly");
+
+# but this goes wrong
+$trd = CAF::TextRender->new('yaml',
+                            {'yes' => $YAML_BOOL->{'yes'}, 'no' => $YAML_BOOL->{'no'}},
+                            eol=>0);
+$txt = "$trd";
+$txt =~ s/\s//g;
+is("$txt", "---no:''yes:1",
+   "yaml module renders booleans true/false incorrect when constructing hashref");
+
+# so use the CAF::TextRender prefixing
+$trd = CAF::TextRender->new('yaml',
+                            {'yes' => $YAML_BOOL_PREFIX."true", 'no' =>   $YAML_BOOL_PREFIX."false"},
+                            eol=>0);
+$txt = "$trd";
+$txt =~ s/\s//g;
+is("$txt", '---no:falseyes:true',
+   "yaml module renders booleans true/false correctly when using prefixing");
+
 
 =pod
 
@@ -391,6 +446,7 @@ name_level0=value_level0
 EOF
 $trd = CAF::TextRender->new('properties', $contents);
 ok($trd->load_module('Config::Properties'), "Config::Properties loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for properties");
 my ($line, @txt) = split("\n", "$trd");
 # first line is a header with timestamp.
 like($line, qr{^#\s.*$}, "Start with header (contains timestamp)");
@@ -413,6 +469,7 @@ name_level1=value_level1
 EOF
 $trd = CAF::TextRender->new('tiny', $contents);
 ok($trd->load_module('Config::Tiny'), "Config::Tiny loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for tiny");
 is("$trd", $res, "tiny module rendered correctly");
 
 =pod
@@ -430,6 +487,7 @@ $res = <<EOF;
 name_level0   value_level0
 EOF
 $trd = CAF::TextRender->new('general', $contents);
+ok(! $trd->{method_is_tt}, "method_is_tt false for general");
 ok($trd->load_module('Config::General'), "Config::General loaded");
 is("$trd", $res, "general module rendered correctly");
 
