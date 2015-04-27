@@ -59,6 +59,8 @@ use overload ('""' => '_stringify');
 Readonly our $YAML_BOOL => Load("yes: true\nno: false\n");
 # However, making a hashref destroys this structure;
 # so also supporting a simple search and replace method for now.
+# The search and replace only supports $YAML_BOOL_PREFIX(true|false),
+# all other matches are considered a failure.
 Readonly our $YAML_BOOL_PREFIX => '___CAF_TEXTRENDER_IS_YAML_BOOLEAN_';
 
 =pod
@@ -539,15 +541,16 @@ sub render_json
     return $j->encode($self->{contents});
 }
 
-# search and replace the YAML boolean PREFIX
-# private function, call diretcly for testing only
+# Search and replace the YAML boolean PREFIX
+# Private function, call directly for testing only
 sub _yaml_replace_boolean_prefix
 {
     my ($self, $yamltxt) = @_;
     # Implicit quoting could be enabled in the YAML::XS Dump.
     $yamltxt =~ s/('|")?$YAML_BOOL_PREFIX(true|false)\1?/$2/g;
     if ($yamltxt =~ m/$YAML_BOOL_PREFIX/) {
-        # just in case
+        # The YAML boolean PREFIX should only be used with the regexp above
+        # If there is any prefix match left, this is considered a failure.
         return $self->fail("Failed to search and replace the YAML_BOOL_PREFIX $YAML_BOOL_PREFIX");
     };
     return $yamltxt;
