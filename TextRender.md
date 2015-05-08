@@ -263,6 +263,45 @@ Individual elements are dealt with via `CCM/pan_element.tt`
 [%- END -%]
 ```
 
-`CCM::TextRender` has the `doublequote` element option is set to produce
+The `doublequote` element option is set to produce
 a doublequoted string if `data` is a string and the `truefalse` option to
 generate `true` or `false` value if `data` is a boolean.
+
+So the following is possible:
+
+An object template
+
+```pan
+object template format;
+
+"/a" = 1;
+"/b" = 1.5;
+"/c/t" = true;
+"/c/f" = false;
+"/d" = "test";
+```
+
+with
+
+
+```perl
+my $trd = EDG::WP4::CCM::TextRender(
+    'CCM/pan',
+    $config->getElement('/'),
+    element => {
+        doublequote => 1,
+        truefalse => 1,
+    },
+);
+print "$trd";
+```
+
+gives
+
+```
+"/a" = 1; # long
+"/b" = 1.5; # double
+"/c/f" = false; # boolean
+"/c/t" = true; # boolean
+"/d" = "test"; # string
+```
