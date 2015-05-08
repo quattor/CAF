@@ -3,7 +3,7 @@
 Generating structured text is best done with [`CAF::TextRender`][caf_textrender_docs].
 This document guides through the usage and testing of `CAF::TextRender`.
 
-Using `ncm-metaconfig`, which is the metacomponent build around
+Using `ncm-metaconfig`, which is the metacomponent built around
 `CAF::TextRender`, is described [here][metaconfig].
 
 TODO add correct/final url
@@ -16,24 +16,26 @@ TODO add correct/final url
 Basic usage has 2 main modes:
  * generate text : the `CAF::TextRender` instance has auto-stringification
 
-    <!-- language: lang-perl -->
-        use CAF::TextRender;
-        my $module = 'mymodule';
-        my $trd = CAF::TextRender->new($module, $contents, log => $self);
-        print "$trd"; # stringification
+```perl
+use CAF::TextRender;
+my $module = 'mymodule';
+my $trd = CAF::TextRender->new($module, $contents, log => $self);
+print "$trd"; # stringification
+```
 
  * write text to file : get a `CAF::FileWriter` instance with text from `CAF::TextRender` instance
 
-    <!-- language: lang-perl -->
-        use CAF::TextRender;
-        $module = "mymodule";
-        $trd = CAF::TextRender->new($module, $contents, log => $self);
-        my $fh = $trd->filewriter('/some/path');
-        die "Problem rendering the text" if (!defined($fh));
-        $fh->close();
+```perl
+use CAF::TextRender;
+$module = "mymodule";
+$trd = CAF::TextRender->new($module, $contents, log => $self);
+my $fh = $trd->filewriter('/some/path');
+die "Problem rendering the text" if (!defined($fh));
+$fh->close();
+```
 
 Besides the logger, the 2 main parameters are the `module` and the `contents`.
-The contents is a hash-reference with the data that is used to generate
+The `contents` is a hash-reference with the data that is used to generate
 the text (e.g. from a `$cfg->getElement('/some/pan/path')->getTree()`).
 
 The `module` is what defines how the text is generated.
@@ -91,11 +93,27 @@ $ perl -e 'use Template; my $tttext="Hello [% world %]\n"; Template->new()->proc
 Hello Quattor
 ```
 
-TODO minimal version
-
+Further information on TT:
+ * [A nice writeup of the basics of TT][TT_basics_pnce]
+ * [TT examples section][TT_home_examples]
+ * [Older TT PCmag article][TT_linuxmag_old] (but some examples are outdated)
+ * [ncm-metaconfig TT files][ncm_metaconfig_TT_subdir] (TT files are in the subdirectories)
+ 
 [TT_home]: http://www.template-toolkit.org/index.html
+[TT_home_examples]: http://www.template-toolkit.org/about.html#section_Examples
+[TT_basics_pnce]: http://www.physics.umd.edu/pnce/pcs-docs/WebDesign/tt_basics.html
+[TT_linuxmag_old]: http://www.stonehenge.com/merlyn/LinuxMag/col60.html
+[ncm_metaconfig_TT_subdir]: https://github.com/quattor/configuration-modules-core/tree/master/ncm-metaconfig/src/main/metaconfig
 
-TODO add url with examples
+### Minimal version
+
+As quattor supports `EL5` and because the templating framework is deeply integrated in e.g. `CCM`, the minimal
+required version of the TT framework is 2.18.
+
+This is a rather old version, with some notable missing VMethods compared to recent ones, in particular the scalar
+methods `.lower` and `.upper` do not work, one should use resp `FILTER lower` and `FILTER upper`.
+
+Value based unittests are essential to detect any differences across the supported OS.
 
 ### Newline / chomp behaviour
 
@@ -155,8 +173,6 @@ With the default flags, each line is compiled as a multiline regular expression 
 The matches are also checked if they are ordered. In the example above `line 3` is expected to match in the text
 following `line 1`. But it does not need to be the next line (e.g. there could be a `line 2` in between).
 Each match is a test and each verification of the ordering also.
-
-TODO add correct/final url
 
 [regexptest_docs]: http://docs-test-maven-tools.readthedocs.org/en/latest/maven-tools/RegexpTest/
 
