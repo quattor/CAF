@@ -219,7 +219,7 @@
                     <argument>target/dependency/build-scripts</argument>
                     <argument>src/test/perl/${unittest}</argument>
                   </arguments>
-'		</configuration>
+		</configuration>
               </execution>
             </executions>
           </plugin>
