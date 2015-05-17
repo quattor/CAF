@@ -15,7 +15,13 @@ use CAF::Log;
 use File::Basename;
 use POSIX;
 
-@ISA=qw(CAF::Reporter CAF::Object);
+@ISA = qw(CAF::Reporter CAF::Object Exporter);
+
+use Readonly;
+Readonly our $OPTION_CFGFILE => 'cfgfile';
+
+our @EXPORT    = qw();
+our @EXPORT_OK = qw($OPTION_CFGFILE);
 
 my $ec = LC::Exception::Context->new->will_store_all;
 
@@ -347,13 +353,18 @@ sub _initialize ($$@) {
   my $configfile=undef;
   my @args_tmp = @argv;
   my $arg;
+
+  my $cfgfile_standalone_pattern = '^(--'.$OPTION_CFGFILE.')$';
+  my $cfgfile_value_pattern = '^(--'.$OPTION_CFGFILE.'=(\S+))$';
   while ($arg=shift(@args_tmp)) {
     $help_request=1 if (($arg =~ m%^(-|--)help$%));
-    $configfile = shift (@args_tmp) if ($arg =~ m%^(--cfgfile)$%);
-    $configfile = $2 if ($arg =~ m%^(--cfgfile=(\S+))$%);
+
+    $configfile = shift (@args_tmp) if ($arg =~ m%$cfgfile_standalone_pattern%);
+    $configfile = $2 if ($arg =~ m%$cfgfile_value_pattern%);
   }
 
-  my %confvar=$self->{'CONFIG'}->varlist('^cfgfile$');
+  my $cfgfile_pattern = '^'.$OPTION_CFGFILE.'$';
+  my %confvar=$self->{'CONFIG'}->varlist($cfgfile_pattern);
   if (exists $confvar{'cfgfile'}) {
     $configfile=$self->option("cfgfile") unless (defined $configfile);
 
