@@ -320,6 +320,9 @@ sub _initialize ($$@) {
         }
     });
 
+    # initialise predefined options
+    $self->{'CONFIG'}->set($OPTION_CFGFILE, undef);
+
     # add application-specific options
     unless ($self->_add_options()) {
         throw_error('Cannot add options');
@@ -334,32 +337,30 @@ sub _initialize ($$@) {
     my @args_tmp = @argv;
     my $arg;
 
-    my $cfgfile_standalone_pattern = '^(--'.$OPTION_CFGFILE.')$';
-    my $cfgfile_value_pattern = '^(--'.$OPTION_CFGFILE.'=(\S+))$';
+    my $cfgfile_value_pattern = "^--$OPTION_CFGFILE=(\\S+)\$";
     while ($arg = shift(@args_tmp)) {
-        $help_request=1 if (($arg =~ m%^(-|--)help$%));
+        $help_request=1 if (($arg =~ m/^--?help$/));
 
-        $configfile = shift (@args_tmp) if ($arg =~ m%$cfgfile_standalone_pattern%);
-        $configfile = $2 if ($arg =~ m%$cfgfile_value_pattern%);
+        # 1st format --cfgile path/to/file
+        $configfile = shift (@args_tmp) if ($arg eq "--$OPTION_CFGFILE");
+        # 2nd format --cfgile=path/to/file
+        $configfile = $1 if ($arg =~ m/$cfgfile_value_pattern/);
     }
 
-    my $cfgfile_pattern = '^'.$OPTION_CFGFILE.'$';
-    my %confvar = $self->{'CONFIG'}->varlist($cfgfile_pattern);
-    if (exists $confvar{'cfgfile'}) {
-        $configfile=$self->option("cfgfile") unless (defined $configfile);
+    # Read default if configfile is not set via commandline
+    $configfile = $self->option($OPTION_CFGFILE) if (! defined($configfile));
 
-        if (defined $configfile) {
-            unless (-e $configfile) {
-                print STDERR "Warning: cannot read config file: $configfile, dropping.\n";
-            } else {
-                # read conf file options.
-                # Note that a 'cfgfile' option doesn't make
-                # any sense inside the cfgfile ;-)
-                unless ($self->{'CONFIG'}->file($configfile)) {
-                    # exit if something is wrong according to AppConfig.
-                    print STDERR "Problems parsing configuration file ".$configfile."\n";
-                    exit(-1);
-                }
+    if (defined $configfile) {
+        unless (-e $configfile) {
+            print STDERR "Warning: cannot read config file: $configfile, dropping.\n";
+        } else {
+            # read conf file options.
+            # Note that a 'cfgfile' option doesn't make
+            # any sense inside the cfgfile ;-)
+            unless ($self->{'CONFIG'}->file($configfile)) {
+                # exit if something is wrong according to AppConfig.
+                print STDERR "Problems parsing configuration file ".$configfile."\n";
+                exit(-1);
             }
         }
     }
