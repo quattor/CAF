@@ -321,7 +321,7 @@ sub _initialize ($$@) {
     });
 
     # initialise predefined options
-    $self->{'CONFIG'}->define($OPTION_CFGFILE, {DEFAULT => undef});
+    $self->{'CONFIG'}->define($OPTION_CFGFILE, {ARGCOUNT => ARGCOUNT_ONE});
 
     # add application-specific options
     unless ($self->_add_options()) {
