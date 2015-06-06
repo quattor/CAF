@@ -9,6 +9,14 @@ use CAF::Application qw($OPTION_CFGFILE);
 is($OPTION_CFGFILE, 'cfgfile',
    "Magic configfile option name $OPTION_CFGFILE");
 
+# test predefined options
+my $defapp = CAF::Application->new('mydefname');
+isa_ok($defapp, 'CAF::Application', 'A CAF::Application instance');
+is($defapp->{NAME}, 'mydefname', 'NAME attribute set');
+
+ok(! defined($defapp->option($OPTION_CFGFILE)), "OPTION_CFGFILE is undef by default");
+
+# mock an application
 my $def_cfgfile = '/doesnotexist/apptest.cfg';
 my $def_value = 'mydefault';
 
