@@ -536,9 +536,17 @@ sub render_json
 {
     my ($self) = @_;
 
-    my $j = JSON::XS->new();
-    $j->canonical(1); # sort the keys, to create reproducable results
-    return $j->encode($self->{contents});
+    # We should only support hash or array refs (see JSON::XS allow_nonref option)
+    # JSON::XS croaks if not handled properly
+    my $ref = ref($self->{contents});
+    if ($ref eq 'HASH' || $ref eq 'ARRAY') {
+        my $j = JSON::XS->new();
+        $j->canonical(1); # sort the keys, to create reproducable results
+        return $j->encode($self->{contents});
+    } else {
+        return $self->fail("contents for JSON rendering must be ",
+                           "hash or array reference (got '$ref' instead)");
+    }
 }
 
 # Search and replace the YAML boolean PREFIX

@@ -384,6 +384,16 @@ $trd = CAF::TextRender->new('json', {'yes' => \1, 'no' => \0}, eol=>0);
 is("$trd", '{"no":false,"yes":true}',
    "json module renders booleans true/false correctly");
 
+# test scalars
+# use a hashref here, make_contents only allows for hashrefs in CAF::TextRender
+$trd = CAF::TextRender->new('json', {a => "string" });
+# overwrite the contents (to support subclassing like CCM::TextRender)
+$trd->{contents} = "string";
+ok(! defined($trd->get_text()),
+   "Rendering scalar with JSON fails");
+is($trd->{fail},
+   "Failed to render with module json: contents for JSON rendering must be hash or array reference (got '' instead)",
+   "Rendering scalar with JSON fails with expected message");
 
 =pod
 
