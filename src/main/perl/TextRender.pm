@@ -161,6 +161,8 @@ The relative path w.r.t. the includepath to look for TT template files.
 This relative path should not be part of the module name, however it
 is not the INCLUDE_PATH. (In particular, any TT C<INCLUDE> statement has
 to use it as the relative basepath).
+If C<relpath> is undefined, the default 'metaconfig' is used. If you do not
+have a subdirectory in the includepath, use an empty string.
 
 =item C<eol>
 
@@ -208,9 +210,9 @@ sub _initialize
     };
 
     $self->{includepath} = $opts{includepath} || $DEFAULT_INCLUDE_PATH;
-    $self->{relpath} = $opts{relpath} || $DEFAULT_RELPATH;
+    $self->{relpath} = defined($opts{relpath}) ? $opts{relpath} : $DEFAULT_RELPATH;
     $self->verbose("Using includepath $self->{includepath}");
-    $self->verbose("Using relpath $self->{relpath}");
+    $self->verbose("Using relpath '$self->{relpath}'");
 
     if(exists($opts{usecache})) {
         $self->{usecache} = $opts{usecache};
@@ -270,7 +272,8 @@ sub sanitize_template
     }
 
     # module is relative to relpath
-    $tplname = "$self->{relpath}/$tplname" if $self->{relpath};
+    my $relpath = $self->{relpath} ? "$self->{relpath}/" : "";
+    $tplname = "$relpath$tplname";
 
     $self->debug(3, "We must ensure that all templates lie below $self->{includepath}");
     my $abs_tplname = "$self->{includepath}/$tplname";
@@ -282,14 +285,15 @@ sub sanitize_template
     }
 
     # untaint and sanitycheck
-    # TODO empty relpath will never match
-    my $reg = "$self->{includepath}/($self->{relpath}/.*)";
+    my $reg = "$self->{includepath}/($relpath.*)";
     if ($tplname =~ m{^$reg$}) {
         my $result_template = $1;
         $self->verbose("Using template $result_template for module $self->{module}");
         return $result_template;
     } else {
-        return $self->fail("Insecure template name $tplname. Final template must be under $self->{includepath}/$self->{relpath}");
+        return $self->fail("Insecure template name $tplname.",
+                           " Final template must be under",
+                           " $self->{includepath}/$relpath");
     }
 }
 

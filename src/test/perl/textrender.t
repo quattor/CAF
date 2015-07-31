@@ -46,19 +46,29 @@ $trd = CAF::TextRender->new('something', $contents);
 isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
 ok(!defined($trd->warn('something')), "Fake logger initialised");
 
+# default relpath
 $trd = CAF::TextRender->new('not_a_reserved_module', $contents);
 isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
 is(get_name($trd->{method}), "tt", "fallback/default render method tt selected");
 ok($trd->{method_is_tt},
    "method_is_tt set for fallback/default render method tt selected");
-
 is($trd->{includepath}, '/usr/share/templates/quattor', 'Default template base');
 is($trd->{relpath}, 'metaconfig', 'Default template relpath');
+
+# empty relpath
+$trd = CAF::TextRender->new('not_a_reserved_module',
+                            $contents,
+                            relpath => "",
+                            );
+isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
+is(get_name($trd->{method}), "tt", "fallback/default render method tt selected");
+is($trd->{relpath}, '', 'empty template relpath');
 
 $trd = CAF::TextRender->new('test', $contents,
                             includepath => getcwd()."/src/test/resources",
                             relpath => 'rendertest',
                             );
+is($trd->{relpath}, 'rendertest', 'found rendertest template relpath');
 my $sane_tpl = $trd->sanitize_template();
 is($sane_tpl, "rendertest/test.tt", "correct TT file with relpath prefixed");
 
