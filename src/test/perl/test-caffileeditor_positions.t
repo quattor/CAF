@@ -9,7 +9,7 @@ use Test::More;
 use Carp qw(confess);
 use Fcntl qw(:seek);
 
-my $filename = `mktemp`;
+my $filename = `mktemp --tmpdir=target`;
 
 chomp($filename);
 
