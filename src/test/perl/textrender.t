@@ -33,6 +33,19 @@ Test all methods for C<CAF::TextRender>
 
 =cut
 
+is_deeply(CAF::TextRender::_convert_includepaths(),
+          [qw(/usr/share/templates/quattor)],
+          "convert_includepaths returns default includepaths with undef");
+is_deeply(CAF::TextRender::_convert_includepaths('/a/b/c:/d/e/f'),
+          [qw(/a/b/c /d/e/f)],
+          "convert_includepaths returns ':'-splitted list with string argument");
+is_deeply(CAF::TextRender::_convert_includepaths([qw(/a/b/c /d/e/f)]),
+          [qw(/a/b/c /d/e/f)],
+          "convert_includepaths returns arrayref list with arrayref argument");
+ok(!defined(CAF::TextRender::_convert_includepaths({a => 'b', c => 'd'})),
+   "convert_includepaths returns undef if args is none of the above");
+
+
 my $contents = {
     'name_level0' => 'value_level0',
     'level1' => {
@@ -52,7 +65,7 @@ isa_ok ($trd, "CAF::TextRender", "Correct class after new method");
 is(get_name($trd->{method}), "tt", "fallback/default render method tt selected");
 ok($trd->{method_is_tt},
    "method_is_tt set for fallback/default render method tt selected");
-is($trd->{includepath}, '/usr/share/templates/quattor', 'Default template base');
+is_deeply($trd->{includepath}, ['/usr/share/templates/quattor'], 'Default template base');
 is($trd->{relpath}, 'metaconfig', 'Default template relpath');
 
 # empty relpath
@@ -80,6 +93,30 @@ $res = <<EOF;
 L0 value_level0
 L1 name_level1 VALUE value_level1
 EOF
+
+=pod
+
+=head2 Test mutiple includepaths
+
+=cut
+
+# tests usage of _convert_includepaths
+my $tplm = CAF::TextRender::get_template_instance("/a:/b");
+isa_ok ($tplm, "Template", "Returns Template instance");
+# ugly!
+is_deeply($tplm->{SERVICE}->{CONTEXT}->{CONFIG}->{INCLUDE_PATH},
+          [qw(/a /b)],
+          "multiple includepaths as expected");
+
+my $trdm = CAF::TextRender->new('main', {test => "TEST", othertest => "OTHERTEST"},
+                            includepath => [
+                                "/does/not/exist",
+                                getcwd()."/src/test/resources/rendertest/path2",
+                                getcwd()."/src/test/resources/rendertest/path1",
+                                ],
+                            relpath => '', # emptyrelpath
+                            );
+is("$trdm", "TEST\nOTHERTEST\n\n", "rendering with multiple includepaths");
 
 =pod
 
@@ -269,7 +306,7 @@ is($trd->sanitize_template(), "rendertest/test.tt",
 
 =pod
 
-=over 4
+=over 5
 
 =item * Absolute paths must be rejected
 
@@ -300,20 +337,33 @@ like($trd->{fail}, qr{Non-existing template name}, "Non-existing templates are r
 Templates in this component are jailed to that directory, again to
 prevent cross-directory traversals.
 
-=back
-
 =cut
 
 # file has to exist (and has to be a file), otherwise it doesn't reach the jail regexp
 $trd->{module} = '../unreachable.tt';
 
-my $fn = "$trd->{includepath}/$trd->{relpath}/$trd->{module}";
+my $fn = $trd->{includepath}->[0] . "/$trd->{relpath}/$trd->{module}";
 ok(-f $fn, "File $fn has to exist for test to make sense");
 
 ok(!$trd->sanitize_template(),
    "It's not possible to leave the 'include/relpath' jail");
 like($trd->{fail}, qr{Insecure template name.*Final template must be under}, "TT files have live under 'includepath/relpath', error logged");
 
+=pod
+
+=item * Fail with undefined includepath
+
+When the includepath is undef (e.g. when initialised with neither one of
+string, arrayref or undef), fail.
+
+=back
+
+=cut
+
+$trd->{includepath} = undef;
+ok(!$trd->sanitize_template(),
+   "It's not possible to have undef includepath");
+like($trd->{fail}, qr{^No includepath defined.$}, "includepath cannot be undef, error logged");
 
 =pod
 
