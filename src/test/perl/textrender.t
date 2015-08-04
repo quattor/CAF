@@ -548,6 +548,8 @@ is("$trd", $res, "tiny module rendered correctly");
 
 Test general/Config::General
 
+Warning: try to avoid due to reproducability issues
+
 =cut
 
 $res = <<EOF;

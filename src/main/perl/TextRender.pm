@@ -156,7 +156,11 @@ Java properties format (using C<Config::Properties>),
 
 =item general
 
-(using C<Config::General>)
+(using C<Config::General>).
+
+Caution: there is no way to garantee reproducible results as
+there is no control over the order of hash keys. It is recommended to
+try to generate this format in another way (e.g. via TT).
 
 =back
 
@@ -665,7 +669,7 @@ sub render_general
 {
     my ($self) = @_;
 
-    my $c = Config::General->new(-SaveSorted => 1); # sort output
+    my $c = Config::General->new(-SaveSorted => 0, -ForceArray => 1);
     return $c->save_string($self->{contents});
 }
 
