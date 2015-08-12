@@ -211,13 +211,16 @@ sub add_or_replace_sysconfig_lines {
 
 =pod
 
-=item add_or_replace_lines(re, goodre, newvalue, whence, offset)
+=item add_or_replace_lines(re, goodre, newvalue, whence, offset, add_after_newline)
 
 Replace lines matching C<re> but not C<goodre> with C<newvalue>. If
 there is no match, a new line will be added where the C<whence>
 and C<offset> tell us. See C<IO::String::seek> 
 for details; e.g. use the constants tuple 
 BEGINNING_OF_FILE or ENDING_OF_FILE.
+If C<add_after_newline> is true or undef, before adding the new line,
+it is verified that a newline precedes this position. If no newline
+char is found, one is added first.
 
 C<whence> must be one of SEEK_SET, SEEK_CUR or SEEK_END; 
 everything else will be ignored (an error is logged if 
@@ -230,18 +233,22 @@ occur with $self->pad, which defaults to C<\0>.
 
 sub add_or_replace_lines
 {
-    my ($self, $re, $goodre, $newvalue, $whence, $offset) = @_;
+    my ($self, $re, $goodre, $newvalue, $whence, $offset, $add_after_newline) = @_;
 
     $offset = 0 if (not defined($offset)); 
+    $add_after_newline = 1 if (not defined($add_after_newline));
+
     if (*$self->{LOG}) {
         my $fname = *$self->{'filename'};
         my $nv = $newvalue;
         chop $nv;
-        *$self->{LOG}->debug (5, "add_or_replace_lines ($fname): ",
-                                 "re = '$re'\tgoodre = '$goodre'\t",
-                                 "newvalue = '$nv'\t",
-                                 "whence = '$whence'\t",
-                                 "offset = '$offset'");
+        *$self->{LOG}->debug (5, "add_or_replace_lines ($fname):",
+                                 " re = '$re'\tgoodre = '$goodre'",
+                                 " newvalue = '$nv'",
+                                 " whence = '$whence'",
+                                 " offset = '$offset'",
+                                 " add_after_newline = '$add_after_newline'",
+                                 );
     }
     my $add = 1;
     my @lns;
@@ -273,14 +280,25 @@ sub add_or_replace_lines
             $self->seek ($offset, $whence);
 
             # new current position
-            my $new_cur_pos=$self->pos;
+            my $new_cur_pos = $self->pos;
             
             # read in all remaining text
             my $remainder = join('', <$self>);
 
-            # seek back
+            my $print_newline;
+            # if $new_cur_pos is begin of file, no need to check/insert newline
+            if ($add_after_newline && $new_cur_pos) {
+                $self->seek ($new_cur_pos - 1, SEEK_SET);
+                my $buf = "";
+                read($self, $buf, 1);
+                $print_newline = $buf ne "\n";
+                *$self->{LOG}->debug (5, "add_or_replace_lines: inserting newline: $print_newline")
+                    if *$self->{LOG};
+            }
+
+            # seek to position and insert text
             $self->seek ($new_cur_pos, SEEK_SET);
-            
+            print $self "\n" if $print_newline;
             print $self $newvalue;
             print $self $remainder;
         } elsif (*$self->{LOG}) {

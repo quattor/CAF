@@ -7,7 +7,9 @@ use testapp;
 use CAF::FileEditor;
 use Test::More;
 use Carp qw(confess);
-our $filename = `mktemp`;
+
+our $filename = `mktemp --tmpdir=target`;
+
 use constant TEXT => <<EOF;
 En un lugar de La Mancha, de cuyo nombre no quiero acordarme
 no ha tiempo que vivía un hidalgo de los de lanza en astillero...
