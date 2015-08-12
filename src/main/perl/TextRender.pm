@@ -29,8 +29,11 @@ our @EXPORT_OK = qw($YAML_BOOL $YAML_BOOL_PREFIX);
 
 use Readonly;
 
-Readonly::Scalar my $DEFAULT_INCLUDE_PATH => '/usr/share/templates/quattor';
+# Update includepath pod section when updated.
+Readonly::Array my @DEFAULT_INCLUDE_PATHS => qw(/usr/share/templates/quattor);
+# Update relpath pod section when updated.
 Readonly::Scalar my $DEFAULT_RELPATH => 'metaconfig';
+
 Readonly::Scalar my $DEFAULT_USECACHE => 1;
 
 Readonly::Scalar my $DEFAULT_TT_STRICT => 0;
@@ -62,6 +65,30 @@ Readonly our $YAML_BOOL => Load("yes: true\nno: false\n");
 # The search and replace only supports $YAML_BOOL_PREFIX(true|false),
 # all other matches are considered a failure.
 Readonly our $YAML_BOOL_PREFIX => '___CAF_TEXTRENDER_IS_YAML_BOOLEAN_';
+
+# Given C<includepaths> argument, return an array reference of include paths
+# If C<includepaths> as a string is ':'-splitted to a list of paths
+# If C<includepaths> is undef, the default DEFAULT_INCLUDE_PATHS is used.
+# Returns undef if C<includepaths> is neither one of the above nor an arrayref.
+sub _convert_includepaths
+{
+    my $includepaths = shift;
+
+    return \@DEFAULT_INCLUDE_PATHS if (! defined($includepaths));
+
+    my $ref = ref($includepaths);
+    if ($ref) {
+        if($ref eq 'ARRAY') {
+            return $includepaths;
+        } else {
+            # TODO howto raise error?
+            return;
+        }
+    } else {
+        return [split(':', $includepaths)]
+    }
+}
+
 
 =pod
 
@@ -153,7 +180,9 @@ A C<CAF::Reporter> object to log to.
 =item C<includepath>
 
 The basedirectory for TT template files, and the INCLUDE_PATH
-for the Template instance.
+for the Template instance. The C<includepath> is either a string
+(i.e. ':'-separated list of paths), an arrayref (of multiple include paths)
+or undef (the default '/usr/share/templates/quattor' is used).
 
 =item C<relpath>
 
@@ -161,6 +190,8 @@ The relative path w.r.t. the includepath to look for TT template files.
 This relative path should not be part of the module name, however it
 is not the INCLUDE_PATH. (In particular, any TT C<INCLUDE> statement has
 to use it as the relative basepath).
+If C<relpath> is undefined, the default 'metaconfig' is used. If you do not
+have a subdirectory in the includepath, use an empty string.
 
 =item C<eol>
 
@@ -207,10 +238,10 @@ sub _initialize
         $self->{eol} = 1;
     };
 
-    $self->{includepath} = $opts{includepath} || $DEFAULT_INCLUDE_PATH;
-    $self->{relpath} = $opts{relpath} || $DEFAULT_RELPATH;
-    $self->verbose("Using includepath $self->{includepath}");
-    $self->verbose("Using relpath $self->{relpath}");
+    $self->{includepath} = _convert_includepaths($opts{includepath});
+    $self->{relpath} = defined($opts{relpath}) ? $opts{relpath} : $DEFAULT_RELPATH;
+    $self->verbose("Using includepath ", join(':', @{$self->{includepath}}));
+    $self->verbose("Using relpath '$self->{relpath}'");
 
     if(exists($opts{usecache})) {
         $self->{usecache} = $opts{usecache};
@@ -259,38 +290,48 @@ sub sanitize_template
 {
     my ($self) = @_;
 
-    my $tplname = $self->{module};
+    my $tplname_orig = $self->{module};
 
-    if (file_name_is_absolute($tplname)) {
-        return $self->fail("Must have a relative template name (got $tplname)");
+    if (file_name_is_absolute($tplname_orig)) {
+        return $self->fail("Must have a relative template name (got $tplname_orig)");
     }
 
-    if ($tplname !~ m{\.tt$}) {
-        $tplname .= ".tt";
+    if ($tplname_orig !~ m{\.tt$}) {
+        $tplname_orig .= ".tt";
     }
 
     # module is relative to relpath
-    $tplname = "$self->{relpath}/$tplname" if $self->{relpath};
+    my $relpath = $self->{relpath} ? "$self->{relpath}/" : "";
 
-    $self->debug(3, "We must ensure that all templates lie below $self->{includepath}");
-    my $abs_tplname = "$self->{includepath}/$tplname";
-    $tplname = abs_path($abs_tplname);
-    if (!$tplname || !-f $tplname) {
-        # abs_path returns undef on non-existing path; use this to avoid uninitialized warning
-        $tplname = '<undef>' if ! defined($tplname);
-        return $self->fail("Non-existing template name $tplname given (abs_path of $abs_tplname)");
+    return $self->fail("No includepath defined.") if (! defined($self->{includepath}));
+
+    my $includepaths_txt = join(',', @{$self->{includepath}});
+    $self->debug(3, "We must ensure that all templates lie below $includepaths_txt.");
+
+    my @failed_msg;
+    foreach my $includepath (@{$self->{includepath}}) {
+        my $abs_tplname = "$includepath/$relpath$tplname_orig";
+        my $tplname = abs_path($abs_tplname);
+        if ($tplname && -f $tplname) {
+            # untaint and sanitycheck
+            my $reg = "$includepath/($relpath.*)";
+            if ($tplname =~ m{^$reg$}) {
+                my $result_template = $1;
+                $self->verbose("Using template $result_template for module $self->{module}");
+                return $result_template;
+            } else {
+                return $self->fail("Insecure template name $tplname.",
+                                   " Final template must be under one of",
+                                   " $includepaths_txt/$relpath");
+            }
+        } else {
+            # abs_path returns undef on non-existing path; use this to avoid uninitialized warning
+            $tplname = '<undef>' if ! defined($tplname);
+            push(@failed_msg, "$tplname (abs_path of $abs_tplname)");
+        }
     }
 
-    # untaint and sanitycheck
-    # TODO empty relpath will never match
-    my $reg = "$self->{includepath}/($self->{relpath}/.*)";
-    if ($tplname =~ m{^$reg$}) {
-        my $result_template = $1;
-        $self->verbose("Using template $result_template for module $self->{module}");
-        return $result_template;
-    } else {
-        return $self->fail("Insecure template name $tplname. Final template must be under $self->{includepath}/$self->{relpath}");
-    }
+    return $self->fail("Non-existing template names: ", join(',', @failed_msg));
 }
 
 # Return a Template::Toolkit instance
@@ -299,11 +340,16 @@ sub sanitize_template
 # Other options can be passed via named arguments.
 sub get_template_instance
 {
-    my ($includepath, %opts) = @_;
+    my ($includepaths, %opts) = @_;
+
+    $includepaths = _convert_includepaths($includepaths);
+
+    return if (! defined($includepaths));
+
     $Template::Stash::PRIVATE = undef;
 
     # force the includepath
-    $opts{INCLUDE_PATH} = $includepath;
+    $opts{INCLUDE_PATH} = $includepaths;
 
     my $template = Template->new(%opts);
     return $template;
