@@ -41,6 +41,11 @@ $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, 'END1', ENDING_OF_FILE);
 like("$fh", qr/END1a\nEND1$/, 'New ending using predefined constants, newline is inserted');
 is("$fh", "BEGIN1END1a\nEND1", "Begin and 2 ends added");
 
+$fh->add_or_replace_lines(qr/xxx/, qr/yyy/, "\nEND1b", ENDING_OF_FILE);
+like("$fh", qr/END1a\nEND1\nEND1b$/,
+     'insert text that starts with newline after line that does not end with newline, no extra newline is inserted');
+is("$fh", "BEGIN1END1a\nEND1\nEND1b", "Begin and 3 ends added");
+
 # expert mode
 # inserting at begin of text requires no disabling of add_after_newline
 $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, 'begin2', SEEK_SET);
@@ -48,22 +53,22 @@ like("$fh", qr/^begin2BEGIN1/, 'Add to begin using whence SET (default offset)')
 
 # disable add_after_newline
 $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, 'end2', SEEK_END, undef, 0);
-like("$fh", qr/END1end2$/, 'Add to end using whence END (default offset)');
+like("$fh", qr/END1bend2$/, 'Add to end using whence END (default offset)');
 
-is("$fh", "begin2BEGIN1END1a\nEND1end2", "Begin and end added part 2");
+is("$fh", "begin2BEGIN1END1a\nEND1\nEND1bend2", "Begin and end added part 2");
 
 # go to pos 5
 # disable add_after_newline
 $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, 'Begin3', SEEK_SET, 5, 0);
 like("$fh", qr/^beginBegin3/, 'Add to begin using whence SET with offset');
 
-is("$fh", "beginBegin32BEGIN1END1a\nEND1end2", "Begin and end added part 3 w/o add_after_newline");
+is("$fh", "beginBegin32BEGIN1END1a\nEND1\nEND1bend2", "Begin and end added part 3 w/o add_after_newline");
 
 # with add_after_newline enabled
 $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, 'Begin3b', SEEK_SET, 5);
 like("$fh", qr/^begin\nBegin3b/, 'Add to begin using whence SET with offset with add_after_newline');
 
-is("$fh", "begin\nBegin3bBegin32BEGIN1END1a\nEND1end2", "Begin and end added part 3");
+is("$fh", "begin\nBegin3bBegin32BEGIN1END1a\nEND1\nEND1bend2", "Begin and end added part 3");
 
 
 # ok, let the bizare stuff begin
@@ -74,13 +79,13 @@ $fh->seek(6, SEEK_SET);
 $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, 'bEgIn4', SEEK_CUR, 5, 0);
 like("$fh", qr/^begin\nBeginbEgIn4/, 'CUR whence with offset 5 (after seek 5)');
 
-is("$fh", "begin\nBeginbEgIn43bBegin32BEGIN1END1a\nEND1end2", "Begin and end added part 4");
+is("$fh", "begin\nBeginbEgIn43bBegin32BEGIN1END1a\nEND1\nEND1bend2", "Begin and end added part 4");
 
 # offset with SEEK_END
 my $origlength=length "$fh";
 $fh->seek(3, SEEK_END);
 is(length "$fh", $origlength + 3, "Seek beyond end should pad");
-like("$fh", qr/END1end2\0\0\0$/, 'Seek beyond end should pad (text match)');
+like("$fh", qr/END1bend2\0\0\0$/, 'Seek beyond end should pad (text match)');
 
 $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, 'End3', SEEK_END);
 $fh->add_or_replace_lines(qr/xxx/, qr/yyy/, 'eNd4', SEEK_END, 3);
