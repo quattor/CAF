@@ -291,7 +291,7 @@ sub add_or_replace_lines
                 $self->seek ($new_cur_pos - 1, SEEK_SET);
                 my $buf = "";
                 read($self, $buf, 1);
-                $print_newline = $buf ne "\n";
+                $print_newline = ($buf ne "\n") && (substr($newvalue, 0, 1) ne "\n");
                 *$self->{LOG}->debug (5, "add_or_replace_lines: inserting newline: $print_newline")
                     if *$self->{LOG};
             }
