@@ -1,5 +1,7 @@
 package myreporter;
 
+# Also used with object.t
+
 use strict;
 use warnings;
 
