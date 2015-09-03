@@ -6,14 +6,24 @@
 package CAF::Log;
 
 use strict;
-use CAF::Object;
-use vars qw(@ISA);
+use warnings;
+
+use parent qw(CAF::Object);
+
 use LC::Exception qw (SUCCESS throw_error);
 use FileHandle;
+use Readonly;
+
+Readonly my $FH => 'FH';
+Readonly my $TSTAMP => 'TSTAMP';
+Readonly my $FILENAME => 'FILENAME';
+Readonly my $OPTS => 'OPTS';
+Readonly my $SYSLOG => 'SYSLOG';
+
 
 my $ec = LC::Exception::Context->new->will_store_all;
 
-@ISA = qw(CAF::Object);
+# TODO: the pod used to say: INHERITANCE: CAF::Reporter
 
 =pod
 
@@ -26,75 +36,69 @@ CAF::Log - Simple class for handling log files
 
   use CAF::Log;
 
-  my $log=CAF::Log->new('/foo/bar','at');
+  my $log = CAF::Log->new('/foo/bar', 'at');
 
   $log->print("this goes to the log file\n");
   $log->close();
-
-=head1 INHERITANCE
-
-  CAF::Reporter
 
 =head1 DESCRIPTION
 
 The B<CAF::Log> class allows to instantiate objects for writing log files.
 A log file line can be prefixed by a time stamp.
 
-
-=over
-
-=cut
-
-#------------------------------------------------------------
-#                      Public Methods/Functions
-#------------------------------------------------------------
-
-=pod
-
-=back
-
 =head2 Public methods
 
 =over 4
 
-=item close(): boolean
+=item C<close()>: boolean
 
-closes the log file.
+closes the log file, returns SUCCESS on success, undef otherwise
+(if no FH attribute exists).
 
 =cut
 
-sub close ($) {
-  my $self=shift;
+sub close ($)
+{
+    my $self = shift;
 
-  return undef unless (defined $self->{'FH'});
-# Why adding extra newlines???
-#   $self->{'FH'}->print("\n");
-  $self->{'FH'}->close();
-  $self->{'FH'} = undef;
+    return unless (defined $self->{$FH});
 
-  return SUCCESS;
+    $self->{$FH}->close();
+    $self->{$FH} = undef;
+
+    return SUCCESS;
 }
-
-
 
 =pod
 
-=item print($string):boolean
+=item C<print($msg)>: boolean
 
-prints a line into the log file.
+Prints C<$msg> into the log file.
+
+If C<TSTAMP> attribute is defined (value is irrelevant),
+a C<YYYY/MM/DD-HH:mm:ss> timestamp and additional space
+are prepended.
+
+No newline is added to the message.
+
+Returns the return value of invocation of FH print method.
 
 =cut
 
-sub print ($$) {
-  my ($self,$msg) = @_;
+# TODO: use 'if ($self->{$TSTAMP})' rather than only checking if defined
 
-  if (defined $self->{'TSTAMP'}) {
-    # print timestamp the SUE way ;-)
-    my ($sec, $min, $hour, $mday, $mon, $year) = localtime(time);
-    $msg = sprintf("%04d/%02d/%02d-%02d:%02d:%02d %s",
-		   $year+1900, $mon+1, $mday, $hour, $min, $sec,$msg);
-  }
-  return $self->{'FH'}->print($msg);
+sub print ($$)
+{
+    my ($self, $msg) = @_;
+
+    if (defined $self->{$TSTAMP}) {
+        # print timestamp the SUE way ;-)
+        my ($sec, $min, $hour, $mday, $mon, $year) = localtime(time);
+        $msg = sprintf("%04d/%02d/%02d-%02d:%02d:%02d %s",
+                       $year+1900, $mon+1, $mday, $hour, $min, $sec,$msg);
+    }
+
+    return $self->{$FH}->print($msg);
 }
 
 
@@ -106,82 +110,94 @@ sub print ($$) {
 
 =over 4
 
-=item _initialize($filename,$options)
+=item C<_initialize($filename, $options)>
 
-initialize the object. Called by new($filename,$options).
+C<$options> is a string with magic letters
 
-$options can be 'a' for appending to a logfile, and 'w' for
-truncating, and 't' for generating a timestamp on every
-print. If the 'w' option is used and there was a previous
+=over
+
+=item a: append to a logfile
+
+=item w: truncate a loglfile
+
+=item t: generate a timestamp on every print
+
+=back
+
+Only one of C<w> or C<a> can and has to be set. (There is no default.)
+
+If the C<w> option is used and there was a previous
 log file, it is renamed with the extension '.prev'.
 
 Examples:
-open('/foo/bar','at'): append, enable timestamp
-open('/foo/bar','w') : truncate logfile, no timestamp
+    CAF::Log->new('/foo/bar', 'at'): append, enable timestamp
+    CAF::Log->new('/foo/bar', 'w') : truncate logfile, no timestamp
 
+If the filename ends with C<.log>, the C<SYSLOG> attribute is set to
+basename of the file without suffix (relevant for L<CAF::Reporter::syslog>).
 
 =cut
 
-sub _initialize ($$$) {
-  my ($self,$filename,$options) = @_;
+# TODO: need to test $SYSLOG is same $SYSLOG of CAF::Reporter
 
-  $self->{'FILENAME'} = $filename;
-  $self->{'OPTS'} = $options;
+sub _initialize ($$$)
+{
+    my ($self, $filename, $options) = @_;
 
-  if ($self->{FILENAME} =~ m{([^/]*).log$}) {
-    $self->{SYSLOG} = $1;
-  }
+    $self->{$FILENAME} = $filename;
+    $self->{$OPTS} = $options;
 
-  unless ($self->{'OPTS'} =~ /^(w|a)t?$/) {
-    throw_error("Bad options for log ".$self->{'FILENAME'}.
-                      ": ".$self->{'OPTS'});
-    return undef;
-  }
-
-  if ($self->{'OPTS'} =~ /t/) {
-    $self->{'TSTAMP'}=1;
-  }
-
-  if ($self->{'OPTS'} =~ /w/) {
-    #
-    #  Move old filename away if mode is 'w'.
-    #
-    rename ($self->{'FILENAME'},$self->{'FILENAME'}.'.prev')
-      if (-e $self->{'FILENAME'});
-    unless ($self->{'FH'} = FileHandle->new(">".$self->{'FILENAME'})) {
-      throw_error("Open for write ",$self->{'FILENAME'});
-      return undef;
+    if ($self->{$FILENAME} =~ m{([^/]*).log$}) {
+        $self->{$SYSLOG} = $1;
     }
-  } else {
-    #
-    #  Mode is 'a'. Append to (potentially existing) file
-    #
-    unless ($self->{'FH'} = FileHandle->new(">> ".$self->{'FILENAME'})) {
-      throw_error("Open for append: $self->{'FILENAME'}", $!);
-      return undef;
+
+    unless ($self->{$OPTS} =~ /^(w|a)t?$/) {
+
+        throw_error("Bad options for log ".$self->{$FILENAME}.
+                    ": ".$self->{$OPTS});
+        return;
     }
-  }
-  #
-  # Autoflush on
-  #
-  $self->{'FH'}->autoflush();
 
-  return SUCCESS;
+    if ($self->{$OPTS} =~ /t/) {
+        $self->{$TSTAMP} = 1;
+    }
 
+    my ($fhmode, $msg);
+    if ($self->{$OPTS} =~ /w/) {
+        # Move old filename away if mode is 'w'.
+        rename ($self->{$FILENAME}, $self->{$FILENAME}.'.prev')
+            if (-e $self->{$FILENAME});
+        $fhmode = ">";
+        $msg = "write";
+    } else {
+        # setting is 'a': append to (potentially existing) file
+        $fhmode = ">>";
+        $msg = "append";
+    }
+
+    unless ($self->{$FH} = FileHandle->new("$fhmode ".$self->{$FILENAME})) {
+        throw_error("Open for $msg " . $self->{$FILENAME} . " $!");
+        return;
+    }
+
+    # Autoflush on
+    $self->{$FH}->autoflush();
+
+    return SUCCESS;
 }
 
 =pod
 
 =item DESTROY
 
-called during garbage collection. Invokes close()
+Called during garbage collection. Invokes close().
 
 =cut
 
 
 sub DESTROY {
-  my $self = shift;
-  $self->close() if (defined $self->{'FH'});
+    my $self = shift;
+    $self->close() if (defined $self->{$FH});
 }
 
 =pod
@@ -190,6 +206,8 @@ sub DESTROY {
 
 =cut
 
+# TODO: these are only send to STDERR, not logged
+#       move this to DESTROY?
 
 END {
     # report all stored warnings
