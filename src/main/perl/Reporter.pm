@@ -6,18 +6,25 @@
 package CAF::Reporter;
 
 use strict;
+use warnings;
+
 use LC::Exception qw (SUCCESS throw_error);
 use Sys::Syslog qw (openlog closelog);
 
-use vars qw(@ISA $_REP_SETUP);
+use vars qw($_REP_SETUP);
+use parent qw(Exporter);
+
 use Readonly;
 
-Readonly my $VERBOSE => 'VERBOSE';
-Readonly my $DEBUGLV => 'DEBUGLV';
-Readonly my $QUIET => 'QUIET';
-Readonly my $LOGFILE => 'LOGFILE';
-Readonly my $SYSLOG => 'SYSLOG';
-Readonly my $FACILITY => 'FACILITY';
+Readonly our $VERBOSE => 'VERBOSE';
+Readonly our $DEBUGLV => 'DEBUGLV';
+Readonly our $QUIET => 'QUIET';
+Readonly our $LOGFILE => 'LOGFILE';
+Readonly our $SYSLOG => 'SYSLOG';
+Readonly our $FACILITY => 'FACILITY';
+
+our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY);
+
 
 my $_reporter_default = {
     $VERBOSE  => 0,        # no verbose
@@ -30,6 +37,15 @@ my $_reporter_default = {
 # setup the initial/default _REP_SETUP
 init_reporter();
 
+# Return the hashref that holds the reporter setup
+# Instances of CAF::Reporter store the reporter config in "global" _REP_SETUP
+# This is for subclassing ReporterMany
+sub _rep_setup
+{
+    my $self = shift;
+    return $_REP_SETUP;
+}
+
 =pod
 
 =head1 NAME
@@ -39,11 +55,20 @@ C<CAF::Reporter> - Class for console & log message reporting in CAF applications
 =head1 SYNOPSIS
 
     package myclass;
-    use CAF::Reporter;
-    @ISA = qw(CAF::Reporter);
-    ...
+    use CAF::Log;
+    use parent qw(CAF::Reporter);
+
+    my $logger = CAF::Log->new('/path/to/logfile', 'at');
+
+    sub new {
+        ...
+        $self->setup_reporter(2, 0, 1);
+        $self->set_report_logfile($logger);
+        ...
+    }
+
     sub foo {
-        my ($self,$a,$b,$c)=@_;
+        my ($self, $a, $b, $c) = @_;
         ...
         $self->report("foo is doing well");
         $self->verbose("foo called with params $a $b $c");
@@ -55,8 +80,9 @@ C<CAF::Reporter> - Class for console & log message reporting in CAF applications
 
 C<CAF::Reporter> provides class methods for message (information,
 warnings, error) reporting to standard output and a log file. There is
-only one instance of C<CAF::Reporter> in an application. Classes
-wanting to use C<CAF::Reporter> have to inherit from it
+only one instance of C<CAF::Reporter> in an application. (All C<CAF::Reporter>
+instances share the same configuration).
+Classes wanting to use C<CAF::Reporter> have to inherit from it
 (using C<parent qw(CAF::Reporter)> or via C<@ISA>).
 
 Usage of a log file is optional. A log file can be attached/detached
@@ -99,22 +125,32 @@ Reporter setup:
 =item C<$quiet>: if set to a true value (eg. 1), stops any output to console.
 
 =item C<$verbose>: if set to a true value (eg. 1), produce verbose output
-            (produced with the C<verbose> method). Implied by debug >= 1.
+            (with the C<verbose> method). Implied by debug >= 1.
 
 =item C<$facility>: syslog facility the messages will be sent to
 
 =back
 
+If any of these arguments is C<undef>, current application settings
+will be preserved.
+
 =cut
+
+# Written with the indented 'if defined' to make clear that
+# nothing happens when undef is set for a certain value
 
 sub setup_reporter
 {
     my ($self, $debuglvl, $quiet, $verbose, $facility) = @_;
 
-    $_REP_SETUP->{$DEBUGLV} = (defined($debuglvl) && $debuglvl > 0) ? $debuglvl : 0;
-    $_REP_SETUP->{$QUIET} = $quiet ? 1 : 0;
-    $_REP_SETUP->{$VERBOSE} = ($verbose || $_REP_SETUP->{$DEBUGLV}) ? 1 : 0;
-    $_REP_SETUP->{$FACILITY} = $facility if defined($facility);
+    $self->_rep_setup()->{$DEBUGLV} = ($debuglvl > 0 ? $debuglvl : 0)
+        if defined($debuglvl);
+    $self->_rep_setup()->{$QUIET} = ($quiet ? 1 : 0)
+        if defined($quiet);
+    $self->_rep_setup()->{$VERBOSE} = (($verbose || $self->_rep_setup()->{$DEBUGLV}) ? 1 : 0)
+        if (defined ($verbose) || defined($debuglvl));
+    $self->_rep_setup()->{$FACILITY} = $facility
+        if defined($facility);
 
     return SUCCESS;
 }
@@ -134,7 +170,7 @@ sub set_report_logfile
 {
     my ($self, $logfile) = @_;
 
-    $_REP_SETUP->{'LOGFILE'} = $logfile;
+    $self->_rep_setup()->{$LOGFILE} = $logfile;
 
     return SUCCESS;
 }
@@ -167,7 +203,7 @@ sub report
 {
     my $self = shift;
     my $string = join('', @_)."\n";
-    _print($string) unless ($_REP_SETUP->{'QUIET'});
+    _print($string) unless ($self->_rep_setup()->{$QUIET});
     $self->log(@_);
     return SUCCESS;
 }
@@ -253,7 +289,7 @@ and reports C<@array> using the C<report> method, but with a C<[VERB]> prefix.
 
 =cut
 
-# TODO: the previous code had additional 'if ($_REP_SETUP->{'VERBOSE'})' after the report.
+# TODO: the previous code had additional 'if ($self->_rep_setup()->{'VERBOSE'})' after the report.
 #       was the even older behaviour maybe to always syslog, and only report on verbose?
 #       report has something similar with quiet and log()
 
@@ -261,7 +297,7 @@ sub verbose
 {
     my $self = shift;
 
-    if ($_REP_SETUP->{VERBOSE}) {
+    if ($self->_rep_setup()->{$VERBOSE}) {
         $self->syslog ('notice', @_);
         return $self->report('[VERB]  ', @_);
     }
@@ -289,14 +325,14 @@ sub debug
     my $self = shift;
     my $debuglvl = shift;
 
-    # the first argument must be a single integer
+    # the first argument must be a single-digit integer
     $debuglvl = "<undef>" if (! defined($debuglvl));
     unless($debuglvl =~ /^\d$/) {
         throw_error("debug: first parameter must be integer in [0-9], got $debuglvl");
         return;
     }
 
-    if (defined($_REP_SETUP->{$DEBUGLV}) && $_REP_SETUP->{$DEBUGLV} >= $debuglvl) {
+    if (defined($self->_rep_setup()->{$DEBUGLV}) && $self->_rep_setup()->{$DEBUGLV} >= $debuglvl) {
         $self->syslog ('debug', @_);
         return $self->report('[DEBUG] ',@_);
     }
@@ -317,7 +353,7 @@ sub log
 {
     my $self = shift;
     my $string = join('', @_)."\n";
-    $_REP_SETUP->{$LOGFILE}->print($string) if ($_REP_SETUP->{$LOGFILE});
+    $self->_rep_setup()->{$LOGFILE}->print($string) if ($self->_rep_setup()->{$LOGFILE});
     return SUCCESS;
 }
 
@@ -341,12 +377,14 @@ sub syslog
 {
     my ($self, $priority, @msg) = @_;
 
-    return unless $_REP_SETUP->{$LOGFILE} &&
-        exists ($_REP_SETUP->{$LOGFILE}->{$SYSLOG});
+    return unless $self->_rep_setup()->{$LOGFILE} &&
+        exists ($self->_rep_setup()->{$LOGFILE}->{$SYSLOG});
 
     # If syslog can't be reached do nothing, but please don't die.
     eval {
-        openlog ($_REP_SETUP->{$LOGFILE}->{$SYSLOG}, "pid", $_REP_SETUP->{$FACILITY});
+        openlog ($self->_rep_setup()->{$LOGFILE}->{$SYSLOG},
+                 "pid",
+                 $self->_rep_setup()->{$FACILITY});
         Sys::Syslog::syslog ($priority, join ('', @msg));
         closelog();
     };
