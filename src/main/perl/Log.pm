@@ -8,6 +8,7 @@ package CAF::Log;
 use strict;
 use warnings;
 
+use CAF::Reporter qw($SYSLOG);
 use parent qw(CAF::Object);
 
 use LC::Exception qw (SUCCESS throw_error);
@@ -18,8 +19,6 @@ Readonly my $FH => 'FH';
 Readonly my $TSTAMP => 'TSTAMP';
 Readonly my $FILENAME => 'FILENAME';
 Readonly my $OPTS => 'OPTS';
-Readonly my $SYSLOG => 'SYSLOG';
-
 
 my $ec = LC::Exception::Context->new->will_store_all;
 
@@ -137,8 +136,6 @@ If the filename ends with C<.log>, the C<SYSLOG> attribute is set to
 basename of the file without suffix (relevant for L<CAF::Reporter::syslog>).
 
 =cut
-
-# TODO: need to test $SYSLOG is same $SYSLOG of CAF::Reporter
 
 sub _initialize ($$$)
 {
