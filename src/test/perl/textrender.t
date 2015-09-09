@@ -548,18 +548,17 @@ is("$trd", $res, "tiny module rendered correctly");
 
 Test general/Config::General
 
+Warning: try to avoid due to reproducability issues
+
 =cut
 
-$res = <<EOF;
-<level1>
-    name_level1   value_level1
-</level1>
-name_level0   value_level0
-EOF
 $trd = CAF::TextRender->new('general', $contents);
 ok(! $trd->{method_is_tt}, "method_is_tt false for general");
 ok($trd->load_module('Config::General'), "Config::General loaded");
-is("$trd", $res, "general module rendered correctly");
+
+# can't use full output, because it's not reproducable accross perl versions
+like("$trd", qr{<level1>\n    name_level1   value_level1\n</level1>\n}, "general module rendered level1 correctly");
+like("$trd", qr{name_level0   value_level0\n}, "general module rendered level0 correctly");
 
 # No error logging in the module
 ok(! exists($trd->{ERROR}), "No errors logged anywhere");
