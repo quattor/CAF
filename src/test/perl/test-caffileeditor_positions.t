@@ -9,7 +9,12 @@ use Test::More;
 use Carp qw(confess);
 use Fcntl qw(:seek);
 
-my $filename = `mktemp --tmpdir=target`;
+use File::Path;
+use File::Temp qw(tempfile);
+
+my $testdir = 'target/test/editor';
+mkpath($testdir);
+our $filename = tempfile(DIR => $testdir);
 
 chomp($filename);
 
