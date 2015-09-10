@@ -7,8 +7,12 @@ use testapp;
 use CAF::FileEditor;
 use Test::More;
 use Carp qw(confess);
+use File::Path;
+use File::Temp qw(tempfile);
 
-our $filename = `mktemp --tmpdir=target`;
+my $testdir = 'target/test/editor';
+mkpath($testdir);
+our $filename = tempfile(DIR => $testdir);
 
 use constant TEXT => <<EOF;
 En un lugar de La Mancha, de cuyo nombre no quiero acordarme
