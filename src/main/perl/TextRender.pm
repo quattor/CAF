@@ -669,7 +669,7 @@ sub render_general
 {
     my ($self) = @_;
 
-    my $c = Config::General->new(-SaveSorted => 0, -ForceArray => 1);
+    my $c = Config::General->new(-SaveSorted => 0);
     return $c->save_string($self->{contents});
 }
 
