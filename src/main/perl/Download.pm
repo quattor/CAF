@@ -20,13 +20,19 @@ our @EXPORT_OK = qw(set_url_defaults);
 # TODO: dependencies on curl and kinit
 
 Readonly::Hash my %DOWNLOAD_METHODS => {
-    http => [qw(lwp curl)],
+    http => [qw(lwp curl)], # try https, if not, try http
+    https => [qw(lwp curl)], # only https
     file => [qw(lwp)],
 };
 
 Readonly::Array my @DOWNLOAD_PROTOCOLS => sort keys %DOWNLOAD_METHODS;
 
 # TODO: can we mix and match x509/krb5 also for security like TLS?
+# The GSSAPI doesn't require TLS, it has encryption
+# gssapi here means use the perl GSSAPI bindings to generate the tokens etc
+# kinit means to use commandline tools like kinit/kdestroy
+# x509/lwp means have LWP handle X509 (TLS + X509 auth)
+# TODO: does kinit imply GSSAPI usage?
 Readonly::Hash my %DOWNLOAD_AUTHENTICATION => {
     krb5 => [qw(gssapi kinit)],
     x509 => [qw(lwp)],
@@ -43,7 +49,7 @@ sub fail
     return;
 }
 
-# Disclaimer: inspired by 
+# Disclaimer: inspired by
 #    NCM::Component::download (15.8)
 #    EDG::WP4::CCM::Fetch (15.8)
 #    File::Fetch (0.48)
@@ -84,7 +90,7 @@ one is used. Providing more than one url can thus be used for failover.
 
 See C<prepare_urls> method for a description off the C<urls>.
 
-=back 
+=back
 
 It takes some extra optional arguments:
 
@@ -124,7 +130,7 @@ sub _initialize
     return SUCCESS;
 }
 
-=pod 
+=pod
 
 =item C<prepare_destination>
 
