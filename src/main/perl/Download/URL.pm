@@ -51,6 +51,7 @@ Readonly::Hash my %URL_DEFAULTS => {
         port => undef,
         reverse => undef, # reverse proxy (default is false, i.e. forward)
     },
+
 };
 
 # create deep copy of defaults as private copy
@@ -88,6 +89,9 @@ sub _is_valid_url
 
     # 2 levels
     foreach my $k (sort keys %$url) {
+        # ignore keys with starting with _
+        next if ($k =~ m/^_/);
+
         return if (!exists($URL_DEFAULTS{$k}));
         if (ref($url->{$k}) eq 'HASH') {
             return if (grep {! exists($URL_DEFAULTS{$k}->{$_})} keys %{$url->{$k}});
@@ -95,6 +99,23 @@ sub _is_valid_url
     }
 
     return SUCCESS;
+}
+
+# Given (valid) $url, return string representation
+sub _to_string
+{
+    my $url = shift;
+
+    my $txt = join('+',
+                   @{$url->{auth} || []},
+                   @{$url->{method} || []},
+                   $url->{proto},
+        );
+    $txt .= "://";
+    $txt .= $url->{server} || '';
+    $txt .= $url->{filename} || '';
+
+    return $txt;
 }
 
 # Merge 2 url hashrefs, the first url is updated in place.
@@ -223,7 +244,7 @@ Timeout in seconds for initial request which checks for changes/existence.
 
 =item retries
 
-The number retries (default 3).
+The number retries (default 3). If undef, retry forever.
 
 =item retry_wait
 
@@ -310,6 +331,7 @@ sub parse_urls
     my ($self, $urls) = @_;
 
     my @newurls;
+
     foreach my $url (@$urls) {
         my $ref = ref($url);
         if($ref eq '') {
@@ -330,6 +352,9 @@ sub parse_urls
             # a valid url that can't be merged with defaults, not sure what that could be
             return $self->fail("Unable to merge url with url defaults.");
         };
+
+        $url->{_string} = _to_string($url);
+        $url->{_id} = scalar(@newurls);
 
         push(@newurls, $url);
     }

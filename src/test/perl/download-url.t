@@ -30,6 +30,10 @@ ok(CAF::Download::URL::_is_valid_url({server => 'myserver'}),
 ok(CAF::Download::URL::_is_valid_url({krb5 => {realm => 'VALUE'}, server => 'myserver'}),
    "valid 2nd level");
 
+# ignore keys with _
+ok(CAF::Download::URL::_is_valid_url({krb5 => {realm => 'VALUE'}, server => 'myserver', '_something' => 1}),
+   "valid 2nd level, ignore _keys");
+
 =item _merge_url
 
 =cut
@@ -88,6 +92,19 @@ $validurl2b->{krb5} = {%{$validurl1c->{krb5}}};
 $validurl2b->{server} = 'myserver';
 
 is_deeply($validurl2, $validurl2b, "url2 merged without update");
+
+=item _to_string
+
+=cut
+
+is(CAF::Download::URL::_to_string({
+    server => 'server',
+    filename => '/location',
+    proto => 'proto',
+    auth => [qw(a b)],
+    method => [qw(m n)],
+    }), "a+b+m+n+proto://server/location",
+   "generate correct string representation of url");
 
 =item set_url_defaults
 
@@ -206,9 +223,9 @@ $d->{fail} = undef;
 
 # 2 valid urls, one string, one hashref
 my $current_defaults = set_url_defaults();
-my $url1 = {server => 'server1', filename => '/location1', proto => 'https'};
+my $url1 = {server => 'server1', filename => '/location1', proto => 'https', '_string' => 'https://server1/location1', '_id' => 0};
 my $url2_orig = {server => 'server2', filename => '/location2', proto => 'http'};
-my $url2 = {};
+my $url2 = {'_string' => 'http://server2/location2', '_id' => 1};
 ok(CAF::Download::URL::_merge_url($url2, $url2_orig, 1), "Made a copy of url2_orig");
 ok(CAF::Download::URL::_merge_url($url1, $current_defaults, 0), "merged url1 with current defaults");
 ok(CAF::Download::URL::_merge_url($url2, $current_defaults, 0), "merged url2 with current defaults");
