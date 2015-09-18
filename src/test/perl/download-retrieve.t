@@ -15,7 +15,7 @@ use Cwd;
 my $obj = Test::Quattor::Object->new();
 my $mock = Test::MockModule->new('CAF::Download');
 
-my $d = CAF::Download->new("/tmp/dest", ["http://localhost"], log => $obj);
+my $d = CAF::Download->new(["http://localhost"], log => $obj);
 
 =pod
 
@@ -38,19 +38,11 @@ is_deeply($d->prepare_destination({x => 1}),
 
 =cut
 
-# test return undef with empty urls and destination
+# test return undef with undefined urls
 my $uniq_fail = 'yyz';
 $d->{fail} = $uniq_fail;
 
-$d->{destination} = undef;
-$d->{urls} = [{}];
-ok(defined($d->{urls}), 'urls attribute defined for this test');
-ok(! defined($d->download()), 'download with undefined destination returns undef');
-is($d->{fail}, $uniq_fail, 'download with undefined destination does not modify fail attribute');
-
-$d->{destination} = '/a/file';
 $d->{urls} = undef;
-ok(defined($d->{destination}), 'destination attribute defined for this test');
 ok(! defined($d->download()), 'download with undefined urls returns undef');
 is($d->{fail}, $uniq_fail, 'download with undefined urls does not modify fail attribute');
 

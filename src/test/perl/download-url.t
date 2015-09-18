@@ -137,7 +137,7 @@ is(set_url_defaults()->{krb5}->{realm}, 'TEST.ORG', 'new default value is set on
 #
 # Init instance for method testing
 #
-my $d = CAF::Download->new("/tmp/dest", ["http://localhost"]);
+my $d = CAF::Download->new(["http://localhost"]);
 isa_ok($d, 'CAF::Download', 'is a CAF::Download instance');
 
 =pod

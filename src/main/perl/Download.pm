@@ -64,6 +64,15 @@ CAF::Download - Class for downloading content from remote servers.
 
     use CAF::Download;
 
+    my $dl = CAF::Download->new(['https://somewhere/myfile']);
+    print "$dl"; # stringification
+
+    $dl = CAF::TextRender->new(['https://somewhere/else']);
+    # return CAF::FileWriter instance (downloaded text already added)
+    my $fh = $dl->filewriter('/some/path');
+    die "Problem downloading the data" if (!defined($fh));
+    $fh->close();
+
 =head1 DESCRIPTION
 
 This class simplyfies the downloading of content located on remote servers.
@@ -78,10 +87,6 @@ It handles things like authentication, decryption, creating the actual file, ...
 Initialize the process object. Arguments:
 
 =over
-
-=item destination
-
-The destination of the download, e.g. a filename.
 
 =item urls
 
@@ -108,15 +113,19 @@ Boolean to run the setup (or not). Default/undef is to run setup.
 
 Boolean to run the cleanup (or not). Default/undef is to run cleanup.
 
+=item destination
+
+The destination of the download, e.g. a filename. This is in particular required
+for download methods that can write to file themself, like C<curl>.
+
 =back
 
 =cut
 
 sub _initialize
 {
-    my ($self, $destination, $urls, %opts) = @_;
+    my ($self, $urls, %opts) = @_;
 
-    $self->{destination} = $self->prepare_destination($destination);
     $self->{urls} = $self->parse_urls($urls);
 
     %opts = () if !%opts;
@@ -126,6 +135,11 @@ sub _initialize
     $self->{setup} = (! defined($opts{setup}) || $opts{setup}) ? 1 : 0;
     $self->{cleanup} = (! defined($opts{cleanup}) || $opts{cleanup}) ? 1 : 0;
     $self->debug(1, "setup $self->{setup} cleanup $self->{cleanup}");
+
+    if ($opts{destination}) {
+        $self->{destination} = $self->prepare_destination($opts{destination});
+        $self->debug(1, "download destination set to " . ($self->{destination} || '<UNDEF>'));
+    }
 
     return SUCCESS;
 }

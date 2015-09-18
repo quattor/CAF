@@ -13,7 +13,19 @@ use LC::Exception qw (SUCCESS);
 
 Readonly my $MAX_RETRIES => 1000;
 
-=pod
+=head1 NAME
+
+CAF::Download::Retrieve - Class for retrieval for L<CAF::Download>.
+
+=head1 DESCRIPTION
+
+This class handles the downloading of the URLs to use within L<CAF::Download>.
+
+=cut
+
+=head2 Functions
+
+=over
 
 =item C<prepare_destination>
 
@@ -51,12 +63,8 @@ sub download
 {
     my ($self) = @_;
 
-    # in case the prepare_destination failed. fail attribute is set
-    return if (!defined($self->{destination}));
-
     # in case the parse_urls failed. fail attribute is set
     return if (!defined($self->{urls}));
-
 
     my %tried; # per-url retry counter
     my $tries = 0; # total tries

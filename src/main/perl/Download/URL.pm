@@ -60,12 +60,12 @@ _merge_url($_url_defaults, \%URL_DEFAULTS, 1);
 
 =head1 NAME
 
-CAF::Download::Url - Class for URL handling for L<CAF::Download>.
+CAF::Download::URL - Class for URL handling for L<CAF::Download>.
 
 =head1 DESCRIPTION
 
-This class simplyfies handles the parsing, generation and validation
-of URL to used withing L<CAF::Download>.
+This class handles the parsing, generation and validation
+of URL to used within L<CAF::Download>.
 
 =cut
 
