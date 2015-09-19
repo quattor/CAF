@@ -259,7 +259,7 @@ Test filehandle options
 =cut
 
 my $fh = $trd->filewriter("/some/name");
-isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
+isa_ok($fh, "CAF::FileWriter", "CAF::TextRender filewriter method returns CAF::FileWriter");
 is("$fh", $res, "File contents as expected");
 
 my $header = "HEADER"; # no newline, eol should add one
@@ -268,7 +268,7 @@ $fh = $trd->filewriter("/some/name",
                header => $header,
                footer => $footer,
                );
-isa_ok($fh, "CAF::FileWriter", "CAF::TextRender fh method returns CAF::FileWriter");
+isa_ok($fh, "CAF::FileWriter", "CAF::TextRender filewriter method returns CAF::FileWriter");
 # add newline due to eol
 is("$fh", $header."\n".$res.$footer."\n", "File contents as expected");
 
