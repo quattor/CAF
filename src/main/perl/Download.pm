@@ -10,7 +10,7 @@ use warnings;
 
 # For re-export only
 use CAF::Download::URL qw(set_url_defaults);
-use parent qw(CAF::Object Exporter CAF::Download::URL CAF::Download::Retrieve);
+use parent qw(CAF::ObjectText Exporter CAF::Download::URL CAF::Download::Retrieve);
 
 use Readonly;
 use LC::Exception qw (SUCCESS);
@@ -37,17 +37,6 @@ Readonly::Hash my %DOWNLOAD_AUTHENTICATION => {
     krb5 => [qw(gssapi kinit)],
     x509 => [qw(lwp)],
 };
-
-# Handle failures. Stores the error message and log it verbose and
-# returns undef. All failures should use 'return $self->fail("message");'.
-# No error logging should occur in this module.
-sub fail
-{
-    my ($self, @messages) = @_;
-    $self->{fail} = join('', @messages);
-    $self->verbose("FAIL: ", $self->{fail});
-    return;
-}
 
 # Disclaimer: inspired by
 #    NCM::Component::download (15.8)
@@ -130,7 +119,7 @@ sub _initialize
 
     %opts = () if !%opts;
 
-    $self->{log} = $opts{log} if $opts{log};
+    $self->_initialize_textopts(%opts);
 
     $self->{setup} = (! defined($opts{setup}) || $opts{setup}) ? 1 : 0;
     $self->{cleanup} = (! defined($opts{cleanup}) || $opts{cleanup}) ? 1 : 0;

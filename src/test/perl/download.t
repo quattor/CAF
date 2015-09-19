@@ -24,6 +24,7 @@ Test all methods for C<CAF::Download>
 
 my $d = CAF::Download->new(["http://localhost"], log => $obj);
 isa_ok($d, 'CAF::Download', 'is a CAF::Download instance');
+isa_ok($d, 'CAF::ObjectText', 'CAF::Download is a CAF::ObjectText instance');
 is($d->{setup}, 1, "default setup is 1");
 is($d->{cleanup}, 1, "default cleanup is 1");
 ok(! exists($d->{destination}), 'no destination specified, attribute does not exist');
