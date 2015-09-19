@@ -5,7 +5,8 @@ use Test::More;
 
 # needs real LC for CCM, not the mocked one set via -I in pom.xml
 BEGIN {
-    @INC = grep {$_ !~ /CAF\/src\/test\/resources/ } @INC;
+    @INC = grep {$_ !~ /\/src\/test\/resources$/ } @INC;
+    diag explain \@INC;
 };
 use Test::Quattor qw(download_pan);
 

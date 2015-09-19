@@ -84,6 +84,7 @@
                     <resource>
                       <directory>src/main/perl</directory>
                       <includes>
+                        <include>*.pm</include>
                         <include>**/*.pm</include>
                       </includes>
                       <filtering>true</filtering>
@@ -138,6 +139,7 @@
                       <directory>src/main/perl</directory>
                       <includes>
                         <include>*.pm</include>
+                        <include>**/*.pm</include>
                       </includes>
                       <filtering>true</filtering>
                     </resource>
