@@ -51,24 +51,43 @@ is($app->option('myoption'), $def_value,
 my $cfgfile = 'src/test/resources/apptest.cfg';
 my $value = 'myvalue';
 
-# 1st format --cfgile path/tofile
+# 1st format --cfgfile path/tofile
 my $newapp = CAF::Application->new('myname', "--$OPTION_CFGFILE", $cfgfile);
 isa_ok($newapp, 'CAF::Application', 'A CAF::Application instance');
 
 ok(-f $cfgfile, "configfile $cfgfile found");
 is($newapp->option($OPTION_CFGFILE), $cfgfile,
-   "Specified config file location $cfgfile via --cfgile path/tofile");
+   "Specified config file location $cfgfile via --cfgfile path/tofile");
 is($newapp->option('myoption'), $value,
    "myoption value from configfile");
 
-# 2nd format --cfgile=path/tofile
+# 1st format short -cfgfile path/tofile
+my $newapp = CAF::Application->new('myname', "-$OPTION_CFGFILE", $cfgfile);
+isa_ok($newapp, 'CAF::Application', 'A CAF::Application instance');
+
+ok(-f $cfgfile, "configfile $cfgfile found shortformat");
+is($newapp->option($OPTION_CFGFILE), $cfgfile,
+   "Specified config file location $cfgfile via -cfgfile path/tofile shortformat");
+is($newapp->option('myoption'), $value,
+   "myoption value from configfile shortformat");
+
+# 2nd format --cfgfile=path/tofile
 my $newapp2 = CAF::Application->new('myname', "--$OPTION_CFGFILE=$cfgfile");
 isa_ok($newapp2, 'CAF::Application', 'A CAF::Application instance');
 
 is($newapp2->option($OPTION_CFGFILE), $cfgfile,
-   "Specified config file location $cfgfile --cfgile=path/tofile");
+   "Specified config file location $cfgfile --cfgfile=path/tofile");
 is($newapp2->option('myoption'), $value,
    "myoption value from configfile (2nd format)");
+
+# 2nd format short -cfgfile=path/tofile
+my $newapp2 = CAF::Application->new('myname', "-$OPTION_CFGFILE=$cfgfile");
+isa_ok($newapp2, 'CAF::Application', 'A CAF::Application instance');
+
+is($newapp2->option($OPTION_CFGFILE), $cfgfile,
+   "Specified config file location $cfgfile -cfgfile=path/tofile shortformat");
+is($newapp2->option('myoption'), $value,
+   "myoption value from configfile (2nd format) shortformat");
 
 
 done_testing();
