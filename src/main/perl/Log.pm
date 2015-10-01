@@ -9,16 +9,22 @@ use strict;
 use warnings;
 
 use CAF::Reporter qw($SYSLOG);
-use parent qw(CAF::Object);
+use parent qw(CAF::Object Exporter);
 
 use LC::Exception qw (SUCCESS throw_error);
 use FileHandle;
 use Readonly;
 
-Readonly my $FH => 'FH';
+Readonly our $FH => 'FH';
+Readonly our $FILENAME => 'FILENAME';
 Readonly my $TSTAMP => 'TSTAMP';
-Readonly my $FILENAME => 'FILENAME';
 Readonly my $OPTS => 'OPTS';
+
+our @EXPORT_OK = qw($FILENAME $FH);
+
+# $FH is used during DESTROY (and close), but might be
+# destroyed itself e.g. during global cleanup
+my $_FH = $FH;
 
 my $ec = LC::Exception::Context->new->will_store_all;
 
@@ -56,14 +62,15 @@ closes the log file, returns SUCCESS on success, undef otherwise
 
 =cut
 
+# Called during DESTROY, use $_XYZ flavour
 sub close ($)
 {
     my $self = shift;
 
-    return unless (defined $self->{$FH});
+    return unless (defined $self->{$_FH});
 
-    $self->{$FH}->close();
-    $self->{$FH} = undef;
+    $self->{$_FH}->close();
+    $self->{$_FH} = undef;
 
     return SUCCESS;
 }
@@ -191,10 +198,12 @@ Called during garbage collection. Invokes close().
 
 =cut
 
-
+# All Readonly here (and in methods called) might be
+# cleaned up during global cleanup, so use the $_XYZ
+# flavours here (and methods called here). 
 sub DESTROY {
     my $self = shift;
-    $self->close() if (defined $self->{$FH});
+    $self->close() if (defined $self->{$_FH});
 }
 
 =pod
