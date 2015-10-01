@@ -337,14 +337,19 @@ sub _initialize ($$@) {
     my @args_tmp = @argv;
     my $arg;
 
-    my $cfgfile_value_pattern = "^--$OPTION_CFGFILE=(\\S+)\$";
+    my $cfgfile_value_pattern = "^--?$OPTION_CFGFILE(?:=(\\S+))?\$";
     while ($arg = shift(@args_tmp)) {
         $help_request=1 if (($arg =~ m/^--?help$/));
 
-        # 1st format --cfgile path/to/file
-        $configfile = shift (@args_tmp) if ($arg eq "--$OPTION_CFGFILE");
-        # 2nd format --cfgile=path/to/file
-        $configfile = $1 if ($arg =~ m/$cfgfile_value_pattern/);
+        if ($arg =~ m/$cfgfile_value_pattern/) {
+            if (defined($1)) {
+                # format --cfgfile=path/to/file
+                $configfile = $1;
+            } else {
+                # format --cfgfile path/to/file
+                $configfile = shift (@args_tmp);
+            }
+        }
     }
 
     # Read default if configfile is not set via commandline
