@@ -225,7 +225,7 @@ sub info
 {
     my $self = shift;
     $self->syslog ('info', @_);
-    return $self->report('[INFO]  ', @_);
+    return $self->report('[INFO] ', @_);
 }
 
 
@@ -242,7 +242,7 @@ sub OK
 {
     my $self = shift;
     $self->syslog('notice', @_);
-    return $self->report('[OK]    ', @_);
+    return $self->report('[OK]   ', @_);
 }
 
 
@@ -260,7 +260,7 @@ sub warn
 {
     my $self = shift;
     $self->syslog('warning', @_);
-    return $self->report('[WARN]  ', @_);
+    return $self->report('[WARN] ', @_);
 }
 
 =pod
@@ -299,7 +299,7 @@ sub verbose
 
     if ($self->_rep_setup()->{$VERBOSE}) {
         $self->syslog ('notice', @_);
-        return $self->report('[VERB]  ', @_);
+        return $self->report('[VERB] ', @_);
     }
 
     return SUCCESS;

@@ -197,15 +197,15 @@ $mock->mock('report', sub { shift; $reported = \@_; return SUCCESS;});
 $myrep->init_reporter();
 
 is($myrep->info('hello', 'info'), SUCCESS, 'info returns success');
-is_deeply($reported, ['[INFO]  ', 'hello', 'info'], 'info calls report with prefix and args');
+is_deeply($reported, ['[INFO] ', 'hello', 'info'], 'info calls report with prefix and args');
 is_deeply($syslogged, ['info', 'hello', 'info'], 'info calls syslogs with info priority and args');
 
 is($myrep->OK('hello', 'ok'), SUCCESS, 'OK returns success');
-is_deeply($reported, ['[OK]    ', 'hello', 'ok'], 'OK calls report with prefix and args');
+is_deeply($reported, ['[OK]   ', 'hello', 'ok'], 'OK calls report with prefix and args');
 is_deeply($syslogged, ['notice', 'hello', 'ok'], 'OK calls syslogs with notice priority and args');
 
 is($myrep->warn('hello', 'warn'), SUCCESS, 'warn returns success');
-is_deeply($reported, ['[WARN]  ', 'hello', 'warn'], 'warn calls report with prefix and args');
+is_deeply($reported, ['[WARN] ', 'hello', 'warn'], 'warn calls report with prefix and args');
 is_deeply($syslogged, ['warning', 'hello', 'warn'], 'warn calls syslogs with warning priority and args');
 
 is($myrep->error('hello', 'error'), SUCCESS, 'error returns success');
@@ -232,7 +232,7 @@ is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
 $reported = undef;
 $syslogged = undef;
 is($myrep->verbose('hello', 'verbose', 'enabled'), SUCCESS, 'verbose returns success with verbose enabled');
-is_deeply($reported, ['[VERB]  ', 'hello', 'verbose', 'enabled'],
+is_deeply($reported, ['[VERB] ', 'hello', 'verbose', 'enabled'],
           'verbose calls report with prefix and args with verbose enabled');
 is_deeply($syslogged, ['notice', 'hello', 'verbose', 'enabled'],
           'verbose calls syslogs with notice priority and args with verbose verbose enabled');
