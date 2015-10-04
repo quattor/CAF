@@ -21,7 +21,6 @@ use JSON::XS;
 use YAML::XS;
 use Config::Properties;
 use Config::Tiny;
-use Config::General;
 
 use base qw(CAF::Object Exporter);
 
@@ -104,7 +103,7 @@ CAF::TextRender - Class for rendering structured text
     my $trd = CAF::TextRender->new($module, $contents, log => $self);
     print "$trd"; # stringification
 
-    $module = "general";
+    $module = "yaml";
     $trd = CAF::TextRender->new($module, $contents, log => $self);
     # return CAF::FileWriter instance (rendered text already added)
     my $fh = $trd->filewriter('/some/path');
@@ -154,15 +153,11 @@ Java properties format (using C<Config::Properties>),
 
 .INI format (using C<Config::Tiny>)
 
-=item general
-
-(using C<Config::General>).
-
-Caution: there is no way to garantee reproducible results as
-there is no control over the order of hash keys. It is recommended to
-try to generate this format in another way (e.g. via TT).
-
 =back
+
+(Previously available module <general> was removed in 15.12.
+Component writers needing this functionality can use
+the L<CCM::TextRender> subclass instead).
 
 Or, for any other value, C<Template::Toolkit> is used, and the C<module> then indicates
 the relative path of the template to use.
@@ -179,7 +174,7 @@ It takes some extra optional arguments:
 
 =item C<log>
 
-A C<CAF::Reporter> object to log to.
+A L<CAF::Reporter> object to log to.
 
 =item C<includepath>
 
@@ -266,8 +261,8 @@ sub _initialize
     # set render method
     ($self->{method}, $self->{method_is_tt}) = $self->select_module_method();
 
-    # set contents, after module is selected (some modules trigger
-    # allow module aware contents changes
+    # set contents, after module is selected (some modules
+    # allow module aware contents changes)
     $self->{contents} = $self->make_contents();
 
     return SUCCESS;
@@ -662,15 +657,6 @@ sub render_tiny
         }
     }
     return $c->write_string();
-}
-
-
-sub render_general
-{
-    my ($self) = @_;
-
-    my $c = Config::General->new(-SaveSorted => 0);
-    return $c->save_string($self->{contents});
 }
 
 

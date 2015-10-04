@@ -542,26 +542,5 @@ ok($trd->load_module('Config::Tiny'), "Config::Tiny loaded");
 ok(! $trd->{method_is_tt}, "method_is_tt false for tiny");
 is("$trd", $res, "tiny module rendered correctly");
 
-=pod
-
-=head3 general
-
-Test general/Config::General
-
-Warning: try to avoid due to reproducability issues
-
-=cut
-
-$trd = CAF::TextRender->new('general', $contents);
-ok(! $trd->{method_is_tt}, "method_is_tt false for general");
-ok($trd->load_module('Config::General'), "Config::General loaded");
-
-# can't use full output, because it's not reproducable accross perl versions
-like("$trd", qr{<level1>\n    name_level1   value_level1\n</level1>\n}, "general module rendered level1 correctly");
-like("$trd", qr{name_level0   value_level0\n}, "general module rendered level0 correctly");
-
-# No error logging in the module
-ok(! exists($trd->{ERROR}), "No errors logged anywhere");
-
 
 done_testing();
