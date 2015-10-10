@@ -1,0 +1,336 @@
+# ${license-info}
+# ${developer-info}
+# ${author-info}
+# ${build-info}
+
+package CAF::History;
+
+use strict;
+use warnings;
+
+use LC::Exception qw (SUCCESS);
+use Readonly;
+
+# refaddr was added between 5.8.0 and 5.8.8
+use Scalar::Util qw(blessed refaddr);
+
+# This might become problematic when dealing with global destroy
+# And we should, since destroying instances held in history might
+# trigger more events
+
+Readonly my $HISTORY => 'HISTORY';
+
+Readonly my $EVENTS => 'EVENTS';
+Readonly my $LAST => 'LAST';
+Readonly my $INSTANCES => 'INSTANCES';
+
+Readonly my $ID => 'ID';
+Readonly my $TS => 'TS';
+Readonly my $REF => 'REF';
+
+
+# DESTROY issues with Readonly
+my $_HISTORY = $HISTORY;
+my $_INSTANCES = $INSTANCES;
+
+# The 'why' part:
+# Initial work was implemented via the add_files method in ncm-ncd
+# coupled to CAF::FileWriter close.
+# However, we need more metadata of e.g. CAF operations to be able to
+#   - not remove files accessed by CAF::FileReader (which is a FileWriter close)
+#   - not remove files accessed by CAF::FileWriter that were never modified
+#   - restore backups on removal (if backup available? with what name/extension?)
+#       - but how do we now if the backup is the original?
+#   - restore original symlink if symlink existed before?
+#   - ...
+# Some of these cases might be handled by precise usage of event logging
+# (e.g. only add_files when close actually modifies), but might be limiting
+# in functionality.
+# This class allows to simply (there's only '->event()')
+# track a lot more, and decide on what to do later.
+# It might also be used for auditing CAF
+# (e.g. what access which file, what calls which process).
+
+=pod
+
+=head1 NAME
+
+C<CAF::History> - Class to keep history of events
+
+=head1 SYNOPSIS
+
+    package myclass;
+
+    use parent qw(CAF::History);
+
+    sub new {
+        ...
+        $self->init_history();
+        ...
+    }
+
+    sub foo {
+        my ($self, $a, $b, $c) = @_;
+        ...
+        $self->event();
+        ...
+    }
+
+=head1 DESCRIPTION
+
+C<CAF::History> provides class methods for tracking and
+lookup of events.
+
+TODO: C<CAF::History> should provide interfaces for
+
+=over
+
+=item loading / saving history to file e.g. sqlite
+
+=item lookup / querying events (e.g. what files where
+last written to by component X)
+
+=back
+
+=head2 Public methods
+
+=over
+
+=item init_history
+
+Setup the initial history. Returns SUCCESS on success, undef otherwise.
+
+The history is a hashref with keys
+
+=over
+
+=item C<$EVENTS>
+
+an array reference holding all events.
+
+=item C<$LAST>
+
+The latest state of each id
+
+=item optional C<$INSTANCES>
+
+If C<keep_instances> is set, an INSTANCES attribute is also added,
+and any events will keep track of the (blessed) instances.
+
+Caveat: this will prevent code that relies on instances going out
+of scope to perform certain actions on DESTROY, to function properly.
+
+By default, INSTANCES are not kept.
+
+=back
+
+=cut
+
+sub init_history
+{
+    my ($self, $keep_instances) = @_;
+
+    $self->{$HISTORY} = {
+        $EVENTS => [],
+        $LAST => {},
+    };
+
+    $self->{$HISTORY}->{$INSTANCES} = {} if $keep_instances;
+
+    return SUCCESS;
+}
+
+=pod
+
+=item event
+
+Add an event. An event is specified by an id from the C<$obj>
+and a hash C<metadata>. (Metadata can be passed as
+C<<->event($obj, modified => 0);>>.)
+
+If an instance is passed, the C<Scalar::Util::refaddr> is used as internal
+identifier. If a scalar is passed, it's value is used.
+
+Object instances are also added to an instances hash-ref to handle DESTROY properly
+(but only if the initial HISTORY attribute has an INSTANCES attribute).
+
+Following metadata is added automatically
+
+=over
+
+=item C<ID>
+
+The identifier
+
+=item C<REF>
+
+The obj C<ref>
+
+=item C<TS>
+
+The timestamp (private method C<_now> is used to determine the timestamp)
+
+=back
+
+The last metadata of each event is also held stored (for convenient access).
+
+Returns SUCCESS on success, undef otherwise.
+
+=cut
+
+# We cannot hold instances as keys, e.g. when stringification is implemented.
+
+sub event
+{
+    my ($self, $obj, %metadata) = @_;
+
+    return SUCCESS if (! defined($self->{HISTORY}));
+
+    my $ref = ref($obj);
+    my $id = "$ref "; # add space as separator
+
+    if($ref) {
+        $id .= refaddr($obj);
+        $self->{$HISTORY}->{$INSTANCES}->{$id} = $obj
+            if(blessed($obj) && defined($self->{$HISTORY}->{$INSTANCES}));
+    } else {
+        $id .= $obj;
+    }
+
+    $metadata{$ID} = $id;
+    $metadata{$REF} = $ref;
+    $metadata{$TS} = $self->_now();
+
+    push(@{$self->{$HISTORY}->{$EVENTS}}, \%metadata);
+    $self->{$HISTORY}->{$LAST}->{$id} = \%metadata;
+
+    return SUCCESS;
+}
+
+=pod
+
+=item close
+
+Closes the history which triggers following
+
+=over
+
+=item destroy INSTANCES
+
+=item TODO: report an overview of events
+
+E.g. all modified FileWriter and Editors
+
+=back
+
+Returns SUCCESS on success, undef otherwise.
+
+=cut
+
+# Need non-Readonly key names here.
+
+sub close
+{
+    my ($self) = @_;
+
+    return SUCCESS if (! defined($self->{$_HISTORY}));
+
+    # Destroy any leftover instances first. This might cause other events.
+    $self->_cleanup_instances();
+
+    # Complete cleanup
+    $self->{$_HISTORY} = undef;
+
+    return SUCCESS;
+}
+
+=pod
+
+=back
+
+=head2 Private methods
+
+=over
+
+=item _now
+
+Return the timestamp to use. Implemented using builtin C<time> for now,
+i.e. no timezones.
+
+=cut
+
+sub _now
+{
+    my ($self) = @_;
+    return time();
+}
+
+=pod
+
+=item _cleanup_instances
+
+Cleanup instances and remove any reference
+to instances held by the history.
+
+This might trigger new events.
+After all, we must make sure we have all the events.
+
+Following methods are supported
+
+=over
+
+=item C<close>
+
+If the instance has a C<close> method, the method is
+called without any arguments.
+
+=back
+
+Returns SUCCESS on success, undef otherwise.
+
+=cut
+
+# This can trigger exceptions and stuff
+
+sub _cleanup_instances
+{
+    my ($self) = @_;
+
+    my $instances = $self->{$_HISTORY}->{$_INSTANCES};
+
+    return SUCCESS if(! defined($instances));
+
+    foreach my $id (keys(%$instances)) {
+        my $obj = $instances->{$id};
+
+        # Supported destroy methods
+        $obj->close() if $obj->can('close');
+
+        # remove (any) reference to the instance held here
+        $obj = undef;
+        $instances->{$id} = undef;
+    }
+
+    # Events triggered above might re-add the instances.
+    # Clean it up completely
+    $self->{$_HISTORY}->{$_INSTANCES} = undef;
+
+    return SUCCESS;
+}
+
+=pod
+
+=back
+
+=cut
+
+# All Readonly (and in methods called) might be
+# cleaned up during global cleanup, so use the $_XYZ
+# flavours here (and methods called here).
+sub DESTROY {
+    my $self = shift;
+    $self->close() if (defined $self->{$_HISTORY});
+}
+
+
+1;
