@@ -171,6 +171,69 @@ is_deeply($h2->{$HISTORY}->{$INSTANCES}, {
     $oid => $obj,
 }, "h2 INSTANCES tracks (blessed) obj instance (and not the non-blessed hashref)");
 
+=head2 query_raw
+
+Test the query methods
+
+=cut
+
+# Test match: return anything older than 5 or scalar.
+my $match = sub {
+    my $ev = shift;
+
+    diag "match event input ",explain $ev;
+
+    return 1 if ($ev->{$TS} > 5);
+    return 1 if (! $ev->{$REF});
+};
+
+# Test without filter
+my $ans = $h2->query_raw($match);
+diag "no filter ", explain $ans;
+is_deeply($ans, [
+    {
+        $ID => " string",
+        $REF => '',
+        $TS => 3,
+        type => 'scalar',
+    },
+    {
+        $ID => $oid,
+        $REF => $isa,
+        $TS => 6,
+        something => 'else',
+    },
+], "queried events");
+
+# shallow copy
+is($ans->[0]->{$ID}, $h2->{$HISTORY}->{$EVENTS}->[0]->{$ID},
+   "corresponding events (w/o filter)");
+$ans->[0]->{$ID} = 'woohoo';
+is($h2->{$HISTORY}->{$EVENTS}->[0]->{$ID}, " string",
+   'query_raw returned shallow copy (w/o filter)');
+
+
+# with filter
+$ans = $h2->query_raw($match, [$ID, 'type', 'something']);
+diag "with filter ", explain $ans;
+is_deeply($ans, [
+    {
+        $ID => " string",
+        type => 'scalar',
+    },
+    {
+        $ID => $oid,
+        something => 'else',
+    },
+], "queried events with filter on ID, type and something");
+
+# shallow copy
+is($ans->[0]->{$ID}, $h2->{$HISTORY}->{$EVENTS}->[0]->{$ID},
+   "corresponding events (with filter)");
+$ans->[0]->{$ID} = 'woohoo';
+is($h2->{$HISTORY}->{$EVENTS}->[0]->{$ID}, " string",
+   'query_raw returned shallow copy (with filter)');
+
 =head2 close
 
 close h2, should trigger cleanup of obj
@@ -200,6 +263,5 @@ ok(! defined($h2->{$HISTORY}), 'h2 HISTORY attribute cleaned up on close');
 
 $h2->close();
 is($cleanup, 1, "h2 close on already closed history does not call _cleanup_instances");
-
 
 done_testing;

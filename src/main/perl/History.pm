@@ -209,6 +209,50 @@ sub event
 
 =pod
 
+=item query_raw
+
+Primitive interface to query the events.
+
+C<match> is a anonymous sub that is passed
+the event as (only) argument
+(each event is a metadata hashref).
+Returns true if the event matches and is to be returned.
+
+C<filter> is an arrayref of metadata keys to filter from the event
+(only event metadata matching the filter is returned).
+
+Returns an arrayref of (a shallow copy of) the event metadata.
+
+TODO: support proper, human-friendly query interface via (NO)SQL
+
+=cut
+
+sub query_raw
+{
+    my ($self, $match, $filter) = @_;
+
+    my @res;
+    foreach my $ev (@{$self->{$HISTORY}->{$EVENTS}}) {
+        if ($match->($ev)) {
+            my $res_ev;
+            if($filter) {
+                # only add existing attributes, otherwise a hashslice would be better
+                my %f_ev = map { $_ => $ev->{$_} } grep { exists $ev->{$_} } @$filter;
+                $res_ev = \%f_ev;
+            } else {
+                # shallow copy
+                $res_ev = { %$ev };
+            }
+            push(@res, $res_ev);
+        }
+    }
+
+    return \@res;
+}
+
+
+=pod
+
 =item close
 
 Closes the history which triggers following
