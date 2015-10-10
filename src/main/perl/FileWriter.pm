@@ -133,7 +133,24 @@ sub new
     *$self->{save} = 1;
     *$self->{options}->{noaction} = defined($CAF::Object::NoAction) ?
 	    $CAF::Object::NoAction : 0;
-    return bless ($self, $class);
+    bless ($self, $class);
+
+    # Tracking on new() when CAF::History is setup to track INSTANCES
+    $self->_event(init => 1);
+
+    return $self;
+}
+
+
+# private method to add events to LOG CAF::History (if any)
+sub _event
+{
+    my ($self, %metadata) = @_;
+
+    if (*$self->{LOG} && *$self->{LOG}->can('event')) {
+        $metadata{filename} = *$self->{filename};
+        *$self->{LOG}->event($self, %metadata);
+    }
 }
 
 
@@ -202,9 +219,17 @@ sub close
                 if *$self->{LOG};
         }
     }
+
+    # TODO: cleanup
     if (*$self->{LOG} && *$self->{LOG}->can('add_files')) {
         *$self->{LOG}->add_files(*$self->{filename});
     }
+
+    $self->_event(modified => $ret,
+                  noaction => *$self->{options}->{noaction}, # TODO: useful to track?
+                  backup => *$self->{options}->{backup},
+        );
+
     $self->SUPER::close();
     return $ret;
 }

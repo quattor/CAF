@@ -16,7 +16,9 @@ use CAF::Process;
 use CAF::Application;
 use LC::Exception qw (SUCCESS);
 
-our @ISA = qw(CAF::Application);
+use CAF::History;
+
+our @ISA = qw(CAF::Application CAF::History);
 
 sub app_options {
     push(my @array, {
