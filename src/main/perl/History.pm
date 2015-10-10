@@ -11,6 +11,9 @@ use warnings;
 use LC::Exception qw (SUCCESS);
 use Readonly;
 
+use parent qw(Exporter);
+our @EXPORT_OK = qw($IDX $ID $TS $REF);
+
 # refaddr was added between 5.8.0 and 5.8.8
 use Scalar::Util qw(blessed refaddr);
 
@@ -22,11 +25,13 @@ Readonly my $HISTORY => 'HISTORY';
 
 Readonly my $EVENTS => 'EVENTS';
 Readonly my $LAST => 'LAST';
+Readonly my $NEXTIDX => 'NEXTIDX';
 Readonly my $INSTANCES => 'INSTANCES';
 
-Readonly my $ID => 'ID';
-Readonly my $TS => 'TS';
-Readonly my $REF => 'REF';
+Readonly our $IDX => 'IDX';
+Readonly our $ID => 'ID';
+Readonly our $TS => 'TS';
+Readonly our $REF => 'REF';
 
 
 # DESTROY issues with Readonly
@@ -112,6 +117,10 @@ an array reference holding all events.
 
 The latest state of each id
 
+=item C<$NEXTIDX>
+
+The index of the next event.
+
 =item optional C<$INSTANCES>
 
 If C<keep_instances> is set, an INSTANCES attribute is also added,
@@ -128,11 +137,12 @@ By default, INSTANCES are not kept.
 
 sub init_history
 {
-    my ($self, $keep_instances) = @_;
+    my ($self, $keep_instances, $nextidx) = @_;
 
     $self->{$HISTORY} = {
         $EVENTS => [],
         $LAST => {},
+        $NEXTIDX => $nextidx || 0,
     };
 
     $self->{$HISTORY}->{$INSTANCES} = {} if $keep_instances;
@@ -157,6 +167,10 @@ Object instances are also added to an instances hash-ref to handle DESTROY prope
 Following metadata is added automatically
 
 =over
+
+=item C<IDX>
+
+The unique event index, increases one per event.
 
 =item C<ID>
 
@@ -197,6 +211,7 @@ sub event
         $id .= $obj;
     }
 
+    $metadata{$IDX} = $self->{$HISTORY}->{$NEXTIDX}++;
     $metadata{$ID} = $id;
     $metadata{$REF} = $ref;
     $metadata{$TS} = $self->_now();

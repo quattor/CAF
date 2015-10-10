@@ -208,6 +208,7 @@ diag explain $this_app->{HISTORY}->{EVENTS};
 #   close on new one
 is_deeply($this_app->{HISTORY}->{EVENTS}, [
     {
+        IDX => 0,
         ID => $fhid,
         REF => 'CAF::FileWriter',
         TS => 0,
@@ -215,6 +216,7 @@ is_deeply($this_app->{HISTORY}->{EVENTS}, [
         init => 1,
     },
     {
+        IDX => 1,
         ID => $ofhid,
         REF => 'CAF::FileWriter',
         TS => 0,
@@ -224,6 +226,7 @@ is_deeply($this_app->{HISTORY}->{EVENTS}, [
         noaction => 1,
     },
     {
+        IDX => 2,
         ID => $fhid,
         REF => 'CAF::FileWriter',
         TS => 0,

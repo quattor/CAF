@@ -10,17 +10,18 @@ use LC::Exception qw (SUCCESS);
 use myhistory;
 use object_ok;
 
+use CAF::History qw($IDX $ID $TS $REF);
+
 use Scalar::Util qw(refaddr);
 use Readonly;
+
 Readonly my $HISTORY => 'HISTORY';
 
 Readonly my $EVENTS => 'EVENTS';
 Readonly my $LAST => 'LAST';
+Readonly my $NEXTIDX => 'NEXTIDX';
 Readonly my $INSTANCES => 'INSTANCES';
 
-Readonly my $ID => 'ID';
-Readonly my $TS => 'TS';
-Readonly my $REF => 'REF';
 
 my $mockh = Test::MockModule->new('CAF::History');
 my $mocko = Test::MockModule->new('object_ok');
@@ -29,6 +30,12 @@ my $obj_close = 0;
 my $obj_destroy = 0;
 $mocko->mock('close', sub {$obj_close++;});
 $mocko->mock('DESTROY', sub {$obj_destroy++;});
+
+
+is($IDX, 'IDX', "exported IDX");
+is($ID, 'ID', "exported ID");
+is($TS, 'TS', "exported TS");
+is($REF, 'REF', "exported REF");
 
 =pod
 
@@ -59,6 +66,7 @@ isa_ok($h, 'CAF::History', 'h is a CAF::History subclass');
 is_deeply($h->{$HISTORY}, {
     $EVENTS => [],
     $LAST => {},
+    $NEXTIDX => 0,
 }, "HISTORY attr initialized correct (no INSTANCES by default)");
 
 =head2 _now
@@ -89,6 +97,7 @@ isa_ok($obj, $isa, 'obj is a object_ok instance');
 $h->event($obj, reason => 'simple test');
 is_deeply($h->{$HISTORY}->{$EVENTS}, [
     {
+        $IDX => 0,
         $ID => $oid,
         $REF => $isa,
         $TS => 2,
@@ -122,6 +131,7 @@ isa_ok($h2, 'myhistory', 'h2 is a myhistory instance');
 is_deeply($h2->{$HISTORY}, {
     $EVENTS => [],
     $LAST => {},
+    $NEXTIDX => 0,
     $INSTANCES => {},
 }, "h2 HISTORY attr initialized correct (INSTANCES enabled)");
 
@@ -136,24 +146,28 @@ $h2->event($obj, something => 'else');
 
 is_deeply($h2->{$HISTORY}->{$EVENTS}, [
     {
+        $IDX => 0,
         $ID => " string",
         $REF => '',
         $TS => 3,
         type => 'scalar',
     },
     {
+        $IDX => 1,
         $ID => $hid,
         $REF => 'HASH',
         $TS => 4,
         type => 'hashref',
     },
     {
+        $IDX => 2,
         $ID => $oid,
         $REF => $isa,
         $TS => 5,
         type => 'instance',
     },
     {
+        $IDX => 3,
         $ID => $oid,
         $REF => $isa,
         $TS => 6,
@@ -192,12 +206,14 @@ my $ans = $h2->query_raw($match);
 diag "no filter ", explain $ans;
 is_deeply($ans, [
     {
+        $IDX => 0,
         $ID => " string",
         $REF => '',
         $TS => 3,
         type => 'scalar',
     },
     {
+        $IDX => 3,
         $ID => $oid,
         $REF => $isa,
         $TS => 6,
