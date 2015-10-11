@@ -11,6 +11,8 @@ use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 use Sys::Syslog qw (openlog closelog);
 
+use CAF::History qw($EVENTS);
+
 use vars qw($_REP_SETUP);
 use parent qw(Exporter);
 
@@ -22,8 +24,13 @@ Readonly our $QUIET => 'QUIET';
 Readonly our $LOGFILE => 'LOGFILE';
 Readonly our $SYSLOG => 'SYSLOG';
 Readonly our $FACILITY => 'FACILITY';
+Readonly our $HISTORY => 'HISTORY';
+Readonly our $WHOAMI => 'WHOAMI';
 
-our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY);
+our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET
+    $LOGFILE $SYSLOG $FACILITY
+    $HISTORY $WHOAMI
+);
 
 
 my $_reporter_default = {
@@ -393,6 +400,54 @@ sub syslog
     };
 
     return;
+}
+
+=pod
+
+=item init_history
+
+Create a L<CAF::History> instance to track events.
+Argument C<keepinstances> is passed to the C<CAF::History>
+initialization.
+
+=cut
+
+sub init_history
+{
+    my ($self, $keepinstances) = @_;
+
+    $self->{$HISTORY} = CAF::History->new($keepinstances);
+
+    return SUCCESS;
+}
+
+
+=pod
+
+=item event
+
+If a C<CAF::History> is initialized, track the event. The following metadata is added
+
+=over
+
+=item C<$WHOAMI>
+
+Current class name C<ref($self)>.
+
+=back
+
+=cut
+
+sub event
+{
+    my ($self, $obj, %metadata) = @_;
+
+    my $hist = $self->{$HISTORY};
+    return SUCCESS if (! defined($hist->{$EVENTS}));
+
+    $metadata{$WHOAMI} = ref($self);
+
+    return $hist->event($obj, %metadata);
 }
 
 =pod

@@ -9,9 +9,16 @@ use myreportermany;
 use Test::More;
 use Test::MockModule;
 use CAF::Log;
-use CAF::Reporter qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY);
+use CAF::Reporter qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY $HISTORY $WHOAMI);
 use LC::Exception qw (SUCCESS);
 
+use Scalar::Util qw(refaddr);
+
+use Readonly;
+Readonly my $EVENTS => 'EVENTS';
+Readonly my $INSTANCES => 'INSTANCES';
+
+use object_ok;
 
 my ($openlogged, $closelogged, $syssyslogged, $printed, $logged, $syslogged, $reported, $logprinted);
 
@@ -50,6 +57,8 @@ is($QUIET, 'QUIET', 'expected value for readonly $QUIET');
 is($LOGFILE, 'LOGFILE', 'expected value for readonly $LOGFILE');
 is($SYSLOG, 'SYSLOG', 'expected value for readonly $SYSLOG');
 is($FACILITY, 'FACILITY', 'expected value for readonly $FACILITY');
+is($HISTORY, 'HISTORY', 'expected value for readonly $HISTORY');
+is($WHOAMI, 'WHOAMI', 'expected value for readonly $WHOAMI');
 
 my $init = {
     $VERBOSE => 0,
@@ -211,6 +220,40 @@ is_deeply($syslogged, ['warning', 'hello', 'warn'], 'warn calls syslogs with war
 is($myrep->error('hello', 'error'), SUCCESS, 'error returns success');
 is_deeply($reported, ['[ERROR] ', 'hello', 'error'], 'error calls report with prefix and args');
 is_deeply($syslogged, ['err', 'hello', 'error'], 'error calls syslogs with err priority and args');
+
+=pod
+
+=item init_history and event
+
+=cut
+
+my $obj = object_ok->new();
+
+ok(! defined($myrep->{$HISTORY}), 'No HISTORY by default');
+ok($myrep->event($obj), 'event with no HISTORY returns SUCCESS');
+ok(! defined($myrep->{$HISTORY}), 'Still no HISTORY after calling event without initialisation');
+
+ok($myrep->init_history(), 'init_history (w/o keepinstances) returns SUCCESS');
+is_deeply($myrep->{$HISTORY}->{$EVENTS}, [], 'init_history created empty events');
+ok(! exists($myrep->{$HISTORY}->{$INSTANCES}), 'No INSTANCES defined (w/o keepinstances)');
+ok($myrep->event($obj), 'event with HISTORY w/o INSTANCES returns SUCCESS');
+
+is(scalar @{$myrep->{$HISTORY}->{$EVENTS}}, 1, '1 event tracked');
+ok(! exists($myrep->{$HISTORY}->{$INSTANCES}), 'No INSTANCES defined (w/o keepinstances) after event tracked');
+is($myrep->{$HISTORY}->{$EVENTS}->[0]->{$WHOAMI}, 'myreporter',
+   'WHOAMI metadata added to event tracked');
+
+ok($myrep->init_history(1), '(re)init_history (with keepinstances) returns SUCCESS');
+is_deeply($myrep->{$HISTORY}->{$EVENTS}, [], '(re)init_history created empty events');
+is_deeply($myrep->{$HISTORY}->{$INSTANCES}, {}, 'empty INSTANCES defined (with keepinstances)');
+ok($myrep->event($obj), 'event with HISTORY with INSTANCES returns SUCCESS');
+
+is(scalar @{$myrep->{$HISTORY}->{$EVENTS}}, 1, '1 event tracked');
+is_deeply($myrep->{$HISTORY}->{$INSTANCES},
+          {'object_ok '.refaddr($obj) => $obj},
+          'INSTANCES added (with keepinstances) after event tracked');
+is($myrep->{$HISTORY}->{$EVENTS}->[0]->{$WHOAMI}, 'myreporter',
+   'WHOAMI metadata added to event tracked');
 
 =pod
 

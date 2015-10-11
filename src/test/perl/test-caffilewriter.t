@@ -5,7 +5,8 @@ use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/modules";
 use testapp;
-use CAF::Reporter;
+use CAF::Reporter qw($HISTORY);
+use CAF::History qw($EVENTS);
 use CAF::Object;
 use Test::More; # tests => 26;
 use Test::MockModule;
@@ -55,6 +56,8 @@ BEGIN {
                 });
     $app = Test::MockModule->new ('CAF::Application');
 }
+
+my $mock_history = Test::MockModule->new('CAF::History');
 
 use CAF::FileWriter;
 
@@ -182,14 +185,15 @@ $app->mock('add_files', sub {
            my ($self, @args) = @_;
            $self->{FILES} = \@args;
        });
+
 # no need to track time
-$app->mock('_now', 0);
+$mock_history->mock('_now', 0);
 
 # no history until now, thisapp doesn't init_history on new()
-ok(! defined($this_app->{HISTORY}), 'No history tracked this far');
+ok(! defined($this_app->{$HISTORY}), 'No history tracked this far');
 
 $this_app->init_history(); # no instance tracking
-ok(defined($this_app->{HISTORY}), 'history tracked enabled');
+ok(defined($this_app->{$HISTORY}), 'history tracked enabled');
 
 # there's a previous $fh not destroyed
 my $ofhid = 'CAF::FileWriter '.refaddr($fh);
@@ -200,18 +204,19 @@ $fh->close();
 
 my $fhid = 'CAF::FileWriter '.refaddr($fh);
 
-diag explain $this_app->{HISTORY}->{EVENTS};
+diag explain $this_app->{$HISTORY}->{$EVENTS};
 
 # events since History enabled
 #   new one initialised
 #   on assignment to fh, old one destroyed, triggers close
 #   close on new one
-is_deeply($this_app->{HISTORY}->{EVENTS}, [
+is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
     {
         IDX => 0,
         ID => $fhid,
         REF => 'CAF::FileWriter',
         TS => 0,
+        WHOAMI => 'testapp',
         filename =>  $INC{"CAF/FileWriter.pm"},
         init => 1,
     },
@@ -220,6 +225,7 @@ is_deeply($this_app->{HISTORY}->{EVENTS}, [
         ID => $ofhid,
         REF => 'CAF::FileWriter',
         TS => 0,
+        WHOAMI => 'testapp',
         filename =>  $INC{"CAF/FileWriter.pm"},
         backup => undef,
         modified => undef,
@@ -231,6 +237,7 @@ is_deeply($this_app->{HISTORY}->{EVENTS}, [
         REF => 'CAF::FileWriter',
         TS => 0,
         filename =>  $INC{"CAF/FileWriter.pm"},
+        WHOAMI => 'testapp',
         backup => undef,
         modified => 0,
         noaction => 1,
