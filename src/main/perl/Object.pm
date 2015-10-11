@@ -129,10 +129,10 @@ sub _initialize
     return;
 }
 
-=item error, warn, info, verbose, debug, report, OK
+=item error, warn, info, verbose, debug, report, OK, event
 
-Convenience methods to access the log instance that might
-be passed during initialisation and set to $self->{log}.
+Convenience methods to access the log/reporter instance that might
+be passed during initialisation and set to C<$self->{log}>.
 
 (When constructing classes via multiple inheritance,
 C<CAF::Reporter> should precede C<CAF::Object> if you want
@@ -141,7 +141,7 @@ to use an absolute rather than a conditional logger).
 =cut
 
 no strict 'refs';
-foreach my $i (qw(error warn info verbose debug report OK)) {
+foreach my $i (qw(error warn info verbose debug report OK event)) {
     *{$i} = sub {
         my ($self, @args) = @_;
         if ($self->{log}) {
@@ -152,7 +152,6 @@ foreach my $i (qw(error warn info verbose debug report OK)) {
     }
 }
 use strict 'refs';
-
 
 =pod
 
