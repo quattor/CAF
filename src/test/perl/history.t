@@ -37,7 +37,46 @@ is($ID, 'ID', "exported ID");
 is($TS, 'TS', "exported TS");
 is($REF, 'REF', "exported REF");
 
-=pod
+=head1 CAF::History as a class
+
+=head2
+
+=cut
+
+my $ch = CAF::History->new();
+isa_ok($ch, 'CAF::History', 'is a CAF::History instance');
+
+is_deeply($ch, {
+    $EVENTS => [],
+    $LAST => {},
+    $NEXTIDX => 0,
+}, "History initialized as expected without INSTANCES");
+
+my $ch2 = CAF::History->new(1);
+isa_ok($ch2, 'CAF::History', 'is a CAF::History instance');
+
+is_deeply($ch2, {
+    $EVENTS => [],
+    $LAST => {},
+    $NEXTIDX => 0,
+    $INSTANCES => {},
+}, "History initialized as expected with INSTANCES");
+
+=head2 _now
+
+Test _now, time() has 1 sec precision
+
+=cut
+
+ok( (- $ch->_now() + time()) <= 1, "_now uses time");
+
+my $now = 0;
+$mockh->mock('_now', sub {$now++; return $now;});
+
+is( $ch->_now(), 1, "_now uses mocked time");
+
+
+=head1 with test class myhistory
 
 =head2 not initialized
 
@@ -46,42 +85,27 @@ is($REF, 'REF', "exported REF");
 my $h0 = myhistory->new();
 
 isa_ok($h0, 'myhistory', 'h is a myhistory instance');
-isa_ok($h0, 'CAF::History', 'h is a CAF::History subclass');
 
-ok(! defined($h0->{$HISTORY}), "init_history was not called");
+ok(! defined($h0->{$HISTORY}), "no CAF::History initialization was called");
 
 ok($h0->event('wassup'), "Can call event method without issues");
-ok(! defined($h0->{$HISTORY}), "without initialised history, nothing is tracked");
+ok(! defined($h0->{$HISTORY}->{$EVENTS}), "without initialised history, nothing is tracked");
 
 =head2 initialize
 
-Test initialisation via init_history
+Test initialisation
 
 =cut
 
 my $h = myhistory->new(1);
 isa_ok($h, 'myhistory', 'h is a myhistory instance');
-isa_ok($h, 'CAF::History', 'h is a CAF::History subclass');
+isa_ok($h->{$HISTORY}, 'CAF::History', 'h->{HISTORY} is a CAF::History subclass');
 
-is_deeply($h->{$HISTORY}, {
-    $EVENTS => [],
-    $LAST => {},
-    $NEXTIDX => 0,
-}, "HISTORY attr initialized correct (no INSTANCES by default)");
-
-=head2 _now
-
-Test _now, time() has 1 sec precision
-
-=cut
-
-ok( (- $h->_now() + time()) <= 1, "_now uses time");
-
-my $now = 0;
-$mockh->mock('_now', sub {$now++; return $now;});
-
-is( $h->_now(), 1, "_now uses mocked time");
-
+is_deeply($h->{$HISTORY}->{$EVENTS}, [], "HISTORY EVENTS attr initialized correct");
+is_deeply($h->{$HISTORY}->{$LAST}, {}, "HISTORY LAST attr initialized correct");
+is($h->{$HISTORY}->{$NEXTIDX}, 0, "HISTORY NEXTIDX attr initialized correct");
+ok(!defined($h->{$HISTORY}->{$INSTANCES}), "HISTORY INSTANCES not initialized by default");
+             
 =head2 no instances
 
 test event tracks no instances
@@ -102,12 +126,11 @@ is_deeply($h->{$HISTORY}->{$EVENTS}, [
         $REF => $isa,
         $TS => 2,
         reason => 'simple test',
+        whoami => 'myhistory',
     },
 ], "event added as expected");
 ok(! defined($h->{$HISTORY}->{$INSTANCES}),
    'No INSTANCES tracked after adding non-scalar');
-
-
 
 $obj = undef;
 is($obj_close, 0, 'obj close not called');
@@ -128,12 +151,10 @@ isa_ok($obj, $isa, 'obj is a object_ok instance');
 my $h2 = myhistory->new(1, 1);
 isa_ok($h2, 'myhistory', 'h2 is a myhistory instance');
 
-is_deeply($h2->{$HISTORY}, {
-    $EVENTS => [],
-    $LAST => {},
-    $NEXTIDX => 0,
-    $INSTANCES => {},
-}, "h2 HISTORY attr initialized correct (INSTANCES enabled)");
+is_deeply($h2->{$HISTORY}->{$EVENTS}, [], "HISTORY EVENTS attr initialized correct by h2");
+is_deeply($h2->{$HISTORY}->{$LAST}, {}, "HISTORY LAST attr initialized correct by h2");
+is($h2->{$HISTORY}->{$NEXTIDX}, 0, "HISTORY NEXTIDX attr initialized correct by h2");
+is_deeply($h2->{$HISTORY}->{$INSTANCES}, {}, "HISTORY INSTANCES initialized correct by h2");
 
 # Why would you pass a hashref?
 my $href = {a=>1};
@@ -151,6 +172,7 @@ is_deeply($h2->{$HISTORY}->{$EVENTS}, [
         $REF => '',
         $TS => 3,
         type => 'scalar',
+        whoami => 'myhistory',
     },
     {
         $IDX => 1,
@@ -158,6 +180,7 @@ is_deeply($h2->{$HISTORY}->{$EVENTS}, [
         $REF => 'HASH',
         $TS => 4,
         type => 'hashref',
+        whoami => 'myhistory',
     },
     {
         $IDX => 2,
@@ -165,6 +188,7 @@ is_deeply($h2->{$HISTORY}->{$EVENTS}, [
         $REF => $isa,
         $TS => 5,
         type => 'instance',
+        whoami => 'myhistory',
     },
     {
         $IDX => 3,
@@ -172,6 +196,7 @@ is_deeply($h2->{$HISTORY}->{$EVENTS}, [
         $REF => $isa,
         $TS => 6,
         something => 'else',
+        whoami => 'myhistory',
     },
 ], "Correct h2 history of events");
 
@@ -195,15 +220,15 @@ Test the query methods
 my $match = sub {
     my $ev = shift;
 
-    diag "match event input ",explain $ev;
+    #diag "match event input ",explain $ev;
 
     return 1 if ($ev->{$TS} > 5);
     return 1 if (! $ev->{$REF});
 };
 
 # Test without filter
-my $ans = $h2->query_raw($match);
-diag "no filter ", explain $ans;
+my $ans = $h2->{$HISTORY}->query_raw($match);
+#diag "no filter ", explain $ans;
 is_deeply($ans, [
     {
         $IDX => 0,
@@ -211,6 +236,7 @@ is_deeply($ans, [
         $REF => '',
         $TS => 3,
         type => 'scalar',
+        whoami => 'myhistory',
     },
     {
         $IDX => 3,
@@ -218,6 +244,7 @@ is_deeply($ans, [
         $REF => $isa,
         $TS => 6,
         something => 'else',
+        whoami => 'myhistory',
     },
 ], "queried events");
 
@@ -230,8 +257,8 @@ is($h2->{$HISTORY}->{$EVENTS}->[0]->{$ID}, " string",
 
 
 # with filter
-$ans = $h2->query_raw($match, [$ID, 'type', 'something']);
-diag "with filter ", explain $ans;
+$ans = $h2->{$HISTORY}->query_raw($match, [$ID, 'type', 'something']);
+#diag "with filter ", explain $ans;
 is_deeply($ans, [
     {
         $ID => " string",
@@ -264,7 +291,7 @@ is($obj_close, 0, 'h2: obj close not called');
 is($obj_destroy, 0, 'h2: obj DESTROY not called (reference held in INSTANCES)');
 
 
-$h2->_cleanup_instances();
+$h2->{$HISTORY}->_cleanup_instances();
 ok(! defined($h2->{$HISTORY}->{$INSTANCES}), "INSTANCES cleaned up");
 is($obj_close, 1, "h2: instance obj close called");
 is($obj_destroy, 1, 'h2: obj DESTROY called');
@@ -272,12 +299,14 @@ is($obj_destroy, 1, 'h2: obj DESTROY called');
 my $cleanup = 0;
 $mockh->mock('_cleanup_instances', sub {$cleanup++;});
 
-$h2->close();
+$h2->{$HISTORY}->close();
+
+#diag "closed history ", explain $h2->{$HISTORY};
 
 is($cleanup, 1, "h2 close calls _cleanup_instances");
-ok(! defined($h2->{$HISTORY}), 'h2 HISTORY attribute cleaned up on close');
+ok(! defined($h2->{$HISTORY}->{$EVENTS}), 'h2 HISTORY attribute cleaned up on close');
 
-$h2->close();
+$h2->{$HISTORY}->close();
 is($cleanup, 1, "h2 close on already closed history does not call _cleanup_instances");
 
 done_testing;

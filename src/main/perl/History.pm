@@ -12,7 +12,7 @@ use LC::Exception qw (SUCCESS);
 use Readonly;
 
 use parent qw(Exporter);
-our @EXPORT_OK = qw($IDX $ID $TS $REF);
+our @EXPORT_OK = qw($EVENTS $IDX $ID $TS $REF);
 
 # refaddr was added between 5.8.0 and 5.8.8
 use Scalar::Util qw(blessed refaddr);
@@ -21,9 +21,7 @@ use Scalar::Util qw(blessed refaddr);
 # And we should, since destroying instances held in history might
 # trigger more events
 
-Readonly my $HISTORY => 'HISTORY';
-
-Readonly my $EVENTS => 'EVENTS';
+Readonly our $EVENTS => 'EVENTS';
 Readonly my $LAST => 'LAST';
 Readonly my $NEXTIDX => 'NEXTIDX';
 Readonly my $INSTANCES => 'INSTANCES';
@@ -35,7 +33,7 @@ Readonly our $REF => 'REF';
 
 
 # DESTROY issues with Readonly
-my $_HISTORY = $HISTORY;
+my $_EVENTS = $EVENTS;
 my $_INSTANCES = $INSTANCES;
 
 # The 'why' part:
@@ -64,20 +62,21 @@ C<CAF::History> - Class to keep history of events
 
 =head1 SYNOPSIS
 
-    package myclass;
+    package mypackage;
 
-    use parent qw(CAF::History);
+    use qw(CAF::History);
 
-    sub new {
+    sub _initialize
+    {
         ...
-        $self->init_history();
+        $self->{HISTORY} = CAF::History->new();
         ...
     }
 
     sub foo {
         my ($self, $a, $b, $c) = @_;
         ...
-        $self->event();
+        $self->{HISTORY}->event();
         ...
     }
 
@@ -101,9 +100,9 @@ last written to by component X)
 
 =over
 
-=item init_history
+=item new
 
-Setup the initial history. Returns SUCCESS on success, undef otherwise.
+Create a C<CAF::History> instance,
 
 The history is a hashref with keys
 
@@ -135,19 +134,22 @@ By default, INSTANCES are not kept.
 
 =cut
 
-sub init_history
+sub new
 {
-    my ($self, $keep_instances, $nextidx) = @_;
+    my ($this, $keep_instances, $nextidx) = @_;
 
-    $self->{$HISTORY} = {
-        $EVENTS => [],
-        $LAST => {},
-        $NEXTIDX => $nextidx || 0,
-    };
+    my $class = ref($this) || $this;
+    my $self = {}; # here, it gives a reference on a hash
 
-    $self->{$HISTORY}->{$INSTANCES} = {} if $keep_instances;
+    $self->{$EVENTS} = [];
+    $self->{$LAST} = {};
+    $self->{$NEXTIDX} = $nextidx || 0;
 
-    return SUCCESS;
+    $self->{$INSTANCES} = {} if $keep_instances;
+
+    bless $self, $class;
+
+    return $self;
 }
 
 =pod
@@ -198,26 +200,24 @@ sub event
 {
     my ($self, $obj, %metadata) = @_;
 
-    return SUCCESS if (! defined($self->{HISTORY}));
-
     my $ref = ref($obj);
     my $id = "$ref "; # add space as separator
 
     if($ref) {
         $id .= refaddr($obj);
-        $self->{$HISTORY}->{$INSTANCES}->{$id} = $obj
-            if(blessed($obj) && defined($self->{$HISTORY}->{$INSTANCES}));
+        $self->{$INSTANCES}->{$id} = $obj
+            if(blessed($obj) && defined($self->{$INSTANCES}));
     } else {
         $id .= $obj;
     }
 
-    $metadata{$IDX} = $self->{$HISTORY}->{$NEXTIDX}++;
+    $metadata{$IDX} = $self->{$NEXTIDX}++;
     $metadata{$ID} = $id;
     $metadata{$REF} = $ref;
     $metadata{$TS} = $self->_now();
 
-    push(@{$self->{$HISTORY}->{$EVENTS}}, \%metadata);
-    $self->{$HISTORY}->{$LAST}->{$id} = \%metadata;
+    push(@{$self->{$EVENTS}}, \%metadata);
+    $self->{$LAST}->{$id} = \%metadata;
 
     return SUCCESS;
 }
@@ -247,7 +247,7 @@ sub query_raw
     my ($self, $match, $filter) = @_;
 
     my @res;
-    foreach my $ev (@{$self->{$HISTORY}->{$EVENTS}}) {
+    foreach my $ev (@{$self->{$EVENTS}}) {
         if ($match->($ev)) {
             my $res_ev;
             if($filter) {
@@ -292,13 +292,12 @@ sub close
 {
     my ($self) = @_;
 
-    return SUCCESS if (! defined($self->{$_HISTORY}));
+    return SUCCESS if (! defined($self->{$_EVENTS}));
 
     # Destroy any leftover instances first. This might cause other events.
     $self->_cleanup_instances();
 
-    # Complete cleanup
-    $self->{$_HISTORY} = undef;
+    $self->{$_EVENTS} = undef;
 
     return SUCCESS;
 }
@@ -355,7 +354,7 @@ sub _cleanup_instances
 {
     my ($self) = @_;
 
-    my $instances = $self->{$_HISTORY}->{$_INSTANCES};
+    my $instances = $self->{$_INSTANCES};
 
     return SUCCESS if(! defined($instances));
 
@@ -372,7 +371,7 @@ sub _cleanup_instances
 
     # Events triggered above might re-add the instances.
     # Clean it up completely
-    $self->{$_HISTORY}->{$_INSTANCES} = undef;
+    $self->{$_INSTANCES} = undef;
 
     return SUCCESS;
 }
@@ -388,7 +387,7 @@ sub _cleanup_instances
 # flavours here (and methods called here).
 sub DESTROY {
     my $self = shift;
-    $self->close() if (defined $self->{$_HISTORY});
+    $self->close() if defined($self->{$_EVENTS});
 }
 
 
