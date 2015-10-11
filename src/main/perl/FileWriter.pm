@@ -142,7 +142,21 @@ sub new
 }
 
 
-# private method to add events to LOG CAF::History (if any)
+=item _event
+
+Private method to track an event via LOG C<CAF::History> instance (if any).
+Following metadata is added
+
+=over
+
+=item filename
+
+Adds the filename as metadata
+
+=back
+
+=cut
+
 sub _event
 {
     my ($self, %metadata) = @_;
