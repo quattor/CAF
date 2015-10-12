@@ -195,8 +195,9 @@ Create a new L<CAF::Log> instance with C<$filename> and C<$options> and
 set it using C<set_report_logfile>.
 Returns SUCCESS on success, undef otherwise.
 
-(The method name is slightly misleading, because is it does not set the logfile's
-filename, but the internal C<$LOGFILE> attribute).
+(The method name is slightly misleading, because is it does
+create the logfile with filename, but the internal
+C<$LOGFILE> attribute).
 
 =cut
 
@@ -206,7 +207,7 @@ sub init_logfile
 
     my $objlog = CAF::Log->new($filename, $options);
     if (! defined ($objlog)) {
-        $self->error("cannot open log file $filename");
+        $self->verbose("cannot create Log $filename");
         return;
     }
 
@@ -435,11 +436,33 @@ sub syslog
 
 =pod
 
+=item C<set_report_history($historyinstance)>: bool
+
+Set C<$historyinstance> as the reporter's history
+(using the C<$HISTORY> attribute).
+
+Returns SUCCESS on success, undef otherwise.
+
+=cut
+
+sub set_report_history
+{
+    my ($self, $historyinstance) = @_;
+
+    $self->{$HISTORY} = $historyinstance;
+
+    return SUCCESS;
+}
+
+=pod
+
 =item init_history
 
 Create a L<CAF::History> instance to track events.
 Argument C<keepinstances> is passed to the C<CAF::History>
 initialization.
+
+Returns SUCCESS on success, undef otherwise.
 
 =cut
 
@@ -447,9 +470,13 @@ sub init_history
 {
     my ($self, $keepinstances) = @_;
 
-    $self->{$HISTORY} = CAF::History->new($keepinstances);
+    my $history = CAF::History->new($keepinstances);
+    if (! defined ($history)) {
+        $self->verbose("cannot create History");
+        return;
+    }
 
-    return SUCCESS;
+    return $self->set_report_history($history);
 }
 
 

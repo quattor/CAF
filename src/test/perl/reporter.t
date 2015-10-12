@@ -230,7 +230,7 @@ is_deeply($syslogged, ['err', 'hello', 'error'], 'error calls syslogs with err p
 
 =pod
 
-=item init_history and event
+=item set_report_history / init_history / event
 
 =cut
 
@@ -239,6 +239,10 @@ my $obj = object_ok->new();
 ok(! defined($myrep->{$HISTORY}), 'No HISTORY by default');
 ok($myrep->event($obj), 'event with no HISTORY returns SUCCESS');
 ok(! defined($myrep->{$HISTORY}), 'Still no HISTORY after calling event without initialisation');
+
+# invalid HISTORY, but ok for this test
+ok($myrep->set_report_history('invalidhistory'), 'set_report_history returns success');
+is($myrep->{$HISTORY}, 'invalidhistory', 'set_report_history set HISTORY attribute');
 
 ok($myrep->init_history(), 'init_history (w/o keepinstances) returns SUCCESS');
 is_deeply($myrep->{$HISTORY}->{$EVENTS}, [], 'init_history created empty events');
