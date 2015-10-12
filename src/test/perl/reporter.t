@@ -20,6 +20,8 @@ Readonly my $INSTANCES => 'INSTANCES';
 
 use object_ok;
 
+mkdir('target/test');
+
 my ($openlogged, $closelogged, $syssyslogged, $printed, $logged, $syslogged, $reported, $logprinted);
 
 
@@ -44,7 +46,7 @@ Test all methods for C<CAF::Reporter>
 
 =over
 
-=item init_reporter / _rep_setup / setup_reporter / set_report_logfile
+=item init_reporter / _rep_setup / setup_reporter / set_report_logfile / init_logfile
 
 =cut
 
@@ -110,6 +112,12 @@ $myrep->init_reporter();
 $myrep->set_report_logfile('whatever');
 is($CAF::Reporter::_REP_SETUP->{$LOGFILE}, 'whatever', "LOGFILE set");
 
+$myrep->init_logfile('target/test/test_init_logfile.log', 'a');
+my $initlogfile = $CAF::Reporter::_REP_SETUP->{$LOGFILE};
+isa_ok($initlogfile, 'CAF::Log', "new LOGFILE set");
+is($initlogfile->{FILENAME}, 'target/test/test_init_logfile.log', "new LOGFILE filename set");
+is($initlogfile->{OPTS}, 'a', "new LOGFILE options set");
+
 # test preservation with undefs
 $myrep->init_reporter();
 $myrep->setup_reporter(2, 1, 1, 'facility');
@@ -132,7 +140,6 @@ ok(! defined($CAF::Reporter::_REP_SETUP->{$LOGFILE}),
 is($myrep->log('something'), SUCCESS, 'log returns SUCCESS when no LOGFILE set');
 ok(! defined $myrep->syslog('something'), 'syslog returns undef when no LOGFILE set');
 
-mkdir('target/test');
 # this is a .log file, SYSLOG should be set
 my $log = CAF::Log->new('target/test/testlog.log', 'a');
 ok($log->{SYSLOG}, 'SYSLOG is set for CAF::Log instance');

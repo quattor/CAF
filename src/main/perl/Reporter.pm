@@ -11,6 +11,7 @@ use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 use Sys::Syslog qw (openlog closelog);
 
+use CAF::Log qw($SYSLOG);
 use CAF::History qw($EVENTS);
 
 use vars qw($_REP_SETUP);
@@ -22,7 +23,6 @@ Readonly our $VERBOSE => 'VERBOSE';
 Readonly our $DEBUGLV => 'DEBUGLV';
 Readonly our $QUIET => 'QUIET';
 Readonly our $LOGFILE => 'LOGFILE';
-Readonly our $SYSLOG => 'SYSLOG';
 Readonly our $FACILITY => 'FACILITY';
 Readonly our $HISTORY => 'HISTORY';
 Readonly our $WHOAMI => 'WHOAMI';
@@ -164,22 +164,53 @@ sub setup_reporter
 
 =pod
 
-=item C<set_report_logfile($logfile)>: bool
+=item C<set_report_logfile($loginstance)>: bool
 
-If C<$logfile> is defined, it will be used as log file. C<$logfile> can be
+If C<$loginstance> is defined, it will be used as log file. C<$loginstance> can be
 any type of class object reference, but the object must support a
 C<print(@array)> method. Typically, it should be an C<CAF::Log>
-instance. If C<$logfile> is undefined, no log file will be used.
+instance. If C<$loginstance> is undefined, no log file will be used.
+
+Returns SUCCESS on success, undef otherwise.
+
+(The method name is slightly misleading, because is it does not set the logfile's
+filename, but the internal C<$LOGFILE> attribute).
 
 =cut
 
 sub set_report_logfile
 {
-    my ($self, $logfile) = @_;
+    my ($self, $loginstance) = @_;
 
-    $self->_rep_setup()->{$LOGFILE} = $logfile;
+    $self->_rep_setup()->{$LOGFILE} = $loginstance;
 
     return SUCCESS;
+}
+
+=pod
+
+=item C<init_logfile($filename, $options)>: bool
+
+Create a new L<CAF::Log> instance with C<$filename> and C<$options> and
+set it using C<set_report_logfile>.
+Returns SUCCESS on success, undef otherwise.
+
+(The method name is slightly misleading, because is it does not set the logfile's
+filename, but the internal C<$LOGFILE> attribute).
+
+=cut
+
+sub init_logfile
+{
+    my ($self, $filename, $options) = @_;
+
+    my $objlog = CAF::Log->new($filename, $options);
+    if (! defined ($objlog)) {
+        $self->error("cannot open log file $filename");
+        return;
+    }
+
+    return $self->set_report_logfile($objlog);
 }
 
 =pod
