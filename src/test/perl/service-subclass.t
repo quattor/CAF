@@ -61,4 +61,7 @@ foreach my $m (qw(start stop restart reload init)) {
     is($command, "service myservice $m", "subclassed service myservice $m works");
 }
 
+# for stop, the subclassed stop should have been called
+ok($srv->{mystop}, 'Subclassed stop was called');
+
 done_testing();
