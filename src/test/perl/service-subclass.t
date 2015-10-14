@@ -3,7 +3,7 @@ use warnings;
 use Test::More;
 
 use Test::MockModule;
-use CAF::Service qw(FLAVOURS);
+use CAF::Service qw(@FLAVOURS);
 use FindBin qw($Bin);
 use lib "$Bin/modules";
 
@@ -13,13 +13,13 @@ use Test::Quattor::Object;
 
 #TODO: fixed in newer buildtools
 
-# Cannot use Test::Quattor, as it calls 
+# Cannot use Test::Quattor, as it calls
 # set_service_variant, and it overrides the AUTOLOAD
 
 # CAF::Service _logcmd uses execute()
 my $command;
 my $mockp = Test::MockModule->new('CAF::Process');
-$mockp->mock('execute', sub { 
+$mockp->mock('execute', sub {
     my $self = shift;
     $command = join(" ", @{$self->{COMMAND}});
     return 1;
@@ -40,7 +40,7 @@ Test avaliable methods
 =cut
 
 foreach my $m (qw(start stop restart reload init)) {
-    foreach my $fl (FLAVOURS) {
+    foreach my $fl (@FLAVOURS) {
         my $method = "${m}_${fl}";
         diag "can $method";
         ok($srv->can($method), "Method $method found");

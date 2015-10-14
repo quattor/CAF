@@ -13,18 +13,20 @@ use LC::Exception qw (SUCCESS);
 our $AUTOLOAD;
 use base qw(CAF::Object Exporter);
 
-use constant DEFAULT_SLEEP => 5;
-use constant FLAVOURS => qw(linux_sysv linux_systemd solaris);
+use Readonly;
+
+Readonly my $DEFAULT_SLEEP => 5;
+Readonly::Array our @FLAVOURS => qw(linux_sysv linux_systemd solaris);
 
 # Mapping the methods we expose here to the svcadm operations. We
 # choose the Linux terms for our API.
-use constant SOLARIS_METHODS => {
+Readonly::Hash my %SOLARIS_METHODS => {
     start => 'enable',
     stop => 'disable',
     restart => 'restart'
 };
 
-our @EXPORT_OK = qw(FLAVOURS __make_method);
+our @EXPORT_OK = qw(@FLAVOURS os_flavour __make_method);
 
 =pod
 
@@ -133,7 +135,7 @@ sub _initialize
 
     %opts = () if !%opts;
 
-    $opts{sleep} = DEFAULT_SLEEP if(!exists($opts{sleep}));
+    $opts{sleep} = $DEFAULT_SLEEP if(!exists($opts{sleep}));
 
     $self->{log} = delete $opts{log};
 
@@ -232,7 +234,7 @@ Reloads the daemons
 # The start, stop, restart and reload methods are identical on each Linux
 # variant.  We can generate them all in one go.
 foreach my $method (qw(start stop restart reload)) {
-    foreach my $flavour (FLAVOURS) {
+    foreach my $flavour (@FLAVOURS) {
         # for flavour solaris, reload and restart are coded below
         next if ($flavour eq 'solaris' && ($method eq 'restart'  || $method eq 'reload'));
 
@@ -287,6 +289,65 @@ sub stop_sleep_start
 	return $stop && $start;
 }
 
+
+=pod
+
+=item os_flavour
+
+Determine and return the OS flavour (/variant)
+
+Current flavours are
+
+=over
+
+=item linux_sysv
+
+Linux OS with SysV int system
+
+=item linux_systemd
+
+Linux OS with systemd
+
+=item solaris
+
+Solaris OS
+
+=back
+
+(All supported flavours are exported via C<@FLAVOURS>.)
+
+=cut
+
+# Determine the OS flavour. (Also allows mocking the flavour for unittests)
+sub os_flavour
+{
+    my $flavour;
+    if ($^O eq 'linux') {
+        $flavour = "linux";
+        if (-x "/bin/systemctl") {
+            $flavour .= "_systemd";
+        } elsif (-x "/sbin/service") {
+             $flavour .= "_sysv";
+        } else {
+            die "Unsupported Linux version. Unable to run $AUTOLOAD";
+        }
+    } elsif ($^O eq 'solaris') {
+        $flavour = "solaris";
+    } else {
+        die "Unsupported operating system: $^O. Not running $AUTOLOAD";
+    }
+
+    if (! defined($flavour)) {
+        die "Undefined flavour for operating system: $^O. Not running $AUTOLOAD";
+    }
+
+    if(grep {$_ eq $flavour} @FLAVOURS) {
+        return $flavour;
+    } else {
+        die "Determined flavour $flavour, but not part of exported FLAVOURS. (Please report this bug.)";
+    }
+}
+
 =pod
 
 =back
@@ -303,7 +364,7 @@ class that supports e.g. 'service myservice init':
 
     package MyService;
 
-    use CAF::Service qw(__make_method FLAVOURS);
+    use CAF::Service qw(__make_method @FLAVOURS);
     use parent qw(CAF::Service);
 
     sub _initialize {
@@ -312,7 +373,7 @@ class that supports e.g. 'service myservice init':
     }
 
     my $method = 'init';
-    foreach my $flavour (FLAVOURS) {
+    foreach my $flavour (@FLAVOURS) {
         no strict 'refs';
         *{"${method}_${flavour}"} = __make_method($method, $flavour);
         use strict 'refs';
@@ -355,7 +416,7 @@ sub __make_method
         return sub {
             my $self = shift;
 
-            my @cmd = ('svcadm', '-v', SOLARIS_METHODS->{$method});
+            my @cmd = ('svcadm', '-v', $SOLARIS_METHODS{$method});
 
             push(@cmd, "-r") if $self->{options}->{recursive};
             push(@cmd, "-t") if !$self->{options}->{persistent};
@@ -366,31 +427,6 @@ sub __make_method
         # TODO: Return an undef or empty anonymous sub?
         return;
     }
-}
-
-# Determine the OS flavour. (Also allows mocking the flavour for unittests)
-sub os_flavour
-{
-    my $flavour;
-    if ($^O eq 'linux') {
-        $flavour = "linux";
-        if (-x "/bin/systemctl") {
-            $flavour .= "_systemd";
-        } elsif (-x "/sbin/service") {
-             $flavour .= "_sysv";
-        } else {
-            die "Unsupported Linux version. Unable to run $AUTOLOAD";
-        }
-    } elsif ($^O eq 'solaris') {
-        $flavour = "solaris";
-    } else {
-        die "Unsupported operating system: $^O. Not running $AUTOLOAD";
-    }
-
-    if (! defined($flavour)) {
-        die "Undefined flavour for operating system: $^O. Not running $AUTOLOAD";
-    }
-    return $flavour
 }
 
 # Choose the correct variant for each daemon action.  All the
