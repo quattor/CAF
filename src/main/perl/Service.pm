@@ -154,9 +154,9 @@ sub _logcmd
     $proc->execute();
     my $method = $? ? "error" : "verbose";
 
-    $self->$method("Command ", join(" ", @_), " produced stdout: ",
-                     "$proc->{OPTIONS}->{stdout} and stderr: ",
-                     $proc->{OPTIONS}->{stderr});
+    $self->$method("Command ", join(" ", @cmd), " produced stdout: ",
+                     ${$proc->{OPTIONS}->{stdout}}, " and stderr: ",
+                     ${$proc->{OPTIONS}->{stderr}});
     return !$?;
 }
 

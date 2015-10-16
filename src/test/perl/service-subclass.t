@@ -64,4 +64,17 @@ foreach my $m (qw(start stop restart reload init)) {
 # for stop, the subclassed stop should have been called
 ok($srv->{mystop}, 'Subclassed stop was called');
 
+=pod
+
+=head2 Test logged message by _logcmd
+
+=cut
+
+my $msg;
+$mocks->mock('verbose', sub { shift; $msg=join('', @_); });
+$srv->start();
+is($command, "service myservice start", "subclassed service myservice start pt2");
+is($msg, 'Command service myservice start produced stdout:  and stderr: ',
+   "_logcmd created expected log message");
+
 done_testing();
