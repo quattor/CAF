@@ -174,6 +174,8 @@ sub close
         if ($diff) {
             *$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
             *$self->{LOG}->report ($diff);
+        } else {
+            *$self->{LOG}->debug(1, "No changes to make to ", *$self->{filename});
         }
     }
 
