@@ -15,6 +15,7 @@ use parent qw(Exporter);
 our @EXPORT_OK = qw($EVENTS $IDX $ID $TS $REF);
 
 # refaddr was added between 5.8.0 and 5.8.8
+use 5.8.8;
 use Scalar::Util qw(blessed refaddr);
 
 # This might become problematic when dealing with global destroy

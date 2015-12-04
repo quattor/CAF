@@ -134,7 +134,7 @@ C<$options> is a string with magic letters
 
 =item a: append to a logfile
 
-=item w: truncate a loglfile
+=item w: truncate a logfile
 
 =item t: generate a timestamp on every print
 
