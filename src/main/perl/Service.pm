@@ -11,17 +11,22 @@ use CAF::Process;
 use LC::Exception qw (SUCCESS);
 
 our $AUTOLOAD;
-use base qw(CAF::Object);
+use base qw(CAF::Object Exporter);
 
-use constant DEFAULT_SLEEP => 5;
+use Readonly;
+
+Readonly my $DEFAULT_SLEEP => 5;
+Readonly::Array our @FLAVOURS => qw(linux_sysv linux_systemd solaris);
 
 # Mapping the methods we expose here to the svcadm operations. We
 # choose the Linux terms for our API.
-use constant SOLARIS_METHODS => {
+Readonly::Hash my %SOLARIS_METHODS => {
     start => 'enable',
     stop => 'disable',
     restart => 'restart'
 };
+
+our @EXPORT_OK = qw(@FLAVOURS os_flavour __make_method);
 
 =pod
 
@@ -94,7 +99,7 @@ may be called.
 
 =item C<sleep>.
 
-Used only in C<stop_sleep_start>. Determines the number of 
+Used only in C<stop_sleep_start>. Determines the number of
 seconds to sleep after C<stop> before proceeding with C<start>.
 
 =item C<persistent>
@@ -130,7 +135,7 @@ sub _initialize
 
     %opts = () if !%opts;
 
-    $opts{sleep} = DEFAULT_SLEEP if(!exists($opts{sleep}));
+    $opts{sleep} = $DEFAULT_SLEEP if(!exists($opts{sleep}));
 
     $self->{log} = delete $opts{log};
 
@@ -139,7 +144,7 @@ sub _initialize
     return SUCCESS;
 }
 
-# Execute and log the result. Logs with error on failure, 
+# Execute and log the result. Logs with error on failure,
 # verbose on success. Returns 0 on error, 1 on success.
 sub _logcmd
 {
@@ -149,9 +154,9 @@ sub _logcmd
     $proc->execute();
     my $method = $? ? "error" : "verbose";
 
-    $self->$method("Command ", join(" ", @_), " produced stdout: ",
-                     "$proc->{OPTIONS}->{stdout} and stderr: ",
-                     $proc->{OPTIONS}->{stderr});
+    $self->$method("Command ", join(" ", @cmd), " produced stdout: ",
+                     ${$proc->{OPTIONS}->{stdout}}, " and stderr: ",
+                     ${$proc->{OPTIONS}->{stderr}});
     return !$?;
 }
 
@@ -168,7 +173,7 @@ sub create_process_linux_sysv
         $self->debug(3, "Timeout undefined, set timeout to 0");
         $timeout=0;
     }
-    
+
     my $proc = CAF::Process->new(\@cmd,
                                  log => $self->{log},
                                  timeout => $timeout,
@@ -203,7 +208,7 @@ sub create_process_solaris
 }
 
 =pod
- 
+
 =head2 Public methods
 
 =over
@@ -226,39 +231,17 @@ Reloads the daemons
 
 =cut
 
-
-# The restart, start and stop methods are identical on each Linux
+# The start, stop, restart and reload methods are identical on each Linux
 # variant.  We can generate them all in one go.
 foreach my $method (qw(start stop restart reload)) {
-    no strict 'refs';
-    *{"${method}_linux_sysv"} = sub {
-        my $self = shift;
-        my $ok = 1;
+    foreach my $flavour (@FLAVOURS) {
+        # for flavour solaris, reload and restart are coded below
+        next if ($flavour eq 'solaris' && ($method eq 'restart'  || $method eq 'reload'));
 
-        foreach my $i (@{$self->{services}}) {
-            $ok &&= $self->_logcmd("service", $i, $method);
-        }
-        return $ok;
-    };
-
-    *{"${method}_linux_systemd"} = sub {
-        my $self = shift;
-        return $self->_logcmd("systemctl", $method, 
-                              map { m/\.(service|target)$/ ? $_ : "$_.service" } @{$self->{services}} );
-    };
-
-    next if $method eq 'restart'  || $method eq 'reload';
-
-    *{"${method}_solaris"} = sub {
-        my $self = shift;
-
-        my @cmd = ('svcadm', '-v', SOLARIS_METHODS->{$method});
-
-        push(@cmd, "-r") if $self->{options}->{recursive};
-        push(@cmd, "-t") if !$self->{options}->{persistent};
-
-        return $self->_logcmd(@cmd, @{$self->{services}});
-    };
+        no strict 'refs';
+        *{"${method}_${flavour}"} = __make_method($method, $flavour);
+        use strict 'refs';
+    }
 }
 
 sub restart_solaris
@@ -284,28 +267,56 @@ sub reload_solaris
 
 =item C<stop_sleep_start>
 
-Stops the daemon, sleep, and then start the dameon again. 
+Stops the daemon, sleep, and then start the dameon again.
 Only when both C<stop> and C<start> are successful, return success.
 
 =cut
 
 # The C<stop_sleep_start> method reuses the C<stop> and C<start> methods.
-# It accepts an argument that is the time to sleep, and precedes the 
-# sleep defined during initialization or the module default. 
+# It accepts an argument that is the time to sleep, and precedes the
+# sleep defined during initialization or the module default.
 # Returns 1 if C<stop> and C<start> were successful, 0 otherwise.
 sub stop_sleep_start
 {
     my ($self, $sleep) = @_;
-    
+
     $sleep = $self->{options}->{sleep} if (!defined($sleep));
 
 	my $stop = $self->stop();
 	sleep($sleep);
 	my $start = $self->start();
-	
+
 	return $stop && $start;
 }
 
+
+=pod
+
+=item os_flavour
+
+Determine and return the OS flavour (/variant)
+
+Current flavours are
+
+=over
+
+=item linux_sysv
+
+Linux OS with SysV int system
+
+=item linux_systemd
+
+Linux OS with systemd
+
+=item solaris
+
+Solaris OS
+
+=back
+
+(All supported flavours are exported via C<@FLAVOURS>.)
+
+=cut
 
 # Determine the OS flavour. (Also allows mocking the flavour for unittests)
 sub os_flavour
@@ -329,7 +340,93 @@ sub os_flavour
     if (! defined($flavour)) {
         die "Undefined flavour for operating system: $^O. Not running $AUTOLOAD";
     }
-    return $flavour
+
+    if(grep {$_ eq $flavour} @FLAVOURS) {
+        return $flavour;
+    } else {
+        die "Determined flavour $flavour, but not part of exported FLAVOURS. (Please report this bug.)";
+    }
+}
+
+=pod
+
+=back
+
+=head2 Private methods
+
+=over
+
+=item __make_method
+
+A generator for service methods, to be used in e.g.
+subclassing. In the example below we create a custom service
+class that supports e.g. 'service myservice init':
+
+    package MyService;
+
+    use CAF::Service qw(__make_method @FLAVOURS);
+    use parent qw(CAF::Service);
+
+    sub _initialize {
+        my ($self, %opts) = @_;
+        return $self->SUPER::_initialize(['myservice'], %opts);
+    }
+
+    my $method = 'init';
+    foreach my $flavour (@FLAVOURS) {
+        no strict 'refs';
+        *{"${method}_${flavour}"} = __make_method($method, $flavour);
+        use strict 'refs';
+    }
+
+    1;
+
+This class can than be used in the same way as C<CAF::Service>
+
+    use MyService;
+    ...
+    my $serv = MyService->new();
+    $serv->init();
+    ...
+    $serv->reload();
+
+=cut
+
+sub __make_method
+{
+    my ($method, $flavour) = @_;
+
+    if ($flavour eq 'linux_sysv') {
+        return sub {
+            my $self = shift;
+            my $ok = 1;
+
+            foreach my $i (@{$self->{services}}) {
+                $ok &&= $self->_logcmd("service", $i, $method);
+            }
+            return $ok;
+        };
+    } elsif ($flavour eq 'linux_systemd') {
+        return sub {
+            my $self = shift;
+            return $self->_logcmd("systemctl", $method,
+                                  map { m/\.(service|target)$/ ? $_ : "$_.service" } @{$self->{services}} );
+        };
+    } elsif ($flavour eq 'solaris') {
+        return sub {
+            my $self = shift;
+
+            my @cmd = ('svcadm', '-v', $SOLARIS_METHODS{$method});
+
+            push(@cmd, "-r") if $self->{options}->{recursive};
+            push(@cmd, "-t") if !$self->{options}->{persistent};
+
+            return $self->_logcmd(@cmd, @{$self->{services}});
+        };
+    } else {
+        # TODO: Return an undef or empty anonymous sub?
+        return;
+    }
 }
 
 # Choose the correct variant for each daemon action.  All the
@@ -337,25 +434,26 @@ sub os_flavour
 # AUTOLOAD works.
 sub AUTOLOAD
 {
-    my $self = shift;
+    my ($self, @args) = @_;
 
     my $called = $AUTOLOAD;
 
     # Don't mess with garbage collection!
     return if $called =~ m{DESTROY};
 
+    my $called_orig = $called;
     $called =~ s{.*::}{};
+    my $called_orig_short = $called;
     $called .= "_" . os_flavour();
 
     if ($self->can($called)) {
-        # Run the expected method. This is ugly but it's the way to do
-        # AUTOLOAD.
-        no strict 'refs';
-        unshift(@_, $self);
-        *$AUTOLOAD = \&$called;
-        goto &$AUTOLOAD;
+        # Run the expected method.
+        # AUTOLOAD with glob assignment and goto defines the autoloaded method
+        # (so they are only autoloaded once when they are first called),
+        # but that breaks inheritance.
+        $self->$called(@args);
     } else {
-        die "Unknown method: $called";
+        die "Unknown method: $called (from original $called_orig / short $called_orig_short)";
     }
 }
 
