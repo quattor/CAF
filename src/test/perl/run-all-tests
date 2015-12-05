@@ -1,4 +1,0 @@
-#!/bin/bash
-
-# Bash script for running all tests.
-prove $@ *pl lock

@@ -8,7 +8,7 @@ BEGIN {
 
 use FindBin qw($Bin);
 # actually running executable; don't fake LC
-use lib "$Bin/";
+use lib "$Bin/modules";
 
 use strict;
 use warnings;

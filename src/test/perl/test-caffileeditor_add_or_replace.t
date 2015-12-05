@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use FindBin qw($Bin);
-use lib "$Bin/", "$Bin/..", "$Bin/../../perl-LC";
+use lib "$Bin/modules";
 use testapp;
 use CAF::FileEditor;
 use Test::Quattor::Object;

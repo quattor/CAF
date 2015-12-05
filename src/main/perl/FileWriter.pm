@@ -164,7 +164,6 @@ sub close
     my $self = shift;
     my ($str, $ret, $cmd, $diff);
 
-
     # We have to do this because Text::Diff is not present in SL5. :(
     if (*$self->{LOG} && $CAF::Reporter::_REP_SETUP->{VERBOSE}
         && -e *$self->{filename} && *$self->{buf}) {
@@ -173,8 +172,8 @@ sub close
                                   keeps_state => 1);
         $cmd->execute();
         *$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
+        $diff = "" if (! defined($diff));
         *$self->{LOG}->report ($diff);
-
     }
 
     if (*$self->{save}) {

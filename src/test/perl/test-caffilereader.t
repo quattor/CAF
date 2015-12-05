@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use FindBin qw($Bin);
-use lib "$Bin/";
+use lib "$Bin/modules";
 use testapp;
 use CAF::FileWriter;
 use CAF::FileReader;

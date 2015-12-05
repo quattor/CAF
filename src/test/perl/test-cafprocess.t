@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use FindBin qw($Bin);
-use lib "$Bin/";
+use lib "$Bin/modules";
 use strict;
 use warnings;
 use testapp;

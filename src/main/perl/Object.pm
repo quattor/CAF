@@ -21,20 +21,13 @@ CAF::Object - provides basic methods for all CAF objects
 
 =head1 SYNOPSIS
 
-  use vars qw (@ISA);
-  use LC::Exception qw (SUCCESS throw_error);
-  use CAF::Object;
-  ...
-  @ISA = qw (CAF::Object ...)
-  ...
-  sub _initialize {
-    ... initialize your component
-    return SUCCESS; # Success
-  }
-
-=head1 INHERITANCE
-
-none.
+    use LC::Exception qw (SUCCESS throw_error);
+    use parent qw(CAF::Object ...);
+    ...
+    sub _initialize {
+        ... initialize your package
+        return SUCCESS; # Success
+    }
 
 =head1 DESCRIPTION
 
@@ -44,22 +37,17 @@ CAF objects.
 All other CAF objects should inherit from it.
 
 All CAF classes use this as their base class and inherit their class
-constructor "new" from here. Sub-classes should implement all their
-constructor initialisation in an "_initialize" method which is invoked
-from this base class "new" constructor. Sub-classes should NOT need to
-override the "new" class method.
+constructor C<new> from here. Sub-classes should implement all their
+constructor initialisation in an C<_initialize> method which is invoked
+from this base class C<new> constructor. Sub-classes should NOT need to
+override the C<new> class method.
 
-=over
-
-=cut
-
-#------------------------------------------------------------
-#                      Public Methods/Functions
-#------------------------------------------------------------
-
-=pod
-
-=back
+The subclass C<_initialize> method has to be implemented
+and has to return a boolean value indicating if the initialisation was succesful
+(e.g. use C<LC::Exception::SUCCESS>).
+In particular, one should avoid to return the C<$self> instance at the end of
+C<_initialize> (e.g. to avoid troubles when the subclass overloads logic evaluation
+(which is also possible via overloading other methods such as stringification)).
 
 =head2 Public methods
 
@@ -67,23 +55,36 @@ override the "new" class method.
 
 =item new
 
+Creates an empty hash and bless'es it as the new class instance. All arguments are then passed
+to a C<$self->_initialize(@_)> call.
+When C<_initialize> returns success, the C<NoAction> attribute is set to the value of
+C<CAF::Object::NoAction> if it didn't exist after C<_initialize>.
+If C<_initialize> returns failure, an error is thrown and undef returned.
+
 =cut
 
-sub new {
-  my $this = shift;
-  my $class = ref($this) || $this;
-  my $self = {}; # here, it gives a reference on a hash
-  bless $self, $class;
-  if ($self->_initialize(@_)) {
-    # Initialize instance variable to class variable if not initializedin _initialize().
-    # A derived class which must define it differently must define it before.
-    $self->{NoAction} = $CAF::Object::NoAction if !defined($self->{NoAction});
-    return $self;
-  } else {
-    throw_error("cannot instantiate class: $class", $ec->error || '');
-    undef $self;
-    return undef;
-  }
+sub new
+{
+    my $this = shift;
+    my $class = ref($this) || $this;
+    my $self = {}; # here, it gives a reference on a hash
+    bless $self, $class;
+    if ($self->_initialize(@_)) {
+        # Initialize instance variable to class variable if not initializedin _initialize().
+        # A derived class which must define it differently must define it before.
+        $self->{NoAction} = $CAF::Object::NoAction if !defined($self->{NoAction});
+        return $self;
+    } else {
+        my $msg = "cannot instantiate class: $class";
+        my $err = $ec->error();
+        if ($err) {
+            $ec->ignore_error();
+            $msg .= ": $err";
+        }
+        throw_error($msg);
+        undef $self;
+        return undef;
+    }
 }
 
 
@@ -114,28 +115,33 @@ This method must be overwritten in a derived class
 
 =cut
 
-sub _initialize {
-  my $self=shift;
-  throw_error("no constructor _initialize implemented for ".ref($self));
-  return undef;
+sub _initialize
+{
+    my $self = shift;
+    throw_error("no constructor _initialize implemented for " . ref($self));
+    return;
 }
 
-=item error, warn, info, verbose, debug, report
+=item error, warn, info, verbose, debug, report, OK
 
-Convenience methods to access the log instance that might 
-be passed during initialisation and set to $self->log.
+Convenience methods to access the log instance that might
+be passed during initialisation and set to $self->{log}.
 
-(When constructing classes via multiple inheritance, 
-C<CAF::Reporter> should precede C<CAF::Object> if you want 
-to use an absolute rather than a conditional logger). 
+(When constructing classes via multiple inheritance,
+C<CAF::Reporter> should precede C<CAF::Object> if you want
+to use an absolute rather than a conditional logger).
 
 =cut
 
 no strict 'refs';
-foreach my $i (qw(error warn info verbose debug report)) {
+foreach my $i (qw(error warn info verbose debug report OK)) {
 *{$i} = sub {
             my ($self, @args) = @_;
-            return $self->{log}->$i(@args) if $self->{log};
+            if ($self->{log}) {
+                return $self->{log}->$i(@args);
+            } else {
+                return;
+            }
     }
 }
 use strict 'refs';
@@ -147,6 +153,8 @@ use strict 'refs';
 
 =cut
 
+# TODO: these are only send to STDERR, not logged
+#       move this to DESTROY?
 
 END {
     # report all stored warnings
@@ -156,4 +164,4 @@ END {
     $ec->clear_warnings;
 }
 
-1; ## END ##
+1;
