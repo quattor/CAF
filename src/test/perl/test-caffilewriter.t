@@ -36,11 +36,13 @@ sub init_test
 our $cmd;
 our $mock;
 our $app;
+our $execute_stdout = '';
 
 BEGIN {
     $mock = Test::MockModule->new ("CAF::Process");
     $mock->mock ("execute", sub {
                      $cmd = $_[0];
+                     ${$cmd->{OPTIONS}->{stdout}} .= $execute_stdout;
                      $? = 0;
                      return 1;
                  });
@@ -147,13 +149,13 @@ $this_app->set_report_logfile ($log);
 init_test();
 $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello, world\n";
+# Mock diff output via CAF::Process execute()
+$execute_stdout = "+ something changed";
+
 $fh->close();
-#undef $fh;
-like($str, qr{Changes to}, "Diff is reported");
+like($str, qr{Changes to \S+:}, "Diff is reported");
 ok(!$cmd->{NoAction},
    "Diff will be shown even with noaction");
-undef $cmd;
-
 
 # No diffs if no contents
 close ($log);
@@ -168,6 +170,10 @@ $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello world\n";
 $fh->close();
 is($report, 0, "Diff output is reported only with verbose");
+
+# Reset mocked diff via execute_stdout
+undef $cmd;
+$execute_stdout = '';
 
 $app->mock('add_files', sub {
            my ($self, @args) = @_;
