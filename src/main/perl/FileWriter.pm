@@ -171,9 +171,12 @@ sub close
                                   stdin => "$self", stdout => \$diff,
                                   keeps_state => 1);
         $cmd->execute();
-        *$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
-        $diff = "" if (! defined($diff));
-        *$self->{LOG}->report ($diff);
+        if ($diff) {
+            *$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
+            *$self->{LOG}->report ($diff);
+        } else {
+            *$self->{LOG}->debug(1, "No changes to make to ", *$self->{filename});
+        }
     }
 
     if (*$self->{save}) {
