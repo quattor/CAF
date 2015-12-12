@@ -6,6 +6,8 @@
 package CAF::Object;
 
 use strict;
+use warnings;
+
 our @ISA;
 use LC::Exception qw (SUCCESS throw_error);
 
@@ -135,17 +137,38 @@ to use an absolute rather than a conditional logger).
 
 no strict 'refs';
 foreach my $i (qw(error warn info verbose debug report OK)) {
-*{$i} = sub {
-            my ($self, @args) = @_;
-            if ($self->{log}) {
-                return $self->{log}->$i(@args);
-            } else {
-                return;
-            }
+    *{$i} = sub {
+        my ($self, @args) = @_;
+        if ($self->{log}) {
+            return $self->{log}->$i(@args);
+        } else {
+            return;
+        }
     }
 }
 use strict 'refs';
 
+
+=pod
+
+=item fail
+
+Handle failures. Stores the error message in the C<fail> attribute,
+logs it with C<verbose> and returns undef.
+
+To be used in subclasses that are not supposed to log/report
+any errors themself when a problem or failure occurs.
+In such classes, all failures should use C<return $self->fail("message");>.
+
+=cut
+
+sub fail
+{
+    my ($self, @messages) = @_;
+    $self->{fail} = join('', @messages);
+    $self->verbose("FAIL: ", $self->{fail});
+    return;
+}
 
 =pod
 

@@ -91,6 +91,23 @@ foreach my $i (qw(error warn info verbose debug report OK)) {
     is($called, 1, "$i with logger: logger method called");
 }
 
+=item fail
+
+=cut
+
+my $verbose;
+$mockrep->mock('verbose', sub {shift; $verbose = \@_;});
+
+my $logger = myreporter->new();
+my $failobj = object_log->new($logger);
+isa_ok($failobj, 'object_log', 'failobj is a object_log instance');
+
+my @failmsg = qw(something went really wrong);
+ok(! defined($failobj->fail(@failmsg)), 'fail returns undef');
+is($failobj->{fail}, join('', @failmsg), 'fail sets fail attribute with joined arguments');
+is_deeply($verbose, ['FAIL: ', $failobj->{fail}], 'fail logs verbose with FAIL prefix');
+
+
 =pod
 
 =back
