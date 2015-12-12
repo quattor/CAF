@@ -3,8 +3,9 @@ use warnings;
 
 use Test::More;
 use Test::MockModule;
-use LC::Exception qw (SUCCESS);
-use CAF::Object;
+use LC::Exception;
+# Test the EXPORT_OK
+use CAF::Object qw(SUCCESS throw_error);
 
 use FindBin qw($Bin);
 use lib "$Bin/modules";
@@ -27,6 +28,14 @@ my $mockrep = Test::MockModule->new('myreporter');
 Test all methods for C<CAF::Object>
 
 =over
+
+=item exports
+
+=cut
+
+is(SUCCESS, LC::Exception::SUCCESS, 'CAF::Object exported SUCCESS is LC::Excpetion::SUCCESS');
+
+=pod
 
 =item new
 

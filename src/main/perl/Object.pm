@@ -8,12 +8,18 @@ package CAF::Object;
 use strict;
 use warnings;
 
-our @ISA;
+use Exporter;
+our @ISA = qw(Exporter);
+
 use LC::Exception qw (SUCCESS throw_error);
 
 our $NoAction;
 
-my $ec = LC::Exception::Context->new->will_store_all;
+our @EXPORT = qw();
+# For convenience, export most common LC-related constants and methods
+our @EXPORT_OK = qw(SUCCESS throw_error);
+
+my $ec = LC::Exception::Context->new()->will_store_all();
 
 =pod
 
@@ -23,7 +29,6 @@ CAF::Object - provides basic methods for all CAF objects
 
 =head1 SYNOPSIS
 
-    use LC::Exception qw (SUCCESS throw_error);
     use parent qw(CAF::Object ...);
     ...
     sub _initialize {
@@ -46,7 +51,7 @@ override the C<new> class method.
 
 The subclass C<_initialize> method has to be implemented
 and has to return a boolean value indicating if the initialisation was succesful
-(e.g. use C<LC::Exception::SUCCESS>).
+(e.g. use C<SUCCESS> exported by C<CAF::Object>).
 In particular, one should avoid to return the C<$self> instance at the end of
 C<_initialize> (e.g. to avoid troubles when the subclass overloads logic evaluation
 (which is also possible via overloading other methods such as stringification)).

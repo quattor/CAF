@@ -8,8 +8,8 @@ package CAF::ObjectText;
 use strict;
 use warnings;
 
+use CAF::Object qw(SUCCESS);
 use parent qw(CAF::Object);
-use LC::Exception qw (SUCCESS throw_error);
 
 use overload ('""' => '_stringify');
 
@@ -41,7 +41,9 @@ And use it via
     $sc = SubClass->new(log => $self);
     # return CAF::FileWriter instance (text already added)
     my $fh = $sc->filewriter('/some/path');
-    die "Problem rendering the text" if (!defined($fh));
+    if (!defined($fh)) {
+        $self->error("Failed to retrieve filewriter: $sc->{fail}");
+    }
     $fh->close();
 
 =head1 DESCRIPTION
