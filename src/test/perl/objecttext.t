@@ -41,21 +41,6 @@ isa_ok($optot->{log}, 'Test::Quattor::Object', 'log attribute set via _initializ
 ok(! $optot->{eol}, 'eol attribute set to false via _initialize_textopts');
 ok(! $optot->{usecache}, 'usecache attribute set to false via _initialize_textopts');
 
-=head2 fail
-
-=cut
-
-my $verbose;
-$mock->mock('verbose', sub {shift; $verbose = \@_;});
-
-my $failot = myobjecttext->new();
-isa_ok($failot, 'myobjecttext', 'failot is a myobjecttext instance');
-
-my @failmsg = qw(something went really wrong);
-ok(! defined($failot->fail(@failmsg)), 'fail returns undef');
-is($failot->{fail}, join('', @failmsg), 'fail sets fail atrribute with joined arguments');
-is_deeply($verbose, ['FAIL: ', $failot->{fail}], 'fail logs verbose with FAIL prefix');
-
 =head2 Test _get_text_test=true
 
 =cut

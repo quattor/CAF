@@ -108,25 +108,6 @@ sub _initialize_textopts
 
 =pod
 
-=item fail
-
-Handle failures. Stores the error message in the C<fail> attribute,
-logs it with C<verbose> and returns undef.
-All failures should use C<return $self->fail("message");>.
-No error logging should occur in the subclass.
-
-=cut
-
-sub fail
-{
-    my ($self, @messages) = @_;
-    $self->{fail} = join('', @messages);
-    $self->verbose("FAIL: ", $self->{fail});
-    return;
-}
-
-=pod
-
 =item C<_get_text_test>
 
 Run additional tests before the actual text is produced via C<get_text>.
