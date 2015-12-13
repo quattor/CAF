@@ -10,7 +10,7 @@ use warnings;
 
 use parent qw(Exporter);
 use Readonly;
-use LC::Exception qw (SUCCESS);
+use CAF::Object qw (SUCCESS);
 
 our @EXPORT_OK = qw(set_url_defaults);
 

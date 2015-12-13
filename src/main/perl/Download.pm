@@ -73,7 +73,7 @@ It handles things like authentication, decryption, creating the actual file, ...
 
 =item C<_initialize>
 
-Initialize the process object. Arguments:
+Initialize the download object. Arguments:
 
 =over
 
