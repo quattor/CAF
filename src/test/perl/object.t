@@ -116,6 +116,28 @@ ok(! defined($failobj->fail(@failmsg)), 'fail returns undef');
 is($failobj->{fail}, join('', @failmsg), 'fail sets fail attribute with joined arguments');
 is_deeply($verbose, ['FAIL: ', $failobj->{fail}], 'fail logs verbose with FAIL prefix');
 
+=item update_env
+
+This does not actually test modifying ENV, only updating a hashref.
+For actual testing, see e.g. kerberos-process.t
+
+=cut
+
+# copy ENV (strictly speaking can be any hashref)
+my $env = { %ENV };
+ok(defined($env->{PATH}), 'PATH defined');
+
+my $varname = 'SOMETHINGRANDOM';
+my $varvalue = 'somerandomvalue';
+$obj_ok->{ENV}->{PATH} = undef;
+$obj_ok->{ENV}->{$varname} = $varvalue;
+my $new_env = $obj_ok->update_env($env);
+
+ok(! defined($new_env->{PATH}), 'PATH not defined in updated env');
+is($new_env->{$varname}, "$varvalue", "correct $varname set in updated env");
+
+delete $obj_ok->{ENV}->{PATH};
+
 
 =pod
 
