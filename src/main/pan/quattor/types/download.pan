@@ -35,9 +35,10 @@ type caf_url_string = string with {
 };
 
 # similar to kerberos_principal_string in ncm-ccm
-type kerberos_principal = string with match(SELF, '^\w+$');
+# http://web.mit.edu/kerberos/krb5-1.4/krb5-1.4.3/doc/krb5-user/Kerberos-Glossary.html
+type kerberos_primary = string with match(SELF, '^\w+$');
 type kerberos_realm = string with match(SELF, '^[A-Z][A-Z.-_]*$');
-type kerberos_component = string with match(SELF, '^\w[\w.-]*$');
+type kerberos_instance = string with match(SELF, '^\w[\w.-]*$');
 
 # TODO: What if you want to use the defaults for all 4 settings?
 @documentation{
@@ -45,12 +46,12 @@ type kerberos_component = string with match(SELF, '^\w[\w.-]*$');
 }
 type caf_url_krb5 = {
     'keytab' ? string
-    'principal' ? kerberos_principal
+    'primary' ? kerberos_primary
     'realm' ? kerberos_realm
-    'components' ? kerberos_component[]
+    'instances' ? kerberos_instance[]
 } with {
-    if(exists(SELF['components']) && ! exists(SELF['principal'])) {
-        error("Cannot have krb5 component(s) without principal");
+    if(exists(SELF['instances']) && ! exists(SELF['primary'])) {
+        error("Cannot have krb5 instance(s) without primary");
     };
     true;
 };

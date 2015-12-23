@@ -14,11 +14,11 @@ include 'quattor/types/download';
 
 bind "/strings" = caf_url_string[];
 
-"/kerberos_principals" = list(
+"/kerberos_primaries" = list(
     'username',
 );
 
-bind "/kerberos_principals" = kerberos_principal[];
+bind "/kerberos_primaries" = kerberos_primary[];
 
 "/kerberos_realms" = list(
     'MY.REALM',
@@ -26,20 +26,20 @@ bind "/kerberos_principals" = kerberos_principal[];
 
 bind "/kerberos_realms" = kerberos_realm[];
 
-"/kerberos_components" = list(
+"/kerberos_instances" = list(
     'a.component',
     'something.else',
     'my.hostname',
 );
 
-bind "/kerberos_components" = kerberos_component[];
+bind "/kerberos_instances" = kerberos_instance[];
 
 "/krb5s" = list(
     dict(
         'keytab', '/some/file',
-        'principal', 'myuser',
+        'primary', 'myuser',
         'realm', 'MY.REALM',
-        'components', list('test1', 'other.host'),
+        'instances', list('test1', 'other.host'),
     ),
 );
 
@@ -100,7 +100,7 @@ bind "/methods" = caf_url_method[];
         'retries', 10,
         'retry_wait', 30,
         'krb5', dict(
-            'principal', 'me',
+            'primary', 'me',
         ),
         'proxy', dict(
             'server', 'myforward',
