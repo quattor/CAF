@@ -569,6 +569,7 @@ sub load_module
 
     $self->verbose("Loading module $module");
 
+    local $@;
     eval "use $module";
     if ($@) {
         return $self->fail("Unable to load $module: $@");

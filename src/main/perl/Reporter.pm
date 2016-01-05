@@ -381,6 +381,7 @@ sub syslog
         exists ($self->_rep_setup()->{$LOGFILE}->{$SYSLOG});
 
     # If syslog can't be reached do nothing, but please don't die.
+    local $@;
     eval {
         openlog ($self->_rep_setup()->{$LOGFILE}->{$SYSLOG},
                  "pid",
