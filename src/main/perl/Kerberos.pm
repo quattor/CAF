@@ -634,6 +634,7 @@ foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
             $self->update_env(\%ENV);
 
             my $status;
+            local $@;
             if(($class eq 'Name') && ($method eq 'import')) {
                 # There's no ->new for this class, the current method creates
                 # a new instance but returns status
