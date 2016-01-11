@@ -398,8 +398,8 @@ Test load_module failures
 
 =cut
 
-ok(!$trd->load_module('foobarbaz'), "Invalid module loading fails");
-ok($@, "Invalid module loading raises an exception");
+ok(! defined($trd->load_module('foobarbaz')), "Invalid module loading fails and returns undef");
+ok(! $@, "Invalid module loading raises an exception, but localized (use return value or fail attribute)");
 like($trd->{fail}, qr{Unable to load foobarbaz}, "Unable to load error was reported");
 
 
