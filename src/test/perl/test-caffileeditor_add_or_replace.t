@@ -110,7 +110,7 @@ la
 EOF
 
 $fh = CAF::FileEditor->new ($filename);
-$fh->set_contents(TEXT);
+$fh->set_contents("".TEXT);
 my $tt="$fh";
 my $ltt=length $tt;
 
