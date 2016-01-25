@@ -278,26 +278,6 @@ sub _initialize {
 }
 
 
-
-=pod
-
-=item DESTROY
-
-called during garbage collection. Invokes unlock() if lock is set by
-application instance.
-
-=cut
-
-
-sub DESTROY {
-  my $self = shift;
-  # We unlock only on the process that owns the lock.  Otherwise this
-  # might be a forked process that is exiting and shouldn't sweep
-  # under its parent's feet.
-  $self->unlock() if $self->{LOCK_SET} && $self->get_lock_pid() == $$;
-}
-
-
 =pod
 
 =back
