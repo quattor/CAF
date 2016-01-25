@@ -48,8 +48,6 @@ CAF::Lock - Class for handling application instance locking
   unless ($lock->set_lock(10,2) {...}
   unless ($lock->set_lock(3,3,FORCE_IF_STALE)) {...}
 
-  if ($lock->is_stale()) {...} else {...};
-
   unless ($lock->unlock()) {....}
 
 
@@ -128,29 +126,6 @@ sub get_lock_pid {
   return $1;
 }
 
-
-=pod
-
-=item is_stale()
-
-Returns SUCCESS if the lock is stale - a lock file is set but the
-corresponding PID does not exist. Returns undef otherwise.
-
-=cut
-
-sub is_stale {
-  my $self=shift;
-
-  return undef unless ($self->is_locked());
-  my $lock_pid=$self->get_lock_pid();
-  if ($lock_pid && kill(0, $lock_pid)) {
-      return undef;
-  } else {
-      return SUCCESS;
-  }
-}
-
-
 =pod
 
 =item set_lock ($retries,$timeout,$force);
@@ -167,12 +142,8 @@ If $force is set to FORCE_ALWAYS then the lockfile is just set
 again, independently if the lock is already set by another application
 instance.
 
-If $force is set to FORCE_IF_STALE then the lockfile is set if the
-application instance holding the lock is dead (PID not alive).
-
-If $force is set to FORCE_ALWAYS, or if $force is defined to
-FORCE_IF_STALE and a stale lock file is detected, then neither
-$timeout nor $retries are taken into account.
+If $force is set to FORCE_ALWAYS then neither $timeout nor $retries are taken
+into account.
 
 =cut
 
