@@ -234,6 +234,8 @@ is returned.
 sub unlock {
   my $self=shift;
   if ($self->{LOCK_SET}) {
+    flock ($self->{LOCK_FH}, LOCK_UN|LOCK_NB) or $self->error("cannot release flock on lock file: ",$self->{'LOCK_FILE'});
+    $self->{LOCK_FH}->close or $self->error("cannot close lock file: ",$self->{'LOCK_FILE'});
     unless (unlink($self->{'LOCK_FILE'})) {
       $self->error("cannot release lock file: ",$self->{'LOCK_FILE'});
       return undef;
