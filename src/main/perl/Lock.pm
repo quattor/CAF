@@ -11,6 +11,7 @@ use CAF::Reporter;
 
 use LC::Exception qw (SUCCESS throw_error);
 use FileHandle;
+use Fcntl qw(:flock);
 #use Proc::ProcessTable;
 
 use Exporter;
@@ -85,7 +86,10 @@ If a lock is set for the lock file, returns SUCCESS, undef otherwise.
 
 sub is_locked {
   my $self=shift;
-  return SUCCESS if (-e $self->{'LOCK_FILE'});
+  if (-e $self->{'LOCK_FILE'}) {
+    my $fh=FileHandle->new("> ". $self->{'LOCK_FILE'});
+    return SUCCESS unless (flock($fh, LOCK_EX|LOCK_NB));
+  }
   return undef;
 }
 
