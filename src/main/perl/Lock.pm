@@ -159,37 +159,54 @@ sub set_lock {
     return undef;
   }
 
-  unless ($force == FORCE_ALWAYS ||
-	  ($force == FORCE_IF_STALE && $self->is_stale())) {
-    my $tries=1;
-    while ($tries <= $retries &&
-	   ($self->is_locked() && !($force == FORCE_IF_STALE && $self->is_stale()))) {
-      my $sleep=rand($timeout);
-      $self->verbose("lockfile is already held, try $tries out of $retries");
-      $tries++;
-      sleep($sleep);
+  my $tries=0;
+  my $lock;
+  while(1) {
+    $tries++;
+    $lock = $self->try_lock($force == FORCE_ALWAYS);
+    return SUCCESS if ($lock);
+
+    if ($tries >= $retries) {
+      $self->error("cannot acquire lock file: ".$self->{'LOCK_FILE'});
+      return undef;
     }
+
+    $self->verbose("lockfile is already held, try $tries out of $retries");
+    my $sleep=rand($timeout);
+    sleep($sleep);
   }
-  if ($self->is_locked() && !($force == FORCE_ALWAYS ||
-	  ($force == FORCE_IF_STALE && $self->is_stale()))) {
-    $self->error("cannot acquire lock file: ".$self->{'LOCK_FILE'});
-    return undef;
-  }
+}
+
+=pod
+
+=item try_lock ($force)
+
+Create the lockfile, try to lock it and write out the pid.
+Return SUCCESS if we was able to flock() the file.
+If force is set carry on even if flock() says someone else has the lock.
+
+=cut
+
+sub try_lock {
+  my ($self,$force) = @_;
+  $self->verbose("force mode is set, will continue regardless of lock") if ($force);
   # now got the lock (or forcing!)
   my $lf=FileHandle->new("> " . $self->{'LOCK_FILE'});
-  unless ($lf) {
+  if ( !$lf && !$force) {
     $self->error("cannot create lock file: ".$self->{'LOCK_FILE'});
     return undef;
   }
-  print $lf $$;
-  unless ($lf->close()) {
-    $self->error("cannot close lock file: ".$self->{'LOCK_FILE'});
+  my $flockstatus = flock ($lf, LOCK_EX|LOCK_NB);
+  if ( !$flockstatus && !$force) {
+    $self->error("cannot flock lock file: ".$self->{'LOCK_FILE'});
     return undef;
   }
+  $lf->autoflush;
+  print $lf $$;
+  $self->{LOCK_FH}=$lf;
   $self->{LOCK_SET}=1;
   return SUCCESS;
 }
-
 
 =pod
 
