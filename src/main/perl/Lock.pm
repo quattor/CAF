@@ -126,7 +126,12 @@ sub set_lock {
   my $lock;
   while(1) {
     $tries++;
-    $lock = $self->try_lock($force == FORCE_ALWAYS);
+    $lock = $self->try_lock();
+    if ($force == FORCE_ALWAYS) {
+      $self->{LOCK_SET} = 1;
+      $self->verbose("locking failed, but you used the force so here you go");
+      return SUCCESS;
+    }
     return SUCCESS if ($lock);
 
     if ($tries >= $retries) {
@@ -142,25 +147,21 @@ sub set_lock {
 
 =pod
 
-=item try_lock ($force)
+=item try_lock
 
-Create the lockfile, try to lock it and write out the pid.
-Return SUCCESS if we was able to flock() the file.
-If force is set carry on even if flock() says someone else has the lock.
+Create the lockfile and return SUCCESS if we was able to flock() the file.
 
 =cut
 
 sub try_lock {
-  my ($self,$force) = @_;
-  $self->verbose("force mode is set, will continue regardless of lock") if ($force);
-  # now got the lock (or forcing!)
+  my ($self) = @_;
   my $lf=FileHandle->new("> " . $self->{'LOCK_FILE'});
-  if ( !$lf && !$force) {
+  if ( !$lf ) {
     $self->error("cannot create lock file: ".$self->{'LOCK_FILE'});
     return undef;
   }
   my $flockstatus = flock ($lf, LOCK_EX|LOCK_NB);
-  if ( !$flockstatus && !$force) {
+  if ( !$flockstatus ) {
     $self->error("cannot flock lock file: ".$self->{'LOCK_FILE'});
     return undef;
   }
