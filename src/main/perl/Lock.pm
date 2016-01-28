@@ -184,14 +184,12 @@ is returned.
 sub unlock {
   my $self=shift;
   if ($self->{LOCK_SET}) {
-    flock ($self->{LOCK_FH}, LOCK_UN|LOCK_NB) or $self->error("cannot release flock on lock file: ",$self->{'LOCK_FILE'});
-    $self->{LOCK_FH}->close or $self->error("cannot close lock file: ",$self->{'LOCK_FILE'});
-    unless (unlink($self->{'LOCK_FILE'})) {
-      $self->error("cannot release lock file: ",$self->{'LOCK_FILE'});
-      return undef;
-    } else {
-      $self->{LOCK_SET}=undef;
+    # if we forced the lock LOCK_FH can be undef
+    return SUCCESS unless ($self->{LOCK_FH});
+    unless ($self->{LOCK_FH}->close) {
+      $self->error("cannot close lock file: ",$self->{'LOCK_FILE'});
     }
+    $self->{LOCK_SET}=undef;
   } else {
     $self->error("lock not held by this application instance, not unlocking");
     return undef;
