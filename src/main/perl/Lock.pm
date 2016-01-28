@@ -42,8 +42,6 @@ CAF::Lock - Class for handling application instance locking
 
   if ($lock->is_locked()) {...} else {...};
 
-  $lockpid=$lock->get_lock_pid();
-
   unless ($lock->set_lock()) {...}
   unless ($lock->set_lock(10,2) {...}
   unless ($lock->set_lock(3,3,FORCE_IF_STALE)) {...}
@@ -89,41 +87,6 @@ sub is_locked {
     return SUCCESS unless (flock($fh, LOCK_EX|LOCK_NB));
   }
   return undef;
-}
-
-=pod
-
-=item get_lock_pid()
-
-Returns the PID file of the application holding the lock, undef if no
-lockfile found
-
-=cut
-
-sub get_lock_pid {
-  my $self=shift;
-
-  return undef unless ($self->is_locked());
-  return $$ if ($self->{'LOCK_SET'});
-  my $lf=FileHandle->new("< " . $self->{'LOCK_FILE'});
-  unless ($lf) {
-    $self->error("cannot open lock file for read: ".$self->{'LOCK_FILE'});
-    return undef;
-  }
-  my $pid=$lf->getline();
-  unless (defined $pid) {
-    $self->error("cannot read from lock file: ".$self->{'LOCK_FILE'});
-    return undef;
-  }
-  unless ($lf->close()) {
-    $self->error("cannot close lock file: ".$self->{'LOCK_FILE'});
-    return undef;
-  }
-  if ($pid !~ m{^(\d+)$}) {
-      $self->error("Strange PID $pid holding lock $self->{LOCK_FILE}");
-      return undef;
-  }
-  return $1;
 }
 
 =pod
@@ -201,8 +164,6 @@ sub try_lock {
     $self->error("cannot flock lock file: ".$self->{'LOCK_FILE'});
     return undef;
   }
-  $lf->autoflush;
-  print $lf $$;
   $self->{LOCK_FH}=$lf;
   $self->{LOCK_SET}=1;
   return SUCCESS;
