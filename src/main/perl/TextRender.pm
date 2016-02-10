@@ -22,7 +22,7 @@ use YAML::XS;
 use Config::Properties;
 use Config::Tiny;
 
-use base qw(CAF::Object Exporter);
+use base qw(CAF::ObjectText Exporter);
 
 our @EXPORT_OK = qw($YAML_BOOL $YAML_BOOL_PREFIX);
 
@@ -33,12 +33,8 @@ Readonly::Array my @DEFAULT_INCLUDE_PATHS => qw(/usr/share/templates/quattor);
 # Update relpath pod section when updated.
 Readonly::Scalar my $DEFAULT_RELPATH => 'metaconfig';
 
-Readonly::Scalar my $DEFAULT_USECACHE => 1;
-
 Readonly::Scalar my $DEFAULT_TT_STRICT => 0;
 Readonly::Scalar my $DEFAULT_TT_RECURSION => 1;
-
-use overload ('""' => '_stringify');
 
 # YAML::XS boolean true has the most bizarre internal structure
 # (a 0 length struct with value 1 according to Devel::Peek)
@@ -172,9 +168,9 @@ It takes some extra optional arguments:
 
 =over
 
-=item C<log>
+=item C<log>, C<eol> and C<usecache>
 
-A L<CAF::Reporter> object to log to.
+Handled by C<_initialize_textopts> from L<CAF::ObjectText>
 
 =item C<includepath>
 
@@ -191,20 +187,6 @@ is not the INCLUDE_PATH. (In particular, any TT C<INCLUDE> statement has
 to use it as the relative basepath).
 If C<relpath> is undefined, the default 'metaconfig' is used. If you do not
 have a subdirectory in the includepath, use an empty string.
-
-=item C<eol>
-
-If C<eol> is true, the rendered text will be verified that it ends with
-an end-of-line, and if missing, a newline character will be added.
-By default, C<eol> is true (this is text rendering afterall).
-
-C<eol> set to false will not strip trailing newlines (use C<chomp>
-or something similar for that).
-
-=item C<usecache>
-
-If C<usecache> is false, the text is always re-rendered.
-Default is to cache the rendered text (C<usecache> is true).
 
 =item C<ttoptions>
 
@@ -224,30 +206,16 @@ sub _initialize
 
     %opts = () if !%opts;
 
+    # sets e.g. $self->{log}
+    $self->_initialize_textopts(%opts);
+
     $self->{module} = $module;
     $self->{contents} = $contents;
-
-    $self->{log} = $opts{log} if $opts{log};
-
-    if (exists($opts{eol})) {
-        $self->{eol} = $opts{eol};
-        $self->verbose("Set eol to $self->{eol}");
-    } else {
-        # Default to true
-        $self->{eol} = 1;
-    };
 
     $self->{includepath} = _convert_includepaths($opts{includepath});
     $self->{relpath} = defined($opts{relpath}) ? $opts{relpath} : $DEFAULT_RELPATH;
     $self->verbose("Using includepath ", join(':', @{$self->{includepath}}));
     $self->verbose("Using relpath '$self->{relpath}'");
-
-    if(exists($opts{usecache})) {
-        $self->{usecache} = $opts{usecache};
-    } else {
-        $self->{usecache} = $DEFAULT_USECACHE;
-    }
-    $self->verbose("No caching") if (! $self->{usecache});
 
     # Set TT options
     $self->{ttoptions} = {
@@ -266,18 +234,6 @@ sub _initialize
     $self->{contents} = $self->make_contents();
 
     return SUCCESS;
-}
-
-
-# Handle failures. Stores the error message and log it verbose and
-# returns undef. All failures should use 'return $self->fail("message");'.
-# No error logging should occur in this module.
-sub fail
-{
-    my ($self, @messages) = @_;
-    $self->{fail} = join('', @messages);
-    $self->verbose("FAIL: ", $self->{fail});
-    return;
 }
 
 
@@ -421,27 +377,11 @@ sub make_contents
     }
 }
 
-=pod
-
-=head2 C<get_text>
-
-C<get_text> renders and returns the text.
-
-In case of a rendering error, C<get_text> returns C<undef>
-(and an error is logged if log instance is present).
-This is the main difference from the auto-stringification that
-returns an empty string in case of a rendering error.
-
-By default, the rendered result is cached. To force re-rendering the text,
-clear the current cache by passing C<1> as first argument
-(or disable caching completely with the option C<usecache>
-set to false during the <CAF::TextRender> initialisation).
-
-=cut
-
-sub get_text
+# Test for failures due to invalid module and/or
+# invalid contents.
+sub _get_text_test
 {
-    my ($self, $clearcache) = @_;
+    my ($self) = @_;
 
     # method undefined in case of invalid module
     return if (!defined($self->{method}));
@@ -449,111 +389,20 @@ sub get_text
     # contents undefined in case of invalid contents
     return if (!defined($self->{contents}));
 
-    if ($clearcache) {
-        $self->verbose("get_text clearing cache");
-        delete $self->{_cache};
-    };
-
-    if (exists($self->{_cache})) {
-        $self->debug(1, "Returning the cached value");
-        return $self->{_cache}
-    };
-
-    my $res = $self->{method}->($self);
-
-    if (defined($res)) {
-        if($self->{eol} && $res !~ m/\n$/) {
-            $self->verbose("eol set, and rendered text was missing final newline. adding newline.");
-            $res .= "\n";
-        }
-        if($self->{usecache}) {
-            $self->{_cache} = $res;
-        };
-        return $res;
-    } else {
-        my $msg = "Failed to render with module $self->{module}";
-        $msg .= ": $self->{fail}" if ($self->{fail});
-        return $self->fail($msg);
-    }
+    return SUCCESS;
 }
 
-# Handle possible undef from get_text to avoid 'Use of uninitialized value' warnings
-sub _stringify
+# The text is produced by calling the render method
+sub _get_text
 {
     my ($self) = @_;
-    # Always default cache behaviour
-    my $text = $self->get_text();
-    if(defined($text)) {
-        return $text;
-    } else {
-        return "";
-    }
+
+    my $msg = "Failed to render with module $self->{module}";
+    my $res = $self->{method}->($self);
+
+    return ($res, $msg);
 }
 
-=pod
-
-=head2 C<filewriter>
-
-Create and return an open C<CAF::FileWriter> instance with
-first argument as the filename. If the rendering fails,
-C<undef> is returned.
-
-The rendered text is added to the filehandle.
-It's up to the consumer to cancel
-and/or close the instance
-
-All C<CAF::FileWriter> initialisation options are supported
-and passed on. (If no C<log> option is provided,
- the one from the C<CAF::TextRender> instance is passed).
-
-Two new options C<header> and C<footer> are supported
- to resp. prepend and append to the rendered text.
-
-If C<eol> was set during initialisation, the header and footer
-will also be checked for EOL.
-(EOL is still added to the rendered text if
-C<eol> is set during initialisation, even if there is a footer
-defined.)
-
-=cut
-
-sub filewriter
-{
-    my ($self, $file, %opts) = @_;
-
-    # use get_text, not stringification to handle render failure
-    my $text = $self->get_text();
-    return if (!defined($text));
-
-    my $header = delete $opts{header};
-    my $footer = delete $opts{footer};
-
-    $opts{log} = $self if(!exists($opts{log}));
-
-    my $cfh = CAF::FileWriter->new($file, %opts);
-
-    if (defined($header)) {
-        print $cfh $header;
-
-        if($self->{eol} && $header !~ m/\n$/) {
-            $self->verbose("eol set, and header was missing final newline. adding newline.");
-            print $cfh "\n";
-        };
-    };
-
-    print $cfh $text;
-
-    if (defined($footer)) {
-        print $cfh $footer;
-
-        if($self->{eol} && $footer !~ m/\n$/) {
-            $self->verbose("eol set, and footer was missing final newline. adding newline.");
-            print $cfh "\n";
-        };
-    };
-
-    return $cfh
-}
 
 # Given Perl C<module>, load it.
 #

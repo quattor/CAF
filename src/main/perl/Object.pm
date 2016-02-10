@@ -6,12 +6,20 @@
 package CAF::Object;
 
 use strict;
-our @ISA;
+use warnings;
+
+use Exporter;
+our @ISA = qw(Exporter);
+
 use LC::Exception qw (SUCCESS throw_error);
 
 our $NoAction;
 
-my $ec = LC::Exception::Context->new->will_store_all;
+our @EXPORT = qw();
+# For convenience, export most common LC-related constants and methods
+our @EXPORT_OK = qw(SUCCESS throw_error);
+
+my $ec = LC::Exception::Context->new()->will_store_all();
 
 =pod
 
@@ -21,7 +29,6 @@ CAF::Object - provides basic methods for all CAF objects
 
 =head1 SYNOPSIS
 
-    use LC::Exception qw (SUCCESS throw_error);
     use parent qw(CAF::Object ...);
     ...
     sub _initialize {
@@ -44,7 +51,7 @@ override the C<new> class method.
 
 The subclass C<_initialize> method has to be implemented
 and has to return a boolean value indicating if the initialisation was succesful
-(e.g. use C<LC::Exception::SUCCESS>).
+(e.g. use C<SUCCESS> exported by C<CAF::Object>).
 In particular, one should avoid to return the C<$self> instance at the end of
 C<_initialize> (e.g. to avoid troubles when the subclass overloads logic evaluation
 (which is also possible via overloading other methods such as stringification)).
@@ -135,17 +142,38 @@ to use an absolute rather than a conditional logger).
 
 no strict 'refs';
 foreach my $i (qw(error warn info verbose debug report OK)) {
-*{$i} = sub {
-            my ($self, @args) = @_;
-            if ($self->{log}) {
-                return $self->{log}->$i(@args);
-            } else {
-                return;
-            }
+    *{$i} = sub {
+        my ($self, @args) = @_;
+        if ($self->{log}) {
+            return $self->{log}->$i(@args);
+        } else {
+            return;
+        }
     }
 }
 use strict 'refs';
 
+
+=pod
+
+=item fail
+
+Handle failures. Stores the error message in the C<fail> attribute,
+logs it with C<verbose> and returns undef.
+
+To be used in subclasses that are not supposed to log/report
+any errors themself when a problem or failure occurs.
+In such classes, all failures should use C<return $self->fail("message");>.
+
+=cut
+
+sub fail
+{
+    my ($self, @messages) = @_;
+    $self->{fail} = join('', @messages);
+    $self->verbose("FAIL: ", $self->{fail});
+    return;
+}
 
 =pod
 

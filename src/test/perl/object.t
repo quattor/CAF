@@ -3,8 +3,9 @@ use warnings;
 
 use Test::More;
 use Test::MockModule;
-use LC::Exception qw (SUCCESS);
-use CAF::Object;
+use LC::Exception;
+# Test the EXPORT_OK
+use CAF::Object qw(SUCCESS throw_error);
 
 use FindBin qw($Bin);
 use lib "$Bin/modules";
@@ -27,6 +28,14 @@ my $mockrep = Test::MockModule->new('myreporter');
 Test all methods for C<CAF::Object>
 
 =over
+
+=item exports
+
+=cut
+
+is(SUCCESS, LC::Exception::SUCCESS, 'CAF::Object exported SUCCESS is LC::Excpetion::SUCCESS');
+
+=pod
 
 =item new
 
@@ -90,6 +99,23 @@ foreach my $i (qw(error warn info verbose debug report OK)) {
     is($obj_log->$i(), 2, "$i with logger: conditional logger returns return value of logger if defined");
     is($called, 1, "$i with logger: logger method called");
 }
+
+=item fail
+
+=cut
+
+my $verbose;
+$mockrep->mock('verbose', sub {shift; $verbose = \@_;});
+
+my $logger = myreporter->new();
+my $failobj = object_log->new($logger);
+isa_ok($failobj, 'object_log', 'failobj is a object_log instance');
+
+my @failmsg = qw(something went really wrong);
+ok(! defined($failobj->fail(@failmsg)), 'fail returns undef');
+is($failobj->{fail}, join('', @failmsg), 'fail sets fail attribute with joined arguments');
+is_deeply($verbose, ['FAIL: ', $failobj->{fail}], 'fail logs verbose with FAIL prefix');
+
 
 =pod
 
