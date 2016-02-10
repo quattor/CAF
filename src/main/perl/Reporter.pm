@@ -202,7 +202,9 @@ sub _print
 sub report
 {
     my $self = shift;
-    my $string = join('', @_)."\n";
+    # Ensure that there is no undefined arg: replace by <undef> if any.
+    my @args = map {defined($_) ? $_ : '<undef>'} @_;
+    my $string = join('', @args)."\n";
     _print($string) unless ($self->_rep_setup()->{$QUIET});
     $self->log(@_);
     return SUCCESS;
