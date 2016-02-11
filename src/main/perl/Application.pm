@@ -443,13 +443,14 @@ sub _initialize ($$@) {
     #     $self->set_report_logfile($self->{'LOG'})
     my %logvar = $self->{'CONFIG'}->varlist('^logfile$');
     if (exists $logvar{'logfile'}) {
-        my $logfile=$self->option("logfile");
+        my $logfile = $self->option("logfile");
         if (defined $logfile) {
             # log requested on $logfile. Try to instantiate it and attach
             # it to the reporter.
             my $logflags = 'w';
             $logflags  = 'a' if (defined $self->{'LOG_APPEND'});
             $logflags .= 't' if (defined $self->{'LOG_TSTAMP'});
+            $logflags .= 'p' if (defined $self->{'LOG_PROCID'});
 
             $self->{'LOG'} = CAF::Log->new($logfile, $logflags);
             unless (defined $self->{'LOG'}) {

@@ -163,7 +163,7 @@ sub _initialize ($$$)
     $self->{$FILENAME} = $filename;
     $self->{$OPTS} = $options;
 
-    if ($self->{$FILENAME} =~ m{([^/]*).log$}) {
+    if ($self->{$FILENAME} =~ m{([^/]*)\.log$}) {
         $self->{$SYSLOG} = $1;
     }
 
