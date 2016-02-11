@@ -18,6 +18,8 @@ use Readonly;
 Readonly our $FH => 'FH';
 Readonly our $FILENAME => 'FILENAME';
 Readonly my $TSTAMP => 'TSTAMP';
+# variable $PID exists when using 'use English;' (and it is $$)
+Readonly my $PROCID => 'PROCID';
 Readonly my $OPTS => 'OPTS';
 
 our @EXPORT_OK = qw($FILENAME $FH);
@@ -81,6 +83,10 @@ sub close ($)
 
 Prints C<$msg> into the log file.
 
+If C<PROCID> attribute is defined (value is irrelevant),
+the proces id in square brackets (C<[PID]>) and additional
+space are prepended.
+
 If C<TSTAMP> attribute is defined (value is irrelevant),
 a C<YYYY/MM/DD-HH:mm:ss> timestamp and additional space
 are prepended.
@@ -91,18 +97,22 @@ Returns the return value of invocation of FH print method.
 
 =cut
 
-# TODO: use 'if ($self->{$TSTAMP})' rather than only checking if defined
+# TODO: use 'if ($self->{$TSTAMP})' (and PROCID) rather than only checking if defined
 
 sub print ($$)
 {
     my ($self, $msg) = @_;
 
+    if (defined $self->{$PROCID}) {
+        $msg = "[$$] $msg";
+    };
+
     if (defined $self->{$TSTAMP}) {
         # print timestamp the SUE way ;-)
         my ($sec, $min, $hour, $mday, $mon, $year) = localtime(time);
         $msg = sprintf("%04d/%02d/%02d-%02d:%02d:%02d %s",
-                       $year+1900, $mon+1, $mday, $hour, $min, $sec,$msg);
-    }
+                       $year+1900, $mon+1, $mday, $hour, $min, $sec, $msg);
+    };
 
     return $self->{$FH}->print($msg);
 }
@@ -127,6 +137,8 @@ C<$options> is a string with magic letters
 =item w: truncate a loglfile
 
 =item t: generate a timestamp on every print
+
+=item p: add PID
 
 =back
 
@@ -155,19 +167,19 @@ sub _initialize ($$$)
         $self->{$SYSLOG} = $1;
     }
 
-    unless ($self->{$OPTS} =~ /^(w|a)t?$/) {
-
+    unless ($self->{$OPTS} =~ /^[tp]*[wa][tp]*$/) {
         throw_error("Bad options for log ".$self->{$FILENAME}.
                     ": ".$self->{$OPTS});
         return;
     }
 
-    if ($self->{$OPTS} =~ /t/) {
-        $self->{$TSTAMP} = 1;
-    }
+    my %opts = map { $_ => 1 } split( '', $self->{$OPTS});
+
+    $self->{$TSTAMP} = $opts{t};
+    $self->{$PROCID} = $opts{p};
 
     my ($fhmode, $msg);
-    if ($self->{$OPTS} =~ /w/) {
+    if ($opts{w}) {
         # Move old filename away if mode is 'w'.
         rename ($self->{$FILENAME}, $self->{$FILENAME}.'.prev')
             if (-e $self->{$FILENAME});
@@ -200,7 +212,7 @@ Called during garbage collection. Invokes close().
 
 # All Readonly here (and in methods called) might be
 # cleaned up during global cleanup, so use the $_XYZ
-# flavours here (and methods called here). 
+# flavours here (and methods called here).
 sub DESTROY {
     my $self = shift;
     $self->close() if (defined $self->{$_FH});
