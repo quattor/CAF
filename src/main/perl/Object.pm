@@ -170,7 +170,7 @@ In such classes, all failures should use C<return $self->fail("message");>.
 sub fail
 {
     my ($self, @messages) = @_;
-    $self->{fail} = join('', @messages);
+    $self->{fail} = join('', map {defined($_) ? $_ : '<undef>'} @messages);
     $self->verbose("FAIL: ", $self->{fail});
     return;
 }
