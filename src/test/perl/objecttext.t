@@ -144,10 +144,11 @@ is("$fh", $TEXTEOL, "File contents as expected");
 
 my $header = "HEADER"; # no newline, eol should add one
 my $footer = "FOOTER"; # no newline, eol should add one
-$fh = $ot->filewriter("/some/name",
-               header => $header,
-               footer => $footer,
-               );
+$fh = $ot->filewriter(
+    "/some/name",
+    header => $header,
+    footer => $footer,
+);
 isa_ok($fh, "CAF::FileWriter", "CAF::ObjectText filewriter method returns CAF::FileWriter");
 # add newline due to eol to header, footer and text
 is("$fh", $header."\n".$TEXTEOL.$footer."\n", "File contents as expected with header and footer (and eol)");

@@ -49,7 +49,7 @@ And use it via
 
 =head1 DESCRIPTION
 
-This class simplyfies text handling via stringification and producing
+This class simplifies text handling via stringification and produces
 a C<CAF::FileWriter> instance.
 
 =head2 Methods
@@ -236,7 +236,7 @@ and passed on. (If no C<log> option is provided,
  the one from the current instance is passed).
 
 Two new options C<header> and C<footer> are supported
- to resp. prepend and append to the text.
+ to respectively prepend and append to the text.
 
 If C<eol> was set during initialisation, the header and footer
 will also be checked for EOL.

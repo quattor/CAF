@@ -33,7 +33,7 @@ Test all methods for C<CAF::Object>
 
 =cut
 
-is(SUCCESS, LC::Exception::SUCCESS, 'CAF::Object exported SUCCESS is LC::Excpetion::SUCCESS');
+is(SUCCESS, LC::Exception::SUCCESS, 'CAF::Object exported SUCCESS is LC::Exception::SUCCESS');
 
 =pod
 
