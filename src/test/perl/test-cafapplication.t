@@ -62,7 +62,7 @@ is($newapp->option('myoption'), $value,
    "myoption value from configfile");
 
 # 1st format short -cfgfile path/tofile
-my $newapp = CAF::Application->new('myname', "-$OPTION_CFGFILE", $cfgfile);
+$newapp = CAF::Application->new('myname', "-$OPTION_CFGFILE", $cfgfile);
 isa_ok($newapp, 'CAF::Application', 'A CAF::Application instance');
 
 ok(-f $cfgfile, "configfile $cfgfile found shortformat");
@@ -81,7 +81,7 @@ is($newapp2->option('myoption'), $value,
    "myoption value from configfile (2nd format)");
 
 # 2nd format short -cfgfile=path/tofile
-my $newapp2 = CAF::Application->new('myname', "-$OPTION_CFGFILE=$cfgfile");
+$newapp2 = CAF::Application->new('myname', "-$OPTION_CFGFILE=$cfgfile");
 isa_ok($newapp2, 'CAF::Application', 'A CAF::Application instance');
 
 is($newapp2->option($OPTION_CFGFILE), $cfgfile,
@@ -89,5 +89,23 @@ is($newapp2->option($OPTION_CFGFILE), $cfgfile,
 is($newapp2->option('myoption'), $value,
    "myoption value from configfile (2nd format) shortformat");
 
+# handle non-option arguments
+# case 1: old behaviour (using @ARGV does work, must be a special perl array)
+my @args = qw(--myoption myvalue not an option);
+my $app3 = CAF::Application->new('myname', @args);
+isa_ok($app3, 'CAF::Application', 'A CAF::Application instance');
+is($app3->{NAME}, 'myname', 'NAME attribute set');
+is($app3->option('myoption'), 'myvalue', 'myoption=myvalue parsed');
+is_deeply(\@args, [qw(--myoption myvalue not an option)],
+          'args array does not handle remaining arguments correctly');
+
+# case 2: new behaviour, single arrayref as argument
+my $argsref = \@args;
+$app3 = CAF::Application->new('myname', $argsref);
+isa_ok($app3, 'CAF::Application', 'A CAF::Application instance');
+is($app3->{NAME}, 'myname', 'NAME attribute set');
+is($app3->option('myoption'), 'myvalue', 'myoption=myvalue parsed');
+is_deeply($argsref, [qw(not an option)],
+          'args array ref does remaining arguments correctly');
 
 done_testing();

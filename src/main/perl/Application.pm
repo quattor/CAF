@@ -6,6 +6,7 @@
 package CAF::Application;
 
 use strict;
+use warnings;
 use vars qw(@ISA);
 use CAF::Reporter;
 use LC::Exception qw (SUCCESS throw_error);
@@ -35,20 +36,20 @@ CAF::Application - Common Application Framework core class
 
 
   package example;
-  use CAF::Application;
-  use LC::Exception qw (SUCCESS throw_error);
   use strict;
-  use vars (@ISA);
-  @ISA= qw (CAF::Application);
+  use warnings;
+  use LC::Exception qw (SUCCESS throw_error);
+  use parent qw(CAF::Application);
 
   <extend/overwrite default methods here...>
 
 
   # Main loop
   package main;
+  use strict;
+  use warnings;
   use LC::Exception qw (SUCCESS throw_error);
 
-  use strict;
   use vars ($this_app %SIG);
 
   unless ($this_app = example->new($0,@ARGV)) {
@@ -59,18 +60,12 @@ CAF::Application - Common Application Framework core class
   ...
 
 
-=head1 INHERITANCE
-
-  CAF::Object
-
 =head1 DESCRIPTION
 
 B<CAF::Application> is the core class which provides command line and
 configuration file parsing, and general application methods.
 
 Applications can extend or overwrite the default methods.
-
-
 
 =over
 
@@ -289,12 +284,46 @@ sub app_options () {
 
 Initialize the Application.
 
+Arguments
+
+=over
+
+=item C<$command>
+
+Name of the script/command/... (typically C<$0>).
+
+=item Remaining arguments C<@argv>
+
+Typically this is the perl builtin variable C<@ARGV>,
+but can be any array of options/arguments,
+or a single arrayref (in which case all elements
+of the arrayref are handled as options/arguments).
+
+Any arguments that are not handled by the options,
+can be retrieved either via C<@ARGV> or by passing
+an arrayref holding the options/arguments.
+In these 2 cases, the contents is modified,
+removing all handled options, leaving the
+non-option arguments in place.
+(In particular, using a regular array
+will leave the original array unmodified).
+
+=back
+
 =cut
 
 sub _initialize ($$@) {
     my ($self, $command, @argv) = @_;
 
     $self->{'NAME'} = basename($command);
+
+    my $argvref;
+    if ((scalar @argv == 1) && (ref($argv[0]) eq 'ARRAY')) {
+        $self->debug(4, 'argv array handled as array reference');
+        $argvref = $argv[0];
+    } else {
+        $argvref = \@argv;
+    }
 
     # who is the user
     $self->{'USERNAME'} = (getpwuid($<))[0] || getlogin || undef;
@@ -334,7 +363,7 @@ sub _initialize ($$@) {
     # for cmd line parsing
     my $help_request = 0;
     my $configfile = undef;
-    my @args_tmp = @argv;
+    my @args_tmp = @$argvref;
     my $arg;
 
     my $cfgfile_value_pattern = "^--?$OPTION_CFGFILE(?:=(\\S+))?\$";
@@ -380,7 +409,7 @@ sub _initialize ($$@) {
 
     # now read in cmd line options, which always have highest priority.
     # (uses Getopt::Long)
-    unless ($self->{'CONFIG'}->getopt(\@argv)) {
+    unless ($self->{'CONFIG'}->getopt($argvref)) {
         # exit if something is wrong according to AppConfig.
         exit(-1);
     }
