@@ -58,14 +58,15 @@ $mock_fh->mock('new', sub {
 $fh_autoflush = 0;
 $fh_new = '';
 my $fn = "target/test/unittest.log";
-$log = CAF::Log->new($fn, 'at');
+$log = CAF::Log->new($fn, 'pat');
 isa_ok($log, 'CAF::Log', 'log is a CAF::Log instance');
 isa_ok($log, 'CAF::Object', 'CAF::Log is a CAF::Object subclass');
 
 is($log->{FILENAME}, $fn, "FILENAME attr set to log filename");
-is($log->{OPTS}, 'at', 'OPTS attr set with initial options');
+is($log->{OPTS}, 'pat', 'OPTS attr set with initial options');
 is($log->{SYSLOG}, 'unittest', 'Filenames ending with .log get SYSLOG attr set to basename');
 is($log->{TSTAMP}, 1, 'presence of t option sets TSTAMP attr to 1');
+is($log->{PROCID}, 1, 'presence of p option sets PROCID attr to 1');
 isa_ok($log->{FH}, 'FileHandle', 'FH attr is teh Filehandle instance');
 is($fh_new, ">> $fn", "Filehandle initialized with append");
 is($fh_autoflush, 1, "autoflush set on Filehandle instance");
@@ -85,6 +86,7 @@ is($log->{FILENAME}, $fn, "FILENAME attr set to log filename");
 is($log->{OPTS}, 'w', 'OPTS attr set with initial options');
 ok(! defined($log->{SYSLOG}), 'Filenames not ending with .log do not get SYSLOG attr set');
 ok(! defined($log->{TSTAMP}), 'absensce of t option does not set TSTAMP attr');
+ok(! defined($log->{PROCID}), 'absensce of p option does not set PROCID attr');
 isa_ok($log->{FH}, 'FileHandle', 'FH attr is teh Filehandle instance');
 is($fh_new, "> $fn", "Filehandle initialized with write");
 is($fh_autoflush, 1, "autoflush set on Filehandle instance");
@@ -96,7 +98,8 @@ ok(-e "$fn.prev", "write mode renames existing logfiles with .prev extension");
 
 =cut
 
-$log->{TSTAMNP} = 0;
+$log->{TSTAMP} = undef;
+$log->{PROCID} = undef;
 $fh_print = '';
 # test print message
 $log->print("mymessage");
@@ -104,10 +107,25 @@ is($fh_print, 'mymessage', "print calls Filehandle->print");
 
 # set TSTAMP, test TSTAMP?
 $log->{TSTAMP} = 1;
+$log->{PROCID} = undef;
 $fh_print = '';
-$log->print("myothermessage");
-like($fh_print, qr{^\d{4}/\d{2}/\d{2}-\d{2}:\d{2}:\d{2} myothermessage$},
+$log->print("myothermessage_t");
+like($fh_print, qr{^\d{4}/\d{2}/\d{2}-\d{2}:\d{2}:\d{2} myothermessage_t$},
      "print with TSTAMP calls Filehandle->print with timestamp prepended");
+
+$log->{TSTAMP} = undef;
+$log->{PROCID} = 1;
+$fh_print = '';
+$log->print("myothermessage_p");
+is($fh_print, "[$$] myothermessage_p",
+     "print with PROCID calls Filehandle->print with pid prepended");
+
+$log->{TSTAMP} = 1;
+$log->{PROCID} = 1;
+$fh_print = '';
+$log->print("myothermessage_tp");
+like($fh_print, qr{^\d{4}/\d{2}/\d{2}-\d{2}:\d{2}:\d{2} \[\d+\] myothermessage_tp$},
+     "print with TSTAMP and PROCID calls Filehandle->print with timestamp and pid prepended");
 
 =pod
 

@@ -14,13 +14,37 @@ use strict;
 use warnings;
 use CAF::Process;
 use CAF::Application;
-
+use LC::Exception qw (SUCCESS);
 
 our @ISA = qw(CAF::Application);
 
+sub app_options {
+    push(my @array, {
+        NAME => 'logfile=s',
+        HELP => 'log path/filename to use',
+    });
+
+    return \@array;
+}
+
+sub _initialize {
+    my $self = shift;
+
+    $self->{'LOG_TSTAMP'} = 1;
+    $self->{'LOG_PROCID'} = 1;
+
+    # start initialization of CAF::Application
+    if($self->SUPER::_initialize(@_)) {
+        # why is this not the default?
+        $self->set_report_logfile($self->{'LOG'});
+        return SUCCESS;
+    }
+    return;
+}
+
 sub verbose
 {
-    
+
     my ($self, @lines) = @_;
     my $text = join ("", @lines);
     my $fh = $CAF::Reporter::_REP_SETUP->{LOGFILE};

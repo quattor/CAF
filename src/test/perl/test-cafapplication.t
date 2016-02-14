@@ -1,6 +1,9 @@
+use FindBin qw($Bin);
+use lib "$Bin/modules";
 use strict;
 use warnings;
 use Test::More;
+use testapp;
 
 use Test::MockModule;
 use CAF::Application qw($OPTION_CFGFILE);
@@ -107,5 +110,23 @@ is($app3->{NAME}, 'myname', 'NAME attribute set');
 is($app3->option('myoption'), 'myvalue', 'myoption=myvalue parsed');
 is_deeply($argsref, [qw(not an option)],
           'args array ref does remaining arguments correctly');
+
+# test logging
+# Mock FileHandle new from CAF::Log
+use IO::String;
+my $io = IO::String->new();
+my $mock_fh = Test::MockModule->new('FileHandle');
+$mock_fh->mock('new', $io);
+
+# Pass fake logfile, to enable CAF::Application LOG config
+my $tapp = testapp->new ($0, qw (--quiet --verbose --logfile test/fake/log));
+ok($tapp->{LOG_TSTAMP}, "testapp has TSTAMP enabled");
+ok($tapp->{LOG_PROCID}, "testapp has PROCID enabled");
+$tapp->error("testmessage");
+$io->seek(0);
+like (join('', <$io>), qr{\d+/\d+/\d+-\d+:\d+:\d+ \[\d+\] \[ERROR\] testmessage},
+      "log format as expected logged");
+
+diag explain $tapp;
 
 done_testing();
