@@ -177,6 +177,65 @@ sub fail
 
 =pod
 
+=item update_env
+
+Update the hashref C<$env> with key/value
+from the C<ENV> attribute hashref.
+(A undef value will remove the key.)
+
+Returns the C<env> hashref.
+
+To be used as
+    # Setup local environment
+    local %ENV;
+    $self->update_env(\%ENV);
+
+Example:
+    # some method_1 that prepares a shared environment
+    sub method_1
+    {
+        ...
+        # Prepare enviroment modifications
+        $self->{ENV}->{PATH} = "/some/new/path:$ENV{PATH}";
+        ...
+    }
+
+
+    sub do_something
+    {
+       ...
+       # Setup local environment
+       local %ENV;
+       $self->update_env(\%ENV);
+
+       # everything in the remainder of the method runs in modified environment
+       # is limited to the scope of this method due to 'local'
+       ...
+    }
+
+=cut
+
+sub update_env
+{
+    my ($self, $env) = @_;
+
+    foreach my $varname (sort keys %{$self->{ENV}}) {
+        my $val = $self->{ENV}->{$varname};
+        if(defined($val)) {
+            $self->debug(1, "update_env $varname = $val.");
+            $env->{$varname} = $val;
+        } else {
+            $self->debug(1, "update_env delete $varname.");
+            delete $env->{$varname};
+        }
+    };
+
+    # For unittesting
+    return $env;
+}
+
+=pod
+
 =back
 
 =cut
