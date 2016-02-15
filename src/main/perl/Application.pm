@@ -81,7 +81,8 @@ Return the application name (basename)
 
 =cut
 
-sub name ($) {
+sub name
+{
     my $self = shift;
     return $self->{'NAME'};
 }
@@ -95,7 +96,8 @@ Returns the version number as defined in $self->{'VERSION'}, or
 
 =cut
 
-sub version ($) {
+sub version
+{
     my $self = shift;
     return defined $self->{'VERSION'} ? $self->{'VERSION'} : '<unknown>';
 }
@@ -109,7 +111,8 @@ Returns the machine's hostname.
 =cut
 
 
-sub hostname ($) {
+sub hostname
+{
     my $self = shift;
     return $self->{'HOSTNAME'};
 }
@@ -122,7 +125,8 @@ Returns the name of the user.
 
 =cut
 
-sub username {
+sub username
+{
     my $self = shift;
     return $self->{'USERNAME'};
 }
@@ -138,7 +142,8 @@ on top of AppConfig->get($opt).
 
 =cut
 
-sub option ($$) {
+sub option
+{
     my ($self,$opt) = @_;
 
     return $self->{'CONFIG'}->get($opt);
@@ -152,7 +157,8 @@ Prints the usage message of the command based on options and help text.
 
 =cut
 
-sub show_usage () {
+sub show_usage
+{
     my $self = shift;
 
     # show the version
@@ -234,7 +240,8 @@ prints the version number of the Application.
 
 =cut
 
-sub show_version () {
+sub show_version
+{
     my $self = shift;
     print "This is ", $self->name(), " version ", $self->version(), "\n";
     return SUCCESS;
@@ -267,7 +274,8 @@ see also _app_default_options()
 
 =cut
 
-sub app_options () {
+sub app_options
+{
     # to be implemented by derived class, if required
     return [()];
 }
@@ -312,7 +320,8 @@ will leave the original array unmodified).
 
 =cut
 
-sub _initialize ($$@) {
+sub _initialize
+{
     my ($self, $command, @argv) = @_;
 
     $self->{'NAME'} = basename($command);
@@ -488,7 +497,8 @@ specific code - see the 'example' file):
 
 =cut
 
-sub _app_default_options () {
+sub _app_default_options
+{
 
     my @app_array = (
         {
@@ -525,7 +535,8 @@ add options coming from _app_default_options() and app_options()
 
 =cut
 
-sub _add_options ($) {
+sub _add_options
+{
     my $self=shift;
 
     my $opt_default_ref = $self->_app_default_options();

@@ -83,7 +83,7 @@ If a lock is set for the lock file, returns SUCCESS, undef otherwise.
 
 =cut
 
-sub is_locked() {
+sub is_locked {
   my $self=shift;
   return SUCCESS if (-e $self->{'LOCK_FILE'});
   return undef;
@@ -98,7 +98,7 @@ lockfile found
 
 =cut
 
-sub get_lock_pid() {
+sub get_lock_pid {
   my $self=shift;
 
   return undef unless ($self->is_locked());
@@ -274,7 +274,7 @@ initialize the object. Called by new($lockfilename).
 
 =cut
 
-sub _initialize ($$$) {
+sub _initialize {
   my ($self,$lockfilename) = @_;
 
   $self->{'LOCK_SET'}=undef;

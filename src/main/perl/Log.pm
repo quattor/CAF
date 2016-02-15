@@ -65,7 +65,7 @@ closes the log file, returns SUCCESS on success, undef otherwise
 =cut
 
 # Called during DESTROY, use $_XYZ flavour
-sub close ($)
+sub close
 {
     my $self = shift;
 
@@ -99,7 +99,7 @@ Returns the return value of invocation of FH print method.
 
 # TODO: use 'if ($self->{$TSTAMP})' (and PROCID) rather than only checking if defined
 
-sub print ($$)
+sub print
 {
     my ($self, $msg) = @_;
 
@@ -156,7 +156,7 @@ basename of the file without suffix (relevant for L<CAF::Reporter::syslog>).
 
 =cut
 
-sub _initialize ($$$)
+sub _initialize
 {
     my ($self, $filename, $options) = @_;
 
