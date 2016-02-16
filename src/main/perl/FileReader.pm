@@ -18,7 +18,7 @@ CAF::FileReader - Class for only reading files in CAF applications.
 Normal use:
 
     use CAF::FileReader;
-    my $fh = CAF::FileReader->open ("my/path");
+    my $fh = CAF::FileReader->new ("my/path");
     while (my $line = <$fh>) {
        # Do something
     }
