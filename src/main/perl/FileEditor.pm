@@ -79,10 +79,11 @@ Synonym for C<new()>
 
 =cut
 
-sub open
-{
-    return new(@_);
-}
+# Alias open to new.
+no warnings 'redefine';
+*open = \&new;
+use warnings;
+
 
 =pod
 

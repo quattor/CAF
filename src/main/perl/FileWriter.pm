@@ -137,13 +137,19 @@ sub new
 }
 
 
+=pod
+
 =item open
 
-Synonimous of new.
+Synonym for C<new()>
 
 =cut
 
-*__PACKAGE__::open = \&new;
+# Alias open to new.
+no warnings 'redefine';
+*open = \&new;
+use warnings;
+
 
 =item close
 
