@@ -18,7 +18,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 
 @ISA = qw(CAF::Reporter CAF::Object Exporter);
 
-@EXPORT_OK = qw(FORCE_ALWAYS FORCE_IF_STALE);
+@EXPORT_OK = qw(FORCE_NONE FORCE_ALWAYS FORCE_IF_STALE);
 
 
 use constant FORCE_NONE     => 0;
@@ -69,24 +69,7 @@ The B<CAF::Lock> class provides methods for handling application locking.
 
 =over 4
 
-=item is_locked()
-
-If a lock is set for the lock file, returns SUCCESS, undef otherwise.
-
-=cut
-
-sub is_locked {
-  my $self=shift;
-  if (-e $self->{'LOCK_FILE'}) {
-    my $fh=FileHandle->new("> ". $self->{'LOCK_FILE'});
-    return SUCCESS unless (flock($fh, LOCK_EX|LOCK_NB));
-  }
-  return undef;
-}
-
-=pod
-
-=item set_lock ($retries,$timeout,$force);
+=item set_lock(I<retries>, I<timeout>, I<force>)
 
 Tries I<retries> times to set the lock.  If I<force> is set to B<FORCE_NONE>
 or not defined and the lock is set, it sleeps for
@@ -111,55 +94,21 @@ sub set_lock {
   if ($self->{LOCK_SET}) {
     # oops.
     $self->error("lock already set by this application instance");
-    return undef;
+    return;
   }
 
   my $tries = 0;
-  my $lock;
-  while(1) {
+  do {
+    if ($tries > 0) {
+      $self->verbose("lock file is already held, try $tries out of $retries");
+      sleep(rand($timeout));
+    }
     $tries++;
-    $lock = $self->try_lock();
-    if ($force == FORCE_ALWAYS) {
-      $self->{LOCK_SET} = 1;
-      $self->verbose("locking failed, but you used the force so here you go");
-      return SUCCESS;
-    }
-    return SUCCESS if ($lock);
+    return SUCCESS if $self->_try_lock($force);
+  } while ($tries < $retries && $timeout);
 
-    if ($tries >= $retries) {
-      $self->error("cannot acquire lock file: ".$self->{'LOCK_FILE'});
-      return undef;
-    }
-
-    $self->verbose("lockfile is already held, try $tries out of $retries");
-    my $sleep=rand($timeout);
-    sleep($sleep);
-  }
-}
-
-=pod
-
-=item try_lock
-
-Create the lockfile and return SUCCESS if we was able to flock() the file.
-
-=cut
-
-sub try_lock {
-  my ($self) = @_;
-  my $lf=FileHandle->new("> " . $self->{'LOCK_FILE'});
-  if ( !$lf ) {
-    $self->error("cannot create lock file: ".$self->{'LOCK_FILE'});
-    return undef;
-  }
-  my $flockstatus = flock ($lf, LOCK_EX|LOCK_NB);
-  if ( !$flockstatus ) {
-    $self->error("cannot flock lock file: ".$self->{'LOCK_FILE'});
-    return undef;
-  }
-  $self->{LOCK_FH}=$lf;
-  $self->{LOCK_SET}=1;
-  return SUCCESS;
+  $self->error("cannot acquire lock: " . $self->{LOCK_FILE});
+  return;
 }
 
 =pod
@@ -177,14 +126,19 @@ sub unlock {
   my $self = shift;
   if ($self->{LOCK_SET}) {
     # if we forced the lock LOCK_FH can be undef
-    return SUCCESS unless ($self->{LOCK_FH});
-    unless ($self->{LOCK_FH}->close) {
-      $self->error("cannot close lock file: ",$self->{'LOCK_FILE'});
+    if ($self->{LOCK_FH}) {
+      unless (flock($self->{LOCK_FH}, LOCK_UN)) {
+        $self->error("cannot release lock: ",$self->{LOCK_FILE});
+        return;
+      }
+      $self->error("cannot close lock file: ",$self->{LOCK_FILE})
+          unless $self->{LOCK_FH}->close();
     }
     $self->{LOCK_SET} = undef;
+    $self->{LOCK_FH} = undef;
   } else {
     $self->error("lock not held by this application instance, not unlocking");
-    return undef;
+    return;
   }
   return SUCCESS;
 }
@@ -201,9 +155,24 @@ Returns B<SUCCESS> if lock is set by application instance, B<undef> otherwise.
 sub is_set {
   my $self=shift;
   return SUCCESS if ($self->{LOCK_SET});
-  return undef;
+  return;
 }
 
+##############################################################################
+#
+# The following methods are provided for backwards compatibility only
+# and have been deprecated
+#
+sub get_lock_pid {
+  return;
+}
+
+sub is_stale {
+  return;
+}
+
+*is_locked = \&is_set;
+##############################################################################
 
 
 =pod
@@ -216,7 +185,7 @@ sub is_set {
 
 =item _initialize(I<lockfilename>)
 
-initialize the object. Called by new($lockfilename).
+Initialize the object.  Called by new(I<lockfilename>).
 
 =cut
 
@@ -229,6 +198,38 @@ sub _initialize {
 
 }
 
+=pod
+
+=item _try_lock(I<force>)
+
+Called by set_lock() to create the lock file and return B<SUCCESS> if we were
+able to flock() the file.
+
+If I<force> is set to B<FORCE_ALWAYS> then this method will return B<SUCCESS>
+even if flock() was unsuccessful.
+
+=cut
+
+sub _try_lock {
+  my ($self, $force) = @_;
+  my $lf = FileHandle->new("> " . $self->{LOCK_FILE});
+  unless ($lf) {
+    $self->error("cannot create lock file: " . $self->{LOCK_FILE});
+    return;
+  }
+  unless (flock($lf, LOCK_EX|LOCK_NB)) {
+    # Could not get the lock
+    return unless $force == FORCE_ALWAYS;
+
+    # In force mode, continue but don't save the filehandle
+    $lf->close();
+    $lf = undef;
+  }
+
+  $self->{LOCK_FH} = $lf;
+  $self->{LOCK_SET} = 1;
+  return SUCCESS;
+}
 
 =pod
 
