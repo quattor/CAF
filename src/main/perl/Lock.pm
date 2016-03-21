@@ -9,10 +9,9 @@ use strict;
 use CAF::Object;
 use CAF::Reporter;
 
-use LC::Exception qw (SUCCESS throw_error);
+use LC::Exception qw(SUCCESS throw_error);
 use FileHandle;
 use Fcntl qw(:flock);
-#use Proc::ProcessTable;
 
 use Exporter;
 use vars qw(@ISA @EXPORT @EXPORT_OK);
@@ -22,9 +21,10 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 @EXPORT_OK = qw(FORCE_ALWAYS FORCE_IF_STALE);
 
 
-use constant FORCE_NONE => 0;
-use constant FORCE_ALWAYS => 1;
-use constant FORCE_IF_STALE => 2;
+use constant FORCE_NONE     => 0;
+use constant FORCE_ALWAYS   => 1;
+use constant FORCE_IF_STALE => 2;  # for backwards compatibility only
+                                   # has no effect now
 
 
 =pod
@@ -35,19 +35,15 @@ CAF::Lock - Class for handling application instance locking
 
 =head1 SYNOPSIS
 
-
   use CAF::Lock;
 
-  $lock=CAF::Lock->new('/var/lock/quattor/spma');
-
-  if ($lock->is_locked()) {...} else {...};
+  $lock = CAF::Lock->new('/var/lock/quattor/spma');
 
   unless ($lock->set_lock()) {...}
-  unless ($lock->set_lock(10,2) {...}
-  unless ($lock->set_lock(3,3,FORCE_IF_STALE)) {...}
+  unless ($lock->set_lock(10, 2) {...}
+  unless ($lock->set_lock(3, 3, FORCE_ALWAYS)) {...}
 
   unless ($lock->unlock()) {....}
-
 
 =head1 INHERITANCE
 
@@ -56,7 +52,6 @@ CAF::Lock - Class for handling application instance locking
 =head1 DESCRIPTION
 
 The B<CAF::Lock> class provides methods for handling application locking.
-
 
 =over
 
@@ -70,7 +65,7 @@ The B<CAF::Lock> class provides methods for handling application locking.
 
 =back
 
-=head2 Public methods
+=head1 PUBLIC METHODS
 
 =over 4
 
@@ -93,28 +88,25 @@ sub is_locked {
 
 =item set_lock ($retries,$timeout,$force);
 
-Tries $retries times to set the lock. If $force is set to FORCE_NONE
+Tries I<retries> times to set the lock.  If I<force> is set to B<FORCE_NONE>
 or not defined and the lock is set, it sleeps for
-rand($timeout). Writes the current PID ($$) into the lock
-file. Returns SUCCESS or undef on failure.
+rand(I<timeout>).  Returns B<SUCCESS>, or B<undef> on failure.
 
-If $retries or $timeout are not defined or set to 0, only a single
+If I<retries> or I<timeout> are not defined or set to 0, only a single
 attempt is done to acquire the lock.
 
-If $force is set to FORCE_ALWAYS then the lockfile is just set
-again, independently if the lock is already set by another application
-instance.
-
-If $force is set to FORCE_ALWAYS then neither $timeout nor $retries are taken
+If I<force> is set to B<FORCE_ALWAYS> then the lock file is just set
+again, even if the lock is already set by another application
+instance, and neither I<timeout> nor I<retries> are taken
 into account.
 
 =cut
 
 sub set_lock {
-  my ($self,$retries,$timeout,$force)=@_;
+  my ($self, $retries, $timeout, $force) = @_;
 
-  $retries=0 unless (defined $retries);
-  $timeout=0 unless (defined $retries);
+  $retries = 0 unless (defined $retries);
+  $timeout = 0 unless (defined $retries);
 
   if ($self->{LOCK_SET}) {
     # oops.
@@ -122,7 +114,7 @@ sub set_lock {
     return undef;
   }
 
-  my $tries=0;
+  my $tries = 0;
   my $lock;
   while(1) {
     $tries++;
@@ -172,24 +164,24 @@ sub try_lock {
 
 =pod
 
-=item unlock
+=item unlock()
 
-Releases the lock and returns SUCCESS. Reports an error and returns
-undef if the lock file cannot be released. If the object (application
-instance) does not hold the lockfile, an error is reported and undef
+Releases the lock and returns B<SUCCESS>.  Reports an error and returns
+B<undef> if the lock cannot be released.  If the object (application
+instance) does not hold the lock, an error is reported and B<undef>
 is returned.
 
 =cut
 
 sub unlock {
-  my $self=shift;
+  my $self = shift;
   if ($self->{LOCK_SET}) {
     # if we forced the lock LOCK_FH can be undef
     return SUCCESS unless ($self->{LOCK_FH});
     unless ($self->{LOCK_FH}->close) {
       $self->error("cannot close lock file: ",$self->{'LOCK_FILE'});
     }
-    $self->{LOCK_SET}=undef;
+    $self->{LOCK_SET} = undef;
   } else {
     $self->error("lock not held by this application instance, not unlocking");
     return undef;
@@ -200,9 +192,9 @@ sub unlock {
 
 =pod
 
-=item is_set
+=item is_set()
 
-Returns SUCCESS if lock is set by application instance, undef otherwise
+Returns B<SUCCESS> if lock is set by application instance, B<undef> otherwise.
 
 =cut
 
@@ -218,11 +210,11 @@ sub is_set {
 
 =back
 
-=head2 Private methods
+=head1 PRIVATE METHODS
 
 =over 4
 
-=item _initialize($lockfilename)
+=item _initialize(I<lockfilename>)
 
 initialize the object. Called by new($lockfilename).
 
@@ -231,8 +223,8 @@ initialize the object. Called by new($lockfilename).
 sub _initialize {
   my ($self,$lockfilename) = @_;
 
-  $self->{'LOCK_SET'}=undef;
-  $self->{'LOCK_FILE'} = $lockfilename;
+  $self->{LOCK_SET} = undef;
+  $self->{LOCK_FILE} = $lockfilename;
   return SUCCESS;
 
 }
