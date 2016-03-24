@@ -67,7 +67,7 @@ To create a new ticket for principal SERVICE/host@REALM
         principal => 'SERVICE/host@REALM',
         log => $self,
     );
-    return if(! defined($krb->get_context());
+    return if(! defined($krb->get_context()));
 
     # set environment to temporary credential cache
     # temporary cache is cleaned-up during destroy of $krb
@@ -246,9 +246,14 @@ sub update_principal
         $self->{principal}->{$attr} = $principal->{$attr};
     }
 
-    $self->verbose('update_principal to new principal ', $self->_principal_string());
-
-    return SUCCESS;
+    my $p_str = $self->_principal_string();
+    if ($p_str) {
+        $self->verbose("update_principal to new principal $p_str");
+        return SUCCESS;
+    } else {
+        $self->error("Cannot create pricipal string: $self->{fail}");
+        return;
+    }
 }
 
 
@@ -436,7 +441,11 @@ sub _principal_string
 
     my @components;
     if ($principal->{primary}) {
-        push(@components, $principal->{primary});
+        if ($principal->{primary} =~ m/^[\w.-]+$/) {
+            push(@components, $principal->{primary});
+        } else {
+            return $self->fail("Invalid character in primary ".$principal->{primary});
+        }
     } else {
         return $self->fail("No primary in principal hashref");
     }
@@ -445,14 +454,24 @@ sub _principal_string
         my $insts = $principal->{instances};
         my $ref = ref($insts);
         if($ref eq 'ARRAY') {
-            push(@components, @$insts);
+            if (grep {$_ !~ m/^[\w.-]+$/} @$insts) {
+                return $self->fail("Invalid character in instance ".join(',', @$insts));
+            } else {
+                push(@components, @$insts);
+            };
         } else {
             return $self->fail("principal instances must be array ref, got $ref");
         }
     }
 
     my $p_str = join('/', @components);
-    $p_str .= '@' . $principal->{realm} if $principal->{realm};
+    if ($principal->{realm}) {
+        if ($principal->{realm} =~ m/^[\w.-]+$/) {
+            $p_str .= '@' . $principal->{realm} ;
+        } else {
+            return $self->fail("Invalid character in realm ".$principal->{realm});
+        };
+    }
 
     $self->verbose("_principal_string created $p_str");
     return $p_str;

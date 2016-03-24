@@ -99,6 +99,12 @@ ok(! defined($krb->_split_principal_string('/b@c')),
 # Test generation, incl failure
 ok(! defined($krb->_principal_string({'noprimary' => 'woohoo'})),
    '_principal_string returns undef if no primary is set');
+ok(! defined($krb->_principal_string({'primary' => '()woohoo'})),
+   '_principal_string returns undef if primary has invalid characters');
+ok(! defined($krb->_principal_string({'primary' => 'woohoo', instances => ["valid", "invalid()"]})),
+   '_principal_string returns undef if one of the instances has invalid characters');
+ok(! defined($krb->_principal_string({'primary' => 'woohoo', realm => 'realm()'})),
+   '_principal_string returns undef if realm has invalid characters');
 is($krb->_principal_string({'primary' => 'p', 'instances' => [qw(i0 i1)], 'realm' => 'realm'}),
    'p/i0/i1@realm', 'Correct principal string generated from provided hashref');
 is($krb->_principal_string(),
@@ -116,6 +122,10 @@ ok(! defined($krb->update_principal(principal => 'a@b@c')),
 ok(! defined($krb->update_principal(instances => 'myinstances')),
    'update_principal failed with invalid instances (must be arrayref)');
 is_deeply($krb->{principal}, $init_principal, 'principal unmodified with update_principal error');
+
+# This does modify the current attributes, all valid ones are changed
+ok(! defined($krb->update_principal(principal => 'a/()b@c')),
+   'update_principal failed with principal with valid structure but with invalid characters');
 
 # Test update
 $krb->update_principal(primary => 'newprim', instances => [qw(i0 i1)], realm => 'r1');
