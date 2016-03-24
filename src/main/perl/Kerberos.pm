@@ -395,8 +395,13 @@ sub get_name
     my ($name, $hr_name);
     if($self->_gssapi_import($name, $principal, GSSAPI::OID::gss_nt_krb5_name) &&
        $self->_gssapi_display($name, $hr_name)) {
-        $self->verbose("Created name $hr_name from principal $p_str.");
-        return $name;
+        if ($hr_name) {
+            $self->verbose("Created name $hr_name from principal $p_str.");
+            return $name;
+        } else {
+            $self->error("_gssapi_display returns empty hrname from principal $p_str: $self->{fail}.");
+            return;
+        }
     } else {
         $self->error("Failed to created name from principal $p_str: $self->{fail}.");
         return;
@@ -654,10 +659,11 @@ foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
 
             my $status;
             local $@;
+            my $fclass = "GSSAPI::$class";
             if(($class eq 'Name') && ($method eq 'import')) {
                 # There's no ->new for this class, the current method creates
                 # a new instance but returns status
-                my $fclass = "GSSAPI::$class";
+                $self->debug(3, "$full_method status with fclass $fclass method $method");
                 eval {
                     $status = $fclass->$method(@_);
                 };
@@ -665,22 +671,23 @@ foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
                 my ($instance, @args) = @_;
                 my $ref = ref($instance);
                 if($ref && UNIVERSAL::can($instance, 'can') &&
-                   $instance->isa("GSSAPI::$class")) {
+                   $instance->isa($fclass)) {
                     # Test for a blessed reference with UNIVERSAL::can
                     # UNIVERSAL::can also return true for scalars, so also test
                     # if it's a reference to start with
+                    $self->debug(3, "$full_method status with instance $instance method $method");
                     eval {
                         $status = $instance->$method(@args);
                     }
                 } else {
-                    return $self->fail("$full_method expected a GSSAPI::$class instance, got ref $ref instead.");
+                    return $self->fail("$full_method expected a $fclass instance, got ref $ref instead.");
                 };
             }
 
             if ($@) {
-                return $self->fail("GSSAPI::$class::$method croaked: $@");
+                return $self->fail("$fclass::$method croaked: $@");
             } else {
-                return $self->_gss_status($status, text => "$class::$method");
+                return $self->_gss_status($status, text => $class."::$method");
             }
         };
     }
