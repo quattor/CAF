@@ -248,6 +248,8 @@ foreach my $class (sort keys %$gssapi_wrappers) {
         # reset fail attribute
         $krb->{fail} = '';
         my $fname = "_gssapi_$method";
+        my $fclass = join('::', 'GSSAPI', $class);
+        my $fmethod = join('::', $fclass, $method);
 
         # Test that there are no doubles (e.g. same method name in Context and Name)
         is(scalar (grep {$_ eq $fname} @fnames), 0, "$fname is unique method name");
@@ -265,14 +267,14 @@ foreach my $class (sort keys %$gssapi_wrappers) {
             # eval{} does not catch this. Is this some bug in the XS?
             $krb->{fail} = '';
             ok(! defined($krb->$fname($a, $b, $c)), "$fname returns undef in of croak");
-            my $err_regexp = "^$fname GSSAPI::$class::$method croaked:";
+            my $err_regexp = "^$fname $fmethod croaked:";
             like($krb->{fail}, qr{$err_regexp}, "$fname fails with croaked message when incorrect args are passed");
         }
 
         $krb->{fail} = '';
         $a = {};
         ok(! defined($krb->$fname($a, $b, $c)), "$fname returns undef in case of instance mismatch");
-        my $err_regexp = "^$fname expected a GSSAPI::$class instance, got ref";
+        my $err_regexp = "^$fname expected a $fclass instance, got ref";
         like($krb->{fail}, qr{$err_regexp}, "$fname fails with instance mismatch");
     }
 }

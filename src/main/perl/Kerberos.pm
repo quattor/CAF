@@ -1,12 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-
-package CAF::Kerberos;
-
-use strict;
-use warnings;
+${PMpre} CAF::Kerberos${PMpost}
 
 use parent qw(CAF::Object);
 use Readonly;
