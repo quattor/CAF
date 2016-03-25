@@ -302,7 +302,7 @@ Input flags/bits for the Context to create to support certain service options.
 
 =item itoken
 
-Input token (C<GSS_C_NO_BUFFER> is used if not defined).
+Input token (C<q{}> is used if not defined).
 
 =back
 
@@ -324,14 +324,16 @@ sub get_context
 
     my $iflags = defined($opts{iflags}) ? $opts{iflags} : 0;
     # Do not log itoken for security reasons
-    my $itoken = defined($opts{itoken}) ? $opts{itoken} : GSS_C_NO_BUFFER;
+    # Do not use GSS_C_NO_BUFFER as default, it gives
+    # unintialised variable warnings from withing the XS module.
+    my $itoken = defined($opts{itoken}) ? $opts{itoken} : q{};
 
     my $imech = GSSAPI::OID::gss_mech_krb5;
     my $bindings = GSS_C_NO_CHANNEL_BINDINGS;
     # 0 means default validity period
     my $itime = $self->{ticket}->{lifetime} || 0;
 
-    my $otoken;
+    my ($omech, $otoken, $oflags, $otime);
 
     # short version: _init is a client application,
     #     so the client keytab will be used (KRB5_CLIENT_KTNAME)
@@ -354,12 +356,12 @@ sub get_context
     my $creds = GSS_C_NO_CREDENTIAL;
 
     my $ctx = GSSAPI::Context->new();
-    my @init_args = ($ctx, $creds, $name,
-                     $imech, $iflags, $itime, $bindings, $itoken,
-                     undef, $otoken, undef, undef);
 
     my $ttl;
-    if($self->_gssapi_init(@init_args) &&
+    if($self->_gssapi_init(
+           $ctx, $creds, $name,
+           $imech, $iflags, $itime, $bindings, $itoken,
+           $omech, $otoken, $oflags, $otime) &&
        $self->_gssapi_valid_time_left($ctx, $ttl)) {
         # klist should now show the ticket
         # Not logging otoken for security reasons
@@ -393,7 +395,7 @@ sub get_name
     };
 
     my ($name, $hr_name);
-    if($self->_gssapi_import($name, $principal, GSSAPI::OID::gss_nt_krb5_name) &&
+    if($self->_gssapi_import($name, $p_str, GSSAPI::OID::gss_nt_krb5_name) &&
        $self->_gssapi_display($name, $hr_name)) {
         if ($hr_name) {
             $self->verbose("Created name $hr_name from principal $p_str.");
@@ -576,9 +578,10 @@ sub _gss_decrypt
     my $ctx = GSSAPI::Context->new();
     # _accept is used for server applications,
     # GSS_C_NO_CREDENTIAL will try to obtain credentials from server keytab (KRB5_KTNAME)
-    my @acc_args = ($ctx, GSS_C_NO_CREDENTIAL, $token, GSS_C_NO_CHANNEL_BINDINGS, $name,
-                    undef, undef, undef, undef, undef,);
-    if ($self->_gssapi_accept(@acc_args) &&
+    if ($self->_gssapi_accept(
+            $ctx, GSS_C_NO_CREDENTIAL, $token,
+            GSS_C_NO_CHANNEL_BINDINGS, $name,
+            undef, undef, undef, undef, undef) &&
         $self->_gssapi_display($name, $hrname) &&
         $self->_gssapi_unwrap($inbuf, $outbuf, 0, 0)) {
         return ($hrname, $outbuf);
@@ -640,8 +643,11 @@ SUCCESS otherwise.
 #   a. No support for GSS_C_CONTINUE_NEEDED
 #   b. method name uniqueness is unittested
 #   c. GSSAPI::Context::init is init_sec_context based
-#   d. If one ever wants to support GSSAPI::Cred::acquire_cred,
-#      follow same recipe as GSSAPI::Name for missing GSSAPI::Cred->new()
+#   d. If you encounter warnings like
+#      'Use of uninitialized value in subroutine entry at'
+#      with a line number to one of the eval, it is the XS
+#      bits that are complaining about unexpected undef
+#      (http://www.perlmonks.org/bare/?node_id=415141).
 
 no strict 'refs';
 foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
@@ -651,43 +657,59 @@ foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
             # We cannot have 'my ($self, $instance, @args) = @_;'
             # for e.g. Name->import, the $instance would be
             # restricted to this scope
+            # The main reason is to make it possible to pass undef
+            # variable references to the GSSAPI lowlevel code without
+            # evaluation of the variable reference.
+            # Even the instance can't be assigned to local variable,
+            # e.g. $context->init updates $context inplace, and this
+            # causes issues with a local my $instance = shift;
             my $self = shift;
 
             # Setup local environment
             local %ENV;
             $self->update_env(\%ENV);
 
-            my $status;
-            local $@;
-            my $fclass = "GSSAPI::$class";
-            if(($class eq 'Name') && ($method eq 'import')) {
-                # There's no ->new for this class, the current method creates
-                # a new instance but returns status
-                $self->debug(3, "$full_method status with fclass $fclass method $method");
-                eval {
-                    $status = $fclass->$method(@_);
-                };
-            } else {
-                my ($instance, @args) = @_;
-                my $ref = ref($instance);
-                if($ref && UNIVERSAL::can($instance, 'can') &&
-                   $instance->isa($fclass)) {
+            my ($status, $msg, $isinstance);
+            my $fclass = join('::', 'GSSAPI', $class);
+            my $fmethod = join('::', $fclass, $method);
+            my $ref = ref($_[0]);
+            if($ref) {
+                if(UNIVERSAL::can($_[0], 'can') &&
+                   $_[0]->isa($fclass)) {
                     # Test for a blessed reference with UNIVERSAL::can
                     # UNIVERSAL::can also return true for scalars, so also test
                     # if it's a reference to start with
-                    $self->debug(3, "$full_method status with instance $instance method $method");
-                    eval {
-                        $status = $instance->$method(@args);
-                    }
+                    $msg = "$fmethod->()";
+                    $isinstance = 1;
                 } else {
                     return $self->fail("$full_method expected a $fclass instance, got ref $ref instead.");
                 };
-            }
-
-            if ($@) {
-                return $self->fail("$fclass::$method croaked: $@");
             } else {
-                return $self->_gss_status($status, text => $class."::$method");
+                $msg = "$fclass->$method()";
+                $isinstance = 0;
+            };
+
+            $self->debug(1, "$full_method status $msg isinstance $isinstance");
+
+            # Actual GSSAPI calls
+            local $@;
+            eval {
+                $status = $isinstance ? $fmethod->(@_) : $fclass->$method(@_);
+            };
+
+            # Make sure eval $@ is trapped in case it is reset in e.g. debug
+            my $ec = "$@";
+
+            # Stringification of the args seems safe after the GSSAPI call is made
+            # Level 5 since security related token might get logged
+            $self->debug(5, "$full_method status $msg args ",
+                         join(', ', map {defined($_) ? $_ : '<undef>'} @_),
+                         " eval ec $ec");
+
+            if ($ec) {
+                return $self->fail("$full_method $fmethod croaked: $@");
+            } else {
+                return $self->_gss_status($status, text => $fmethod);
             }
         };
     }

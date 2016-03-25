@@ -256,10 +256,24 @@ foreach my $class (sort keys %$gssapi_wrappers) {
         # only testing failures, very hard to mock the XS stuff
         ok($krb->can($fname), "$fname method exists");
 
+        my ($a, $b, $c) = qw(a b c);
+        if ($method ne 'display') {
+            # There's something very strange display
+            # perl -e 'use GSSAPI;eval {GSSAPI::Name::display->(1,2,3,4,5)};print "end $@\n"'
+            #    Not enough arguments for GSSAPI::Name::display at -e line 1, near "GSSAPI::Name::display->"
+            #    Execution of -e aborted due to compilation errors.
+            # eval{} does not catch this. Is this some bug in the XS?
+            $krb->{fail} = '';
+            ok(! defined($krb->$fname($a, $b, $c)), "$fname returns undef in of croak");
+            my $err_regexp = "^$fname GSSAPI::$class::$method croaked:";
+            like($krb->{fail}, qr{$err_regexp}, "$fname fails with croaked message when incorrect args are passed");
+        }
+
         $krb->{fail} = '';
-        ok(! defined($krb->$fname('a', 'b', 'c')), "$fname returns undef in case of instance mismatch");
-        my $err_regexp = "^(GSSAPI::$class::$method croaked:|$fname expected a GSSAPI::$class instance, got ref)";
-        like($krb->{fail}, qr{$err_regexp}, "$fname fails with instance mismatch or croaked message");
+        $a = {};
+        ok(! defined($krb->$fname($a, $b, $c)), "$fname returns undef in case of instance mismatch");
+        my $err_regexp = "^$fname expected a GSSAPI::$class instance, got ref";
+        like($krb->{fail}, qr{$err_regexp}, "$fname fails with instance mismatch");
     }
 }
 
