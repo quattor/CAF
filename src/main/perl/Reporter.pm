@@ -1,12 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-
-package CAF::Reporter;
-
-use strict;
-use warnings;
+#${PMpre} CAF::Reporter${PMpost}
 
 use LC::Exception qw (SUCCESS throw_error);
 use Sys::Syslog qw (openlog closelog);
@@ -212,6 +204,51 @@ sub init_logfile
     }
 
     return $self->set_report_logfile($objlog);
+}
+
+=pod
+
+=item C<get_debuglevel>: int
+
+Return current debuglevel
+
+=cut
+
+sub get_debuglevel
+{
+    my $self = shift;
+
+    return $self->_rep_setup()->{$DEBUGLV};
+}
+
+=pod
+
+=item C<is_quiet>: bool
+
+Return true if reporter is quiet, false otherwise
+
+=cut
+
+sub is_quiet
+{
+    my $self = shift;
+
+    return $self->_rep_setup()->{$QUIET} ? 1 : 0;
+}
+
+=pod
+
+=item C<is_verbose>: bool
+
+Return true if reporter is verbose, false otherwise
+
+=cut
+
+sub is_verbose
+{
+    my $self = shift;
+
+    return $self->_rep_setup()->{$VERBOSE} ? 1 : 0;
 }
 
 =pod

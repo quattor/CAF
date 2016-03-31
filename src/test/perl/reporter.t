@@ -89,6 +89,10 @@ is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
 is($CAF::Reporter::_REP_SETUP->{$FACILITY}, 'facility', "Facility set");
 is($CAF::Reporter::_REP_SETUP, $myrep->_rep_setup(), "_ret_setyp returns ref to _REP_SETUP for Reporter");
 
+is($myrep->get_debuglevel(), 0, "Returned debug level 0");
+ok($myrep->is_quiet(), "is quiet");
+ok($myrep->is_verbose(), "is verbose");
+
 $myrep->init_reporter();
 is_deeply($CAF::Reporter::_REP_SETUP, $init, "_REP_SETUP re-initialsed");
 
@@ -97,10 +101,13 @@ $myrep->setup_reporter(-1);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Negative debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose not enabled with negative debug level");
 
+ok(! $myrep->is_verbose(), "is not verbose");
+
 $myrep->init_reporter();
 $myrep->setup_reporter(0);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose not enabled with 0 debug level");
+
 
 $myrep->init_reporter();
 $myrep->setup_reporter(2);
@@ -121,6 +128,12 @@ is($initlogfile->{OPTS}, 'a', "new LOGFILE options set");
 # test preservation with undefs
 $myrep->init_reporter();
 $myrep->setup_reporter(2, 1, 1, 'facility');
+
+is($myrep->get_debuglevel(), 2, "Returned debug level 2");
+ok($myrep->is_quiet(), "is quiet");
+ok($myrep->is_verbose(), "is verbose");
+
+
 $myrep->set_report_logfile('whatever');
 my $current = { %$CAF::Reporter::_REP_SETUP };
 $myrep->setup_reporter();
