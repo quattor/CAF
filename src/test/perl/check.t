@@ -30,7 +30,6 @@ my $ec_check = $CAF::Check::EC;
 
 my $obj = Test::Quattor::Object->new();
 
-
 my $mock = Test::MockModule->new('CAF::Check');
 
 # cannot use mocked filewriter
@@ -379,5 +378,98 @@ ok(! $mc->directory_exists($brokenlink), "brokenlink still not a directory");
 
 # reenable NoAction
 $CAF::Object::NoAction = 1;
+
+=head2 status missing file
+
+=cut
+
+my $statusfile = "$basetest/status";
+my ($mode, $res);
+
+# enable NoAction
+$CAF::Object::NoAction = 1;
+
+
+rmtree($basetest) if -d $basetest;
+# Test non-existingfile
+# Set the fail attribute, it should be reset
+$mc->{fail} = 'somefailure';
+is($mc->{fail}, 'somefailure', "Fail attribute set before status (missing/noaction)");
+ok(! $mc->file_exists($statusfile), "status testfile does not exists missing/noaction");
+ok($mc->status($statusfile, mode => 0400),
+   "status on missing file returns 1 on missing/noaction");
+ok(! defined($mc->{fail}), "Fail attribute not set (and existing value reset) for missing status file and noaction");
+ok(! $mc->file_exists($statusfile), "status testfile still does not exists missing/noaction");
+
+# disable NoAction
+$CAF::Object::NoAction = 0;
+
+rmtree($basetest) if -d $basetest;
+# Test non-existingfile
+# Set the fail attribute, it should be reset
+$mc->{fail} = 'somefailure';
+is($mc->{fail}, 'somefailure', "Fail attribute set before missing/action");
+ok(! $mc->file_exists($statusfile), "status testfile does not exists missing/action");
+$res = $mc->status($statusfile, mode => 0400);
+diag "return res ", explain $res;
+ok(! defined($mc->status($statusfile, mode => 0400)),
+   "status on missing file returns undef missing/action");
+is($mc->{fail}, '*** lstat(target/test/check/status): No such file or directory',
+   "Fail attribute set (and existing value reset) for missing status file and action");
+ok(! $mc->file_exists($statusfile), "status testfile still does not exists missing/action");
+
+=head2 status existing file
+
+=cut
+
+rmtree($basetest) if -d $basetest;
+
+makefile($statusfile);
+ok($mc->file_exists($statusfile), "status testfile exists");
+chmod(0755, $statusfile);
+# Stat returns type and permissions
+$mode = (stat($statusfile))[2] & 07777;
+is($mode, 0755, "created statusfile has mode 0755");
+
+
+# enable NoAction
+$CAF::Object::NoAction = 1;
+
+rmtree($basetest) if -d $basetest;
+
+makefile($statusfile);
+ok($mc->file_exists($statusfile), "status testfile exists");
+chmod(0755, $statusfile);
+# Stat returns type and permissions
+$mode = (stat($statusfile))[2] & 07777;
+is($mode, 0755, "created statusfile has mode 0755");
+
+ok($mc->status($statusfile, mode => 0400), "status returns changed with mode 0400 (noaction set)");
+$mode = (stat($statusfile))[2] & 07777;
+is($mode, 0755, "created statusfile still has mode 0755 (noaction set)");
+
+
+# disable NoAction
+
+$CAF::Object::NoAction = 0;
+
+rmtree($basetest) if -d $basetest;
+
+makefile($statusfile);
+ok($mc->file_exists($statusfile), "status testfile exists");
+chmod(0755, $statusfile);
+# Stat returns type and permissions
+$mode = (stat($statusfile))[2] & 07777;
+is($mode, 0755, "created statusfile has mode 0755");
+
+
+ok($mc->status($statusfile, mode => 0400), "status returns changed with mode 0400 (noaction set)");
+$mode = (stat($statusfile))[2] & 07777;
+is($mode, 0400, "created statusfile has mode 0400 (action set)");
+
+
+# reenable NoAction
+$CAF::Object::NoAction = 1;
+
 
 done_testing();

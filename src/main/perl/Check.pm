@@ -19,6 +19,7 @@ Readonly::Hash my %CLEANUP_DISPATCH => {
 # Use dispatch table instead of non-strict function by variable call
 Readonly::Hash my %LC_CHECK_DISPATCH => {
     directory => \&LC::Check::directory,
+    status => \&LC::Check::status,
 };
 
 our $EC = LC::Exception::Context->new->will_store_all;
@@ -317,6 +318,21 @@ sub directory
 {
     my ($self, $directory, %opts) = @_;
     return $self->LC_Check("directory", [$directory], \%opts);
+}
+
+=item status
+
+Set the path stat options: C<owner>, C<group>, C<mode> and/or C<mtime>.
+
+This is a wrapper around C<LC::Check::status>
+and executed with C<LC_Check>.
+
+=cut
+
+sub status
+{
+    my ($self, $path, %opts) = @_;
+    return $self->LC_Check("status", [$path], \%opts);
 }
 
 =pod
