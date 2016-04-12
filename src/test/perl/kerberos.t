@@ -157,7 +157,8 @@ is_deeply($krb->{principal}, {
 $tmppath = "target/cc_dir";
 ok($krb->create_credential_cache(), 'create_credential_cache returns success');
 is($krb->{ccdir}, $tmppath, 'expected credential cache directory');
-is($krb->{ENV}->{KRB5CCNAME}, "DIR:$tmppath", 'define credential cache directory KRB5CCNAME');
+is($krb->{ENV}->{KRB5CCNAME}, "FILE:$tmppath/tkt",
+   'define credential cache FILE as tkt in directory KRB5CCNAME');
 
 
 # _process is tested in kerberos-process

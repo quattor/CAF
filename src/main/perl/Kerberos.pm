@@ -266,7 +266,7 @@ sub create_credential_cache
         return $self->fail("Failed to set permissons on credential cache dir $tmppath");
     } else {
         $self->{ccdir} = $tmppath;
-        $self->{ENV}->{$KRB5ENV_CCNAME} = "DIR:$tmppath";
+        $self->{ENV}->{$KRB5ENV_CCNAME} = "FILE:$tmppath/tkt";
     }
 
     $self->verbose("credential cache: ". $self->{ccdir});
