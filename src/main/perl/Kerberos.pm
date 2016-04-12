@@ -314,6 +314,10 @@ sub get_context
         return if(! defined($name));
     }
 
+    if(! defined($self->{ccdir})) {
+        return if ! defined($self->create_credential_cache());
+    }
+
     my $iflags = defined($opts{iflags}) ? $opts{iflags} : 0;
     # Do not log itoken for security reasons
     # Do not use GSS_C_NO_BUFFER as default, it gives
