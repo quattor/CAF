@@ -82,7 +82,7 @@ is($obj_ok->noAction(), 5, "noAction method returns NoAction");
 
 =cut
 
-foreach my $i (qw(error warn info verbose debug report OK)) {
+foreach my $i (qw(error warn info verbose debug report OK event)) {
 
     my $called = 0;
     # return funny value for testing

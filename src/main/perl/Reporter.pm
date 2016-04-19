@@ -11,6 +11,9 @@ use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 use Sys::Syslog qw (openlog closelog);
 
+use CAF::Log qw($SYSLOG);
+use CAF::History qw($EVENTS);
+
 use vars qw($_REP_SETUP);
 use parent qw(Exporter);
 
@@ -20,10 +23,14 @@ Readonly our $VERBOSE => 'VERBOSE';
 Readonly our $DEBUGLV => 'DEBUGLV';
 Readonly our $QUIET => 'QUIET';
 Readonly our $LOGFILE => 'LOGFILE';
-Readonly our $SYSLOG => 'SYSLOG';
 Readonly our $FACILITY => 'FACILITY';
+Readonly our $HISTORY => 'HISTORY';
+Readonly our $WHOAMI => 'WHOAMI';
 
-our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY);
+our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET
+    $LOGFILE $SYSLOG $FACILITY
+    $HISTORY $WHOAMI
+);
 
 
 my $_reporter_default = {
@@ -157,22 +164,54 @@ sub setup_reporter
 
 =pod
 
-=item C<set_report_logfile($logfile)>: bool
+=item C<set_report_logfile($loginstance)>: bool
 
-If C<$logfile> is defined, it will be used as log file. C<$logfile> can be
+If C<$loginstance> is defined, it will be used as log file. C<$loginstance> can be
 any type of class object reference, but the object must support a
 C<print(@array)> method. Typically, it should be an C<CAF::Log>
-instance. If C<$logfile> is undefined, no log file will be used.
+instance. If C<$loginstance> is undefined, no log file will be used.
+
+Returns SUCCESS on success, undef otherwise.
+
+(The method name is slightly misleading, because is it does not set the logfile's
+filename, but the internal C<$LOGFILE> attribute).
 
 =cut
 
 sub set_report_logfile
 {
-    my ($self, $logfile) = @_;
+    my ($self, $loginstance) = @_;
 
-    $self->_rep_setup()->{$LOGFILE} = $logfile;
+    $self->_rep_setup()->{$LOGFILE} = $loginstance;
 
     return SUCCESS;
+}
+
+=pod
+
+=item C<init_logfile($filename, $options)>: bool
+
+Create a new L<CAF::Log> instance with C<$filename> and C<$options> and
+set it using C<set_report_logfile>.
+Returns SUCCESS on success, undef otherwise.
+
+(The method name is slightly misleading, because is it does
+create the logfile with filename, but the internal
+C<$LOGFILE> attribute).
+
+=cut
+
+sub init_logfile
+{
+    my ($self, $filename, $options) = @_;
+
+    my $objlog = CAF::Log->new($filename, $options);
+    if (! defined ($objlog)) {
+        $self->verbose("cannot create Log $filename");
+        return;
+    }
+
+    return $self->set_report_logfile($objlog);
 }
 
 =pod
@@ -393,6 +432,80 @@ sub syslog
     };
 
     return;
+}
+
+=pod
+
+=item C<set_report_history($historyinstance)>: bool
+
+Set C<$historyinstance> as the reporter's history
+(using the C<$HISTORY> attribute).
+
+Returns SUCCESS on success, undef otherwise.
+
+=cut
+
+sub set_report_history
+{
+    my ($self, $historyinstance) = @_;
+
+    $self->{$HISTORY} = $historyinstance;
+
+    return SUCCESS;
+}
+
+=pod
+
+=item init_history
+
+Create a L<CAF::History> instance to track events.
+Argument C<keepinstances> is passed to the C<CAF::History>
+initialization.
+
+Returns SUCCESS on success, undef otherwise.
+
+=cut
+
+sub init_history
+{
+    my ($self, $keepinstances) = @_;
+
+    my $history = CAF::History->new($keepinstances);
+    if (! defined ($history)) {
+        $self->verbose("cannot create History");
+        return;
+    }
+
+    return $self->set_report_history($history);
+}
+
+
+=pod
+
+=item event
+
+If a C<CAF::History> is initialized, track the event. The following metadata is added
+
+=over
+
+=item C<$WHOAMI>
+
+Current class name C<ref($self)>.
+
+=back
+
+=cut
+
+sub event
+{
+    my ($self, $obj, %metadata) = @_;
+
+    my $hist = $self->{$HISTORY};
+    return SUCCESS if (! defined($hist->{$EVENTS}));
+
+    $metadata{$WHOAMI} = ref($self);
+
+    return $hist->event($obj, %metadata);
 }
 
 =pod

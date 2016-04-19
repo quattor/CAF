@@ -4,7 +4,7 @@ use warnings;
 use Test::More;
 use Test::MockModule;
 use LC::Exception qw (SUCCESS);
-use CAF::Log qw($FH $FILENAME);
+use CAF::Log qw($FH $FILENAME $SYSLOG);
 
 mkdir('target/test');
 
@@ -30,6 +30,7 @@ Test all methods for C<CAF::Log>
 
 is($FILENAME, 'FILENAME', 'Exported FILENAME');
 is($FH, 'FH', 'Exported FH');
+is($SYSLOG, 'SYSLOG', 'Export SYSLOG');
 
 # test failures
 my $ec = LC::Exception::Context->new()->will_store_errors();

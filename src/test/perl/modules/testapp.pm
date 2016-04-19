@@ -16,6 +16,8 @@ use CAF::Process;
 use CAF::Application;
 use LC::Exception qw (SUCCESS);
 
+use CAF::History;
+
 our @ISA = qw(CAF::Application);
 
 sub app_options {

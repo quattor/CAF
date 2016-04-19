@@ -9,9 +9,18 @@ use myreportermany;
 use Test::More;
 use Test::MockModule;
 use CAF::Log;
-use CAF::Reporter qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY);
+use CAF::Reporter qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY $HISTORY $WHOAMI);
 use LC::Exception qw (SUCCESS);
 
+use Scalar::Util qw(refaddr);
+
+use Readonly;
+Readonly my $EVENTS => 'EVENTS';
+Readonly my $INSTANCES => 'INSTANCES';
+
+use object_ok;
+
+mkdir('target/test');
 
 my ($openlogged, $closelogged, $syssyslogged, $printed, $logged, $syslogged, $reported, $logprinted);
 
@@ -37,7 +46,7 @@ Test all methods for C<CAF::Reporter>
 
 =over
 
-=item init_reporter / _rep_setup / setup_reporter / set_report_logfile
+=item init_reporter / _rep_setup / setup_reporter / set_report_logfile / init_logfile
 
 =cut
 
@@ -50,6 +59,8 @@ is($QUIET, 'QUIET', 'expected value for readonly $QUIET');
 is($LOGFILE, 'LOGFILE', 'expected value for readonly $LOGFILE');
 is($SYSLOG, 'SYSLOG', 'expected value for readonly $SYSLOG');
 is($FACILITY, 'FACILITY', 'expected value for readonly $FACILITY');
+is($HISTORY, 'HISTORY', 'expected value for readonly $HISTORY');
+is($WHOAMI, 'WHOAMI', 'expected value for readonly $WHOAMI');
 
 my $init = {
     $VERBOSE => 0,
@@ -101,6 +112,12 @@ $myrep->init_reporter();
 $myrep->set_report_logfile('whatever');
 is($CAF::Reporter::_REP_SETUP->{$LOGFILE}, 'whatever', "LOGFILE set");
 
+$myrep->init_logfile('target/test/test_init_logfile.log', 'a');
+my $initlogfile = $CAF::Reporter::_REP_SETUP->{$LOGFILE};
+isa_ok($initlogfile, 'CAF::Log', "new LOGFILE set");
+is($initlogfile->{FILENAME}, 'target/test/test_init_logfile.log', "new LOGFILE filename set");
+is($initlogfile->{OPTS}, 'a', "new LOGFILE options set");
+
 # test preservation with undefs
 $myrep->init_reporter();
 $myrep->setup_reporter(2, 1, 1, 'facility');
@@ -123,7 +140,6 @@ ok(! defined($CAF::Reporter::_REP_SETUP->{$LOGFILE}),
 is($myrep->log('something'), SUCCESS, 'log returns SUCCESS when no LOGFILE set');
 ok(! defined $myrep->syslog('something'), 'syslog returns undef when no LOGFILE set');
 
-mkdir('target/test');
 # this is a .log file, SYSLOG should be set
 my $log = CAF::Log->new('target/test/testlog.log', 'a');
 ok($log->{SYSLOG}, 'SYSLOG is set for CAF::Log instance');
@@ -211,6 +227,44 @@ is_deeply($syslogged, ['warning', 'hello', 'warn'], 'warn calls syslogs with war
 is($myrep->error('hello', 'error'), SUCCESS, 'error returns success');
 is_deeply($reported, ['[ERROR] ', 'hello', 'error'], 'error calls report with prefix and args');
 is_deeply($syslogged, ['err', 'hello', 'error'], 'error calls syslogs with err priority and args');
+
+=pod
+
+=item set_report_history / init_history / event
+
+=cut
+
+my $obj = object_ok->new();
+
+ok(! defined($myrep->{$HISTORY}), 'No HISTORY by default');
+ok($myrep->event($obj), 'event with no HISTORY returns SUCCESS');
+ok(! defined($myrep->{$HISTORY}), 'Still no HISTORY after calling event without initialisation');
+
+# invalid HISTORY, but ok for this test
+ok($myrep->set_report_history('invalidhistory'), 'set_report_history returns success');
+is($myrep->{$HISTORY}, 'invalidhistory', 'set_report_history set HISTORY attribute');
+
+ok($myrep->init_history(), 'init_history (w/o keepinstances) returns SUCCESS');
+is_deeply($myrep->{$HISTORY}->{$EVENTS}, [], 'init_history created empty events');
+ok(! exists($myrep->{$HISTORY}->{$INSTANCES}), 'No INSTANCES defined (w/o keepinstances)');
+ok($myrep->event($obj), 'event with HISTORY w/o INSTANCES returns SUCCESS');
+
+is(scalar @{$myrep->{$HISTORY}->{$EVENTS}}, 1, '1 event tracked');
+ok(! exists($myrep->{$HISTORY}->{$INSTANCES}), 'No INSTANCES defined (w/o keepinstances) after event tracked');
+is($myrep->{$HISTORY}->{$EVENTS}->[0]->{$WHOAMI}, 'myreporter',
+   'WHOAMI metadata added to event tracked');
+
+ok($myrep->init_history(1), '(re)init_history (with keepinstances) returns SUCCESS');
+is_deeply($myrep->{$HISTORY}->{$EVENTS}, [], '(re)init_history created empty events');
+is_deeply($myrep->{$HISTORY}->{$INSTANCES}, {}, 'empty INSTANCES defined (with keepinstances)');
+ok($myrep->event($obj), 'event with HISTORY with INSTANCES returns SUCCESS');
+
+is(scalar @{$myrep->{$HISTORY}->{$EVENTS}}, 1, '1 event tracked');
+is_deeply($myrep->{$HISTORY}->{$INSTANCES},
+          {'object_ok '.refaddr($obj) => $obj},
+          'INSTANCES added (with keepinstances) after event tracked');
+is($myrep->{$HISTORY}->{$EVENTS}->[0]->{$WHOAMI}, 'myreporter',
+   'WHOAMI metadata added to event tracked');
 
 =pod
 

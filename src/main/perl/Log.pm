@@ -8,13 +8,13 @@ package CAF::Log;
 use strict;
 use warnings;
 
-use CAF::Reporter qw($SYSLOG);
 use parent qw(CAF::Object Exporter);
 
 use LC::Exception qw (SUCCESS throw_error);
 use FileHandle;
 use Readonly;
 
+Readonly our $SYSLOG => 'SYSLOG';
 Readonly our $FH => 'FH';
 Readonly our $FILENAME => 'FILENAME';
 Readonly my $TSTAMP => 'TSTAMP';
@@ -22,7 +22,7 @@ Readonly my $TSTAMP => 'TSTAMP';
 Readonly my $PROCID => 'PROCID';
 Readonly my $OPTS => 'OPTS';
 
-our @EXPORT_OK = qw($FILENAME $FH);
+our @EXPORT_OK = qw($FILENAME $FH $SYSLOG);
 
 # $FH is used during DESTROY (and close), but might be
 # destroyed itself e.g. during global cleanup
@@ -134,7 +134,7 @@ C<$options> is a string with magic letters
 
 =item a: append to a logfile
 
-=item w: truncate a loglfile
+=item w: truncate a logfile
 
 =item t: generate a timestamp on every print
 
