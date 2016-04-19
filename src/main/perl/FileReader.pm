@@ -31,6 +31,13 @@ and no modifications are expected.
 Printing to this file is allowed, but changes will be discarded (in
 effect, the C<FileWriter> is C<cancel>-ed.
 
+=over
+
+=item new
+
+Create a new instance: open the file C<$fn>, read it,
+seek to the beginning and C<cancel> any (future) changes.
+
 =cut
 
 # FileReader supports reading a file or pipe
@@ -52,9 +59,23 @@ sub new
     return $self;
 }
 
+=pod
+
+=item open
+
+Synonym for C<new()>
+
+=cut
+
 # Alias open to new.
 no warnings 'redefine';
-*__PACKAGE__::open = \&new;
+*open = \&new;
 use warnings;
+
+=pod
+
+=back
+
+=cut
 
 1;
