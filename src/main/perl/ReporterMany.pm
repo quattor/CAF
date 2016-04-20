@@ -1,14 +1,6 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} CAF::ReporterMany${PMpost}
 
-package CAF::ReporterMany;
-
-use strict;
-use warnings;
-
-use CAF::Reporter qw($DEBUGLV);
+use CAF::Reporter ${no-snapshot-version} qw($DEBUGLV);
 
 use parent qw(CAF::Reporter);
 
