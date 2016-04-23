@@ -178,10 +178,9 @@ my $dpm_options = {};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
 my $fh = CAF::FileEditor->open($DPM_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(
-                                  \%config_rules_1,
-                                  $dpm_options,
-                                  \%parser_options);
+$changes = $fh->updateFile(\%config_rules_1,
+                           $dpm_options,
+                           \%parser_options);
 is("$fh", $DPM_EXPECTED_CONF_1, $DPM_CONF_FILE." has expected contents (negated keywords)");
 $fh->close();
 
@@ -190,10 +189,9 @@ $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
 my $fh = CAF::FileEditor->open($DPM_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(
-                                  \%config_rules_2,
-                                  $dpm_options,
-                                  \%parser_options);
+$changes = $fh->updateFile(\%config_rules_2,
+                           $dpm_options,
+                           \%parser_options);
 is("$fh", $DPM_EXPECTED_CONF_2, $DPM_CONF_FILE." has expected contents (config option not defined)");
 $fh->close();
 
@@ -202,10 +200,9 @@ $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
 my $fh = CAF::FileEditor->open($DPM_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(
-                                  \%config_rules_3,
-                                  $dpm_options,
-                                  \%parser_options);
+$changes = $fh->updateFile(\%config_rules_3,
+                           $dpm_options,
+                           \%parser_options);
 is("$fh", $DPM_EXPECTED_CONF_1, $DPM_CONF_FILE." has expected contents (rule condition not met)");
 $fh->close();
 
@@ -215,9 +212,8 @@ $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
 my $fh = CAF::FileEditor->open($DPM_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(
-                                  \%config_rules_4,
-                                  $dpm_options);
+$changes = $fh->updateFile(\%config_rules_4,
+                           $dpm_options);
 is("$fh", $DPM_EXPECTED_CONF_2, $DPM_CONF_FILE." has expected contents (rule keyword prefixed by ?)");
 $fh->close();
 
@@ -227,10 +223,9 @@ $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_2);
 my $fh = CAF::FileEditor->open($DPM_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(
-                                  \%config_rules_1,
-                                  $dpm_options,
-                                  \%parser_options);
+$changes = $fh->updateFile(\%config_rules_1,
+                           $dpm_options,
+                           \%parser_options);
 is("$fh", $DPM_EXPECTED_CONF_3, $DPM_CONF_FILE." has expected contents (repeated config line)");
 $fh->close();
 

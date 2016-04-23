@@ -364,9 +364,8 @@ set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
 my $fh = CAF::FileEditor->open($DPM_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(
-                                  \%dpm_config_rules_1,
-                                  $dpm_options);
+$changes = $fh->updateFile(\%dpm_config_rules_1,
+                           $dpm_options);
 is("$fh", $DPM_EXPECTED_CONF_1, $DPM_CONF_FILE." has expected contents (config 1)");
 $fh->close();
 
@@ -375,9 +374,8 @@ $fh->close();
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_2);
 my $fh = CAF::FileEditor->open($DPM_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(
-                                  \%dpm_config_rules_1,
-                                  $dpm_options);
+$changes = $fh->updateFile(\%dpm_config_rules_1,
+                           $dpm_options);
 is("$fh", $DPM_EXPECTED_CONF_2, $DPM_CONF_FILE." has expected contents (config 2)");
 $fh->close();
 
@@ -386,9 +384,8 @@ $fh->close();
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_3);
 my $fh = CAF::FileEditor->open($DPM_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%dpm_config_rules_2,
-                                  $dpm_options);
+$changes = $fh->updateFile(\%dpm_config_rules_2,
+                           $dpm_options);
 is("$fh", $DPM_EXPECTED_CONF_3, $DPM_CONF_FILE." has expected contents (config 3)");
 $fh->close();
 
@@ -397,9 +394,8 @@ $fh->close();
 set_file_contents($DMLITE_CONF_FILE,$DMLITE_INITIAL_CONF_1);
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%dav_config_rules,
-                                  $dmlite_options);
+$changes = $fh->updateFile(\%dav_config_rules,
+                           $dmlite_options);
 is("$fh", $DMLITE_EXPECTED_CONF_1, $DMLITE_CONF_FILE." has expected contents");
 $fh->close();
 
@@ -409,36 +405,32 @@ $fh->close();
 set_file_contents($DMLITE_CONF_FILE,'');
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_with_conditions,
-                                  $all_options);
+$changes = $fh->updateFile(\%rules_with_conditions,
+                           $all_options);
 is("$fh", $COND_TEST_EXPECTED_1, $DMLITE_CONF_FILE." has expected contents (rules with conditions)");
 $fh->close();
 
 set_file_contents($DMLITE_CONF_FILE,'');
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_with_neg_conds,
-                                  $all_options);
+$changes = $fh->updateFile(\%rules_with_neg_conds,
+                           $all_options);
 is("$fh", $NEG_COND_TEST_EXPECTED_1, $DMLITE_CONF_FILE." has expected contents (rules with negative conditions)");
 $fh->close();
 
 set_file_contents($DMLITE_CONF_FILE,$COND_TEST_INITIAL);
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_with_conditions,
-                                  $all_options);
+$changes = $fh->updateFile(\%rules_with_conditions,
+                           $all_options);
 is("$fh", $COND_TEST_INITIAL, $DMLITE_CONF_FILE." has expected contents (initial contents, rules conditions with non existent attribute)");
 $fh->close();
 
 set_file_contents($DMLITE_CONF_FILE,$COND_TEST_INITIAL);
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_with_conditions_2,
-                                  $all_options);
+$changes = $fh->updateFile(\%rules_with_conditions_2,
+                           $all_options);
 is("$fh", $COND_TEST_INITIAL, $DMLITE_CONF_FILE." has expected contents (initial contents, rules conditions with non existent option set)");
 $fh->close();
 
@@ -447,29 +439,26 @@ $parser_options{remove_if_undef} = 1;
 set_file_contents($DMLITE_CONF_FILE,$COND_TEST_INITIAL);
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_with_conditions,
-                                  $all_options,
-                                  \%parser_options);
+$changes = $fh->updateFile(\%rules_with_conditions,
+                           $all_options,
+                           \%parser_options);
 is("$fh", $COND_TEST_EXPECTED_2, $DMLITE_CONF_FILE." has expected contents (initial contents, rules conditions, parser options)");
 $fh->close();
 
 set_file_contents($DMLITE_CONF_FILE,$COND_TEST_INITIAL);
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_with_neg_conds,
-                                  $all_options,
-                                  \%parser_options);
+$changes = $fh->updateFile(\%rules_with_neg_conds,
+                           $all_options,
+                           \%parser_options);
 is("$fh", $NEG_COND_TEST_EXPECTED_2, $DMLITE_CONF_FILE." has expected contents (initial contents, rules with negative conditions, parser options)");
 $fh->close();
 
 set_file_contents($DMLITE_CONF_FILE,'');
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_always,
-                                  $dmlite_options);
+$changes = $fh->updateFile(\%rules_always,
+                           $dmlite_options);
 is("$fh", $COND_TEST_EXPECTED_3, $DMLITE_CONF_FILE." has expected contents (always_rules_only not set)");
 $fh->close();
 
@@ -477,10 +466,9 @@ $parser_options{always_rules_only} = 1;
 set_file_contents($DMLITE_CONF_FILE,'');
 my $fh = CAF::FileEditor->open($DMLITE_CONF_FILE, log => $this_app);
 ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_always,
-                                  $dmlite_options,
-                                  \%parser_options);
+$changes = $fh->updateFile(\%rules_always,
+                           $dmlite_options,
+                           \%parser_options);
 is("$fh", $COND_TEST_EXPECTED_1, $DMLITE_CONF_FILE." has expected contents (always_rules_only set)");
 $fh->close();
 
@@ -489,9 +477,8 @@ $fh->close();
 set_file_contents($DPM_SHIFT_CONF_FILE,'');
 my $fh = CAF::FileEditor->open($DPM_SHIFT_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_SHIFT_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_no_rule,
-                                  $dpm_options);
+$changes = $fh->updateFile(\%rules_no_rule,
+                           $dpm_options);
 is("$fh", $NO_RULE_EXPECTED, $DPM_SHIFT_CONF_FILE." has expected contents (keyword only)");
 $fh->close();
 
@@ -500,9 +487,8 @@ $fh->close();
 set_file_contents($DPM_SHIFT_CONF_FILE,'');
 my $fh = CAF::FileEditor->open($DPM_SHIFT_CONF_FILE, log => $this_app);
 ok(defined($fh), $DPM_SHIFT_CONF_FILE." was opened");
-$changes = $fh->updateFile(    
-                                  \%rules_multi_cond_sets,
-                                  $dpm_options);
+$changes = $fh->updateFile(\%rules_multi_cond_sets,
+                           $dpm_options);
 is("$fh", $MULTI_COND_SETS_EXPECTED, $DPM_SHIFT_CONF_FILE." has expected contents (multiple condition sets)");
 $fh->close();
 
