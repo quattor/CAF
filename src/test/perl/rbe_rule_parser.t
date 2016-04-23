@@ -268,49 +268,49 @@ DPNS WTRUST node1.example.com node2.example.com node3.example.com node4.example.
 # Test rules
 
 my %dpm_config_rules_1 = (
-      "ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_PARAM.";".LINE_VALUE_BOOLEAN,
-      "GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENVVAR,
+      "ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_SH_VAR.";".LINE_VALUE_BOOLEAN,
+      "GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENV_VAR,
      );
 
 my %dpm_config_rules_2 = (
-      "ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_PARAM.";".LINE_VALUE_BOOLEAN,
-      "GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENVVAR,
-      "DISKFLAGS" =>"DiskFlags:dpm;".LINE_FORMAT_PARAM.";".LINE_VALUE_ARRAY,
+      "ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_SH_VAR.";".LINE_VALUE_BOOLEAN,
+      "GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENV_VAR,
+      "DISKFLAGS" =>"DiskFlags:dpm;".LINE_FORMAT_SH_VAR.";".LINE_VALUE_ARRAY,
      );
 
 my %dav_config_rules = (
-        "NSFlags" =>"NSFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
+        "NSFlags" =>"NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_conditions = (
-        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
-        "DiskFlags" =>"DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
+        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "DiskFlags" =>"DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_conditions_2 = (
-        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
-        "DiskFlags" =>"DiskFlags:dpn->DiskFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
+        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "DiskFlags" =>"DiskFlags:dpn->DiskFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_neg_conds = (
-        "NSFlags" =>"!DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
-        "DiskFlags" =>"!DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
+        "NSFlags" =>"!DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "DiskFlags" =>"!DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_no_rule = (
-        "RFIO DAEMONV3_WRMT 1" => ";".LINE_FORMAT_XRDCFG,
+        "RFIO DAEMONV3_WRMT 1" => ";".LINE_FORMAT_KEY_VAL,
 );
 
 my %rules_multi_cond_sets = (
-        "DPNS TRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
-        "DPNS WTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_UNIQUE,
-        "DPNS RTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SORTED,
-        "DPNS FTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SINGLE,
+        "DPNS TRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "DPNS WTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_UNIQUE,
+        "DPNS RTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SORTED,
+        "DPNS FTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SINGLE,
 );
 
 my %rules_always = (
-        "NSFlags" => "ALWAYS->NSFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
-        "DiskFlags" => "DiskFlags:dav;".LINE_FORMAT_XRDCFG.";".LINE_VALUE_ARRAY,
+        "NSFlags" => "ALWAYS->NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "DiskFlags" => "DiskFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
 );
 
 # Option sets

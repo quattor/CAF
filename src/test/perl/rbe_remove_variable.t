@@ -124,23 +124,23 @@ Readonly my $DPM_EXPECTED_CONF_3 => $DPM_EXPECTED_CONF_1 . '
 
 
 my %config_rules_1 = (
-      "-ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_PARAM.";".LINE_VALUE_BOOLEAN,
-      "-GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENVVAR,
+      "-ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_SH_VAR.";".LINE_VALUE_BOOLEAN,
+      "-GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENV_VAR,
      );
 
 my %config_rules_2 = (
-      "ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_PARAM.";".LINE_VALUE_BOOLEAN,
-      "GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENVVAR,
+      "ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_SH_VAR.";".LINE_VALUE_BOOLEAN,
+      "GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENV_VAR,
      );
 
 my %config_rules_3 = (
-      "ALLOW_COREDUMP" => "!srmv22->allowCoreDump:dpm;".LINE_FORMAT_PARAM.";".LINE_VALUE_BOOLEAN,
-      "GLOBUS_THREAD_MODEL" => "dpns->globusThreadModel:dpm;".LINE_FORMAT_ENVVAR,
+      "ALLOW_COREDUMP" => "!srmv22->allowCoreDump:dpm;".LINE_FORMAT_SH_VAR.";".LINE_VALUE_BOOLEAN,
+      "GLOBUS_THREAD_MODEL" => "dpns->globusThreadModel:dpm;".LINE_FORMAT_ENV_VAR,
      );
 
 my %config_rules_4 = (
-      "?ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_PARAM.";".LINE_VALUE_BOOLEAN,
-      "GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENVVAR,
+      "?ALLOW_COREDUMP" => "allowCoreDump:dpm;".LINE_FORMAT_SH_VAR.";".LINE_VALUE_BOOLEAN,
+      "GLOBUS_THREAD_MODEL" => "globusThreadModel:dpm;".LINE_FORMAT_ENV_VAR,
      );
 
 my %parser_options = ("remove_if_undef" => 1);
