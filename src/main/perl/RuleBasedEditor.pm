@@ -154,8 +154,7 @@ sub updateFile {
                               BEGINNING_OF_FILE,
                              );
   
-  $self->_apply_rules($self,
-                      $config_rules,
+  $self->_apply_rules($config_rules,
                       $config_options,
                       $parser_options);
 
