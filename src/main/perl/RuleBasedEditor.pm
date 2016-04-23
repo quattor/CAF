@@ -43,6 +43,7 @@ use Fcntl qw(:seek);
 use constant BEGINNING_OF_FILE => (SEEK_SET, 0);
 use constant ENDING_OF_FILE => (SEEK_END, 0);
 
+
 #########################################################
 # Constants use to format lines in configuration files. #
 # These constants are exported.                         #
@@ -117,10 +118,90 @@ Readonly my $BACKUP_FILE_EXT => ".old";
 
 =head1 DESCRIPTION
 
-This module implements a rule-based editor. It has only one public method: B<updatefile>.
-Rules are passed as a hash.
+This module implements a rule-based editor. It extends the B<CAF::FileEditor>. It has only 
+one public method: B<updatefile> (see below) and no specific constructor.
 
-See https://github.com/quattor/CAF/issues/123#issue-123702165 for details.
+Rules used to edit the file are defined as hashes: each entry defines a rule.
+Multiple rules can be applied to the same file: it is important that they are
+orthogonal, else the result is unpredictable.
+
+The hash entry key represents the line keyword in configuration file and
+hash value is the parsing rule for the keyword value. Parsing rule format is :
+
+      [condition->]option_name:option_set[,option_set,...];line_fmt[;value_fmt[:value_fmt_opt]]
+
+If the line keyword (hash key) is starting with a '-', this means that the matching
+configuration line must be removed/commented out (instead of added/updated) from the
+configuration file if present. If it is starting with a '?', this means that the
+matching line must be removed/commented out if the option is undefined.
+
+=over
+
+=item condtion
+
+an option or an option set that must exist for the rule to be applied.
+Both option_set and option_name:option_set are accepted (see below).
+Only one option set is allowed and only its existence, not its value is tested.
+In addition, the condition may be negated (option or option_set must
+not exist) by prepending it with '!'.
+
+=item option_name 
+
+the name of an option that will be retrieved from the configuration.
+
+=item option_set 
+
+the name of an option set where the option is located in (for example 'dpnsHost:dpm'
+means C<dpnsHost> option of 'dpm' option set. An option set is a sub-hash in the configuration
+hash. C<GLOBAL> is a special value for 'option_set' indicating that the option is a global option,
+instead of belonging to a specific option set (global options are at the top level of the option
+hash).
+
+=item line_fmt 
+
+defines the format used to represent the key/value pair. 3 formats are
+supported (see LINE_FORMAT_xxx constants below):
+
+=over
+
+=item 
+
+a sh shell environment variable definition (export VAR=val)
+
+=item 
+
+a sh shell variable definition (VAR=val)
+
+=item 
+
+a 'keyword value' line, as used by Xrootd or Apache config files.
+
+=item 
+
+a 'setenv keyword value' line, as used by Xrootd config files mainly.
+
+=item 
+
+a 'set keyword value' line, as used by Xrootd config files mainly.
+
+=back
+
+Inline comments are not supported in 'keyword value' family of formats.
+
+=item value_fmt 
+
+used to indicate how to interpret the configuration value. It is used mainly for
+boolean values, list and hashes. See LINE_VALUE_xxx constants below for the possible values.
+
+=item value_fmt 
+
+used to indicate how to interpret the configuration value. It is used mainly for
+boolean values, list and hashes. See LINE_VALUE_xxx constants below for the possible values.
+
+=back 
+
+For an example of rules, look at ncm-dpmlfc or ncm-xrootd source code in
+configuration-modules-grid repository.
 
 
 =head2 Public methods
