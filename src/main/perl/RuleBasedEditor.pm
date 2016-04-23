@@ -131,15 +131,15 @@ sub updateFile {
   my ($self, $config_rules, $config_options, $parser_options) = @_;
 
   unless ( $config_rules ) {
-    $self->error("$function_name: 'config_rules' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_rules' argument missing (internal error)");
     return 1;
   }
   unless ( $config_options ) {
-    $self->error("$function_name: 'config_options' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_options' argument missing (internal error)");
     return 1;
   }
   unless ( defined($parser_options) ) {
-    $self->debug(2,"$function_name: 'parser_options' undefined");
+    *$self->{LOG}->debug(2,"$function_name: 'parser_options' undefined");
     $parser_options = {};
   }
 
@@ -188,23 +188,23 @@ sub _formatAttributeValue {
   my ($self, $attr_value, $line_fmt, $value_fmt, $value_opt) = @_;
 
   unless ( defined($attr_value) ) {
-    $self->error("$function_name: 'attr_value' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'attr_value' argument missing (internal error)");
     return 1;
   }
   unless ( defined($line_fmt) ) {
-    $self->error("$function_name: 'list_fmt' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'list_fmt' argument missing (internal error)");
     return 1;
   }
   unless ( defined($value_fmt) ) {
-    $self->error("$function_name: 'value_fmt' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'value_fmt' argument missing (internal error)");
     return 1;
   }
   unless ( defined($value_opt) ) {
-    $self->error("$function_name: 'value_opt' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'value_opt' argument missing (internal error)");
     return 1;
   }
 
-  $self->debug(2,"$function_name: formatting attribute value >>>$attr_value<<< (line fmt=$line_fmt, value fmt=$value_fmt, value_opt=$value_opt)");
+  *$self->{LOG}->debug(2,"$function_name: formatting attribute value >>>$attr_value<<< (line fmt=$line_fmt, value fmt=$value_fmt, value_opt=$value_opt)");
 
   my $formatted_value;
   if ( $value_fmt == LINE_VALUE_BOOLEAN ) {
@@ -218,16 +218,16 @@ sub _formatAttributeValue {
     $formatted_value .= " -k $attr_value->{logKeep}" if $attr_value->{logKeep};
     
   } elsif ( $value_fmt == LINE_VALUE_ARRAY ) {
-    $self->debug(2, "$function_name: array values received: ", join(",",@$attr_value));
+    *$self->{LOG}->debug(2, "$function_name: array values received: ", join(",",@$attr_value));
     if ( $value_opt & LINE_VALUE_OPT_UNIQUE ) {
       my %values = map(($_ => 1), @$attr_value);
       $attr_value = [ keys(%values) ];
-      $self->debug(2, "$function_name: array values made unique: ", join(",",@$attr_value));
+      *$self->{LOG}->debug(2, "$function_name: array values made unique: ", join(",",@$attr_value));
     }
     # LINE_VALUE_OPT_UNIQUE implies LINE_VALUE_OPT_SORTED
     if ( $value_opt & (LINE_VALUE_OPT_UNIQUE | LINE_VALUE_OPT_SORTED) ) {
       $attr_value = [ sort(@$attr_value) ] if $value_opt & (LINE_VALUE_OPT_UNIQUE | LINE_VALUE_OPT_SORTED);
-      $self->debug(2, "$function_name: array values sorted: ", join(",",@$attr_value));
+      *$self->{LOG}->debug(2, "$function_name: array values sorted: ", join(",",@$attr_value));
     };
     $formatted_value = join " ", @$attr_value;
 
@@ -238,7 +238,7 @@ sub _formatAttributeValue {
     $formatted_value = $attr_value;
     
   } else {
-    $self->error("$function_name: invalid value format ($value_fmt) (internal error)")    
+    *$self->{LOG}->error("$function_name: invalid value format ($value_fmt) (internal error)")    
   }
 
   # Quote value if necessary
@@ -246,12 +246,12 @@ sub _formatAttributeValue {
     if ( (($formatted_value =~ /\s+/) && ($formatted_value !~ /^(["']).*\g1$/)) ||
          ($value_fmt == LINE_VALUE_BOOLEAN) ||
          ($formatted_value eq '') ) {
-      $self->debug(2,"$function_name: quoting value '$formatted_value'");
+      *$self->{LOG}->debug(2,"$function_name: quoting value '$formatted_value'");
       $formatted_value = '"' . $formatted_value . '"';
     }
   }
   
-  $self->debug(2,"$function_name: formatted value >>>$formatted_value<<<");
+  *$self->{LOG}->debug(2,"$function_name: formatted value >>>$formatted_value<<<");
   return $formatted_value;
 }
 
@@ -276,15 +276,15 @@ sub _formatConfigLine {
   my ($self, $keyword, $value, $line_fmt) = @_;
 
   unless ( $keyword ) {
-    $self->error("$function_name: 'keyword' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'keyword' argument missing (internal error)");
     return 1;
   }
   unless ( defined($value) ) {
-    $self->error("$function_name: 'value' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'value' argument missing (internal error)");
     return 1;
   }
   unless ( defined($line_fmt) ) {
-    $self->error("$function_name: 'line_fmt' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'line_fmt' argument missing (internal error)");
     return 1;
   }
 
@@ -306,10 +306,10 @@ sub _formatConfigLine {
     $config_line =~ s/\s\s+/ /g;
     $config_line =~ s/\s+$//;
   } else {
-    $self->error("$function_name: invalid line format ($line_fmt). Internal inconsistency.");
+    *$self->{LOG}->error("$function_name: invalid line format ($line_fmt). Internal inconsistency.");
   }
 
-  $self->debug(2,"$function_name: Configuration line : >>$config_line<<");
+  *$self->{LOG}->debug(2,"$function_name: Configuration line : >>$config_line<<");
   return $config_line;
 }
 
@@ -338,15 +338,15 @@ sub _buildLinePattern {
   my ($self, $config_param, $line_fmt, $config_value) = @_;
 
   unless ( $config_param ) {
-    $self->error("$function_name: 'config_param' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_param' argument missing (internal error)");
     return undef;
   }
   unless ( defined($line_fmt) ) {
-    $self->error("$function_name: 'line_fmt' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'line_fmt' argument missing (internal error)");
     return undef;
   }
   if ( defined($config_value ) ) {
-    $self->debug(2,"$function_name: configuration value '$config_value' will be added to the pattern");
+    *$self->{LOG}->debug(2,"$function_name: configuration value '$config_value' will be added to the pattern");
     $config_value =~ s/\\/\\\\/g;
     $config_value =~ s/([\-\+\?\.\*\[\]()\^\$])/\\$1/g;
     $config_value =~ s/\s+/\\s+/g;
@@ -377,7 +377,7 @@ sub _buildLinePattern {
       $config_param_pattern .= "\\s+" . $config_value;
     }
   } else {
-    $self->error("$function_name: invalid line format ($line_fmt). Internal inconsistency.");
+    *$self->{LOG}->error("$function_name: invalid line format ($line_fmt). Internal inconsistency.");
     return undef;
   }
 
@@ -403,18 +403,18 @@ sub _removeConfigLine {
   my ($self, $config_param, $line_fmt) = @_;
 
   unless ( $config_param ) {
-    $self->error("$function_name: 'config_param' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_param' argument missing (internal error)");
     return 1;
   }
   unless ( defined($line_fmt) ) {
-    $self->error("$function_name: 'line_fmt' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'line_fmt' argument missing (internal error)");
     return 1;
   }
 
   # Build a pattern to look for.
   my $config_param_pattern = $self->_buildLinePattern($config_param,$line_fmt);
 
-  $self->debug(1,"$function_name: commenting out lines matching pattern >>>".$config_param_pattern."<<<");
+  *$self->{LOG}->debug(1,"$function_name: commenting out lines matching pattern >>>".$config_param_pattern."<<<");
   # All matching lines must be commented out, except if they are already commented out.
   # The code used is a customized version of FileEditor::replace() that lacks support for backreferences
   # in the replacement value (here we want to rewrite the same line commented out but we don't know the
@@ -424,7 +424,7 @@ sub _removeConfigLine {
   $self->seek_begin();
   while (my $l = <$self>) {
     if ($l =~ qr/^$config_param_pattern/ && $l !~ qr/^\s*#/) {
-        $self->debug(2,"$function_name: commenting out matching line >>>".$l."<<<");
+        *$self->{LOG}->debug(2,"$function_name: commenting out matching line >>>".$l."<<<");
         $line_count++;
         push (@lns, '#'.$l);
     } else {
@@ -432,9 +432,9 @@ sub _removeConfigLine {
     }
   }
   if ( $line_count == 0 ) {
-    $self->debug(1, "$function_name: No line found matching the pattern");
+    *$self->{LOG}->debug(1, "$function_name: No line found matching the pattern");
   } else {
-    $self->debug(1, "$function_name: $line_count lines commented out");
+    *$self->{LOG}->debug(1, "$function_name: $line_count lines commented out");
   }
   $self->set_contents (join("", @lns));
  
@@ -461,15 +461,15 @@ sub _updateConfigLine {
   my ($self, $config_param, $config_value, $line_fmt, $multiple) = @_;
 
   unless ( $config_param ) {
-    $self->error("$function_name: 'config_param' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_param' argument missing (internal error)");
     return 1;
   }
   unless ( defined($config_value) ) {
-    $self->error("$function_name: 'config_value' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_value' argument missing (internal error)");
     return 1;
   }
   unless ( defined($line_fmt) ) {
-    $self->error("$function_name: 'line_fmt' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'line_fmt' argument missing (internal error)");
     return 1;
   }
   unless ( defined($multiple) ) {
@@ -481,7 +481,7 @@ sub _updateConfigLine {
 
   # Build a pattern to look for.
   if ( $multiple ) {
-    $self->debug(2,"$function_name: 'multiple' flag enabled");
+    *$self->{LOG}->debug(2,"$function_name: 'multiple' flag enabled");
     $config_param_pattern = $self->_buildLinePattern($config_param,$line_fmt,$config_value);    
   } else {
     $config_param_pattern = $self->_buildLinePattern($config_param,$line_fmt);
@@ -496,7 +496,7 @@ sub _updateConfigLine {
     if ( ($line_fmt == LINE_FORMAT_PARAM) || ($line_fmt == LINE_FORMAT_ENVVAR) ) {
       $comment = $LINE_QUATTOR_COMMENT;
     }
-    $self->debug(1,"$function_name: checking expected configuration line ($new_line) with pattern >>>".$config_param_pattern."<<<");
+    *$self->{LOG}->debug(1,"$function_name: checking expected configuration line ($new_line) with pattern >>>".$config_param_pattern."<<<");
     $self->add_or_replace_lines(qr/^\s*$config_param_pattern/,
                               qr/^\s*$new_line$/,
                               $new_line.$comment."\n",
@@ -537,23 +537,23 @@ sub _parse_rule {
   my %rule_info;
 
   unless ( $rule ) {
-    $self->error("$function_name: 'rule' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'rule' argument missing (internal error)");
     $rule_info{error_msg} = "rule parser internal error (missing argument)";
     return \%rule_info;
   }
   unless ( $config_options ) {
-    $self->error("$function_name: 'config_options' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_options' argument missing (internal error)");
     $rule_info{error_msg} = "rule parser internal error (missing argument)";
     return \%rule_info;
   }
   unless ( defined($parser_options) ) {
-    $self->debug(2,"$function_name: 'parser_options' undefined");
+    *$self->{LOG}->debug(2,"$function_name: 'parser_options' undefined");
     $parser_options = {};
   }
   if ( defined($parser_options->{always_rules_only}) ) {
-    $self->debug(1,"$function_name: 'always_rules_only' option set to ".$parser_options->{always_rules_only});
+    *$self->{LOG}->debug(1,"$function_name: 'always_rules_only' option set to ".$parser_options->{always_rules_only});
   } else {
-    $self->debug(1,"$function_name: 'always_rules_only' option not defined: assuming $LINE_OPT_DEF_ALWAYS_RULES_ONLY");
+    *$self->{LOG}->debug(1,"$function_name: 'always_rules_only' option not defined: assuming $LINE_OPT_DEF_ALWAYS_RULES_ONLY");
     $parser_options->{always_rules_only} = $LINE_OPT_DEF_ALWAYS_RULES_ONLY;
   }
 
@@ -563,7 +563,7 @@ sub _parse_rule {
   } else {
     $condition = "";
   }
-  $self->debug(1,"$function_name: condition=>>>$condition<<<, rule=>>>$rule<<<");
+  *$self->{LOG}->debug(1,"$function_name: condition=>>>$condition<<<, rule=>>>$rule<<<");
 
   # Check if only rules with ALWAYS condition must be applied.
   # ALWAYS is a special condition that is used to flag the only rules that
@@ -571,7 +571,7 @@ sub _parse_rule {
   # is not set, this condition has no effect and is just reset to an empty conditions.
   if ( $parser_options->{always_rules_only} ) {
     if ( $condition ne $RULE_CONDITION_ALWAYS ) {
-      $self->debug(1,"$function_name: rule ignored ($RULE_CONDITION_ALWAYS condition not set)");
+      *$self->{LOG}->debug(1,"$function_name: rule ignored ($RULE_CONDITION_ALWAYS condition not set)");
       return;
     }
   }
@@ -581,7 +581,7 @@ sub _parse_rule {
 
   # Check if rule condition is met if one is defined
   if ( $condition ne "" ) {
-    $self->debug(1,"$function_name: checking condition >>>$condition<<<");
+    *$self->{LOG}->debug(1,"$function_name: checking condition >>>$condition<<<");
 
     # Condition may be negated if it starts with a !: remove it from the condition value.
     # If the condition is negated, when the condition is true the rule must not be applied.
@@ -595,7 +595,7 @@ sub _parse_rule {
       $cond_option_set = $cond_attribute;
       $cond_attribute = "";
     }
-    $self->debug(2,"$function_name: condition option set = '$cond_option_set', ".
+    *$self->{LOG}->debug(2,"$function_name: condition option set = '$cond_option_set', ".
                        "condition attribute = '$cond_attribute', negate=$negate");
     my $cond_satisfied = 1;       # Assume condition is satisfied
     if ( $cond_attribute ) {
@@ -618,7 +618,7 @@ sub _parse_rule {
     if ( !$cond_satisfied  ) {
       # When the condition is not satisfied and if option remove_if_undef is set, 
       # remove configuration line (if present).
-      $self->debug(1,"$function_name: condition not satisfied, flag set to remove matching configuration lines");
+      *$self->{LOG}->debug(1,"$function_name: condition not satisfied, flag set to remove matching configuration lines");
       $rule_info{remove_matching_lines} = 1;
       return \%rule_info;
     }
@@ -657,21 +657,21 @@ sub _apply_rules {
   my ($self, $config_rules, $config_options, $parser_options) = @_;
 
   unless ( $config_rules ) {
-    $self->error("$function_name: 'config_rules' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_rules' argument missing (internal error)");
     return 1;
   }
   unless ( $config_options ) {
-    $self->error("$function_name: 'config_options' argument missing (internal error)");
+    *$self->{LOG}->error("$function_name: 'config_options' argument missing (internal error)");
     return 1;
   }
   unless ( defined($parser_options) ) {
-    $self->debug(2,"$function_name: 'parser_options' undefined");
+    *$self->{LOG}->debug(2,"$function_name: 'parser_options' undefined");
     $parser_options = {};
   }
   if ( defined($parser_options->{remove_if_undef}) ) {
-    $self->debug(1,"$function_name: 'remove_if_undef' option set to ".$parser_options->{remove_if_undef});
+    *$self->{LOG}->debug(1,"$function_name: 'remove_if_undef' option set to ".$parser_options->{remove_if_undef});
   } else {
-    $self->debug(1,"$function_name: 'remove_if_undef' option not defined: assuming $LINE_OPT_DEF_REMOVE_IF_UNDEF");
+    *$self->{LOG}->debug(1,"$function_name: 'remove_if_undef' option not defined: assuming $LINE_OPT_DEF_REMOVE_IF_UNDEF");
     $parser_options->{remove_if_undef} = $LINE_OPT_DEF_REMOVE_IF_UNDEF;
   }
 
@@ -711,7 +711,7 @@ sub _apply_rules {
     } elsif ( $keyword =~ /^\?/ ) {
       $keyword =~ s/^\?//;
       $rule_parsing_options->{remove_if_undef} = 1;
-      $self->debug(2,"$function_name: 'remove_if_undef' option set for the current rule");
+      *$self->{LOG}->debug(2,"$function_name: 'remove_if_undef' option set for the current rule");
     }
 
     # Split different elements of the rule
@@ -733,7 +733,7 @@ sub _apply_rules {
 
     # If the keyword was "negated", remove (comment out) configuration line if present and enabled
     if ( $comment_line ) {
-      $self->debug(1,"$function_name: keyword '$keyword' negated, removing configuration line");
+      *$self->{LOG}->debug(1,"$function_name: keyword '$keyword' negated, removing configuration line");
       $self->_removeConfigLine($keyword,$line_fmt);
       next;
     }
@@ -742,22 +742,22 @@ sub _apply_rules {
     # Parse rule if it is non empty
     my $rule_info;
     if ( $rule ne '' ) {
-      $self->debug(1,"$function_name: processing rule $rule_id (variable=>>>$keyword<<<, rule=>>>$rule<<<, fmt=$line_fmt)");
+      *$self->{LOG}->debug(1,"$function_name: processing rule $rule_id (variable=>>>$keyword<<<, rule=>>>$rule<<<, fmt=$line_fmt)");
       $rule_info = $self->_parse_rule($rule,$config_options,$rule_parsing_options);
       next unless $rule_info;
-      $self->debug(2,"$function_name: information returned by rule parser: ".join(" ",sort(keys(%$rule_info))));
+      *$self->{LOG}->debug(2,"$function_name: information returned by rule parser: ".join(" ",sort(keys(%$rule_info))));
   
       if ( exists($rule_info->{error_msg}) ) {
-        $self->error("Error parsing rule >>>$rule<<<: ".$rule_info->{error_msg});
+        *$self->{LOG}->error("Error parsing rule >>>$rule<<<: ".$rule_info->{error_msg});
         # FIXME: decide whether an invalid rule is just ignored or causes any modification to be prevented.
         # $self->cancel()
         next;
       } elsif ( $rule_info->{remove_matching_lines} ) {
         if ( $rule_parsing_options->{remove_if_undef} ) {
-          $self->debug(1,"$function_name: removing configuration lines for keyword '$keyword'");
+          *$self->{LOG}->debug(1,"$function_name: removing configuration lines for keyword '$keyword'");
           $self->_removeConfigLine($keyword,$line_fmt);
         } else {
-          $self->debug(1,"$function_name: remove_if_undef not set, ignoring line to remove");
+          *$self->{LOG}->debug(1,"$function_name: remove_if_undef not set, ignoring line to remove");
         }
         next;      
       }
@@ -773,12 +773,12 @@ sub _apply_rules {
     if ( $rule_info->{attribute} ) {
       foreach my $option_set (@{$rule_info->{option_sets}}) {
         my $attr_value;
-        $self->debug(1,"$function_name: retrieving '".$rule_info->{attribute}."' value in option set $option_set");
+        *$self->{LOG}->debug(1,"$function_name: retrieving '".$rule_info->{attribute}."' value in option set $option_set");
         if ( $option_set eq $RULE_OPTION_SET_GLOBAL ) {
           if ( exists($config_options->{$rule_info->{attribute}}) ) {
             $attr_value = $config_options->{$rule_info->{attribute}};
           } else {
-            $self->debug(1,"$function_name: attribute '".$rule_info->{attribute}."' not found in global option set");
+            *$self->{LOG}->debug(1,"$function_name: attribute '".$rule_info->{attribute}."' not found in global option set");
             $attribute_present = 0;
           }
         } else {
@@ -786,7 +786,7 @@ sub _apply_rules {
           if ( $config_options->{$option_set} && exists($config_options->{$option_set}->{$rule_info->{attribute}}) ) {
             $attr_value = $config_options->{$option_set}->{$rule_info->{attribute}};
           } else {
-            $self->debug(1,"$function_name: attribute '".$rule_info->{attribute}."' not found in option set '$option_set'");
+            *$self->{LOG}->debug(1,"$function_name: attribute '".$rule_info->{attribute}."' not found in option set '$option_set'");
             $attribute_present = 0;
           } 
         }
@@ -799,7 +799,7 @@ sub _apply_rules {
         # LINE_VALUE_STRING_HASH.
         unless ( $attribute_present ) {
           if ( $rule_parsing_options->{remove_if_undef} ) {
-            $self->debug(1,"$function_name: attribute '".$rule_info->{attribute}."' undefined, removing configuration line");
+            *$self->{LOG}->debug(1,"$function_name: attribute '".$rule_info->{attribute}."' undefined, removing configuration line");
             $self->_removeConfigLine($keyword,$line_fmt);
           }
           next;
@@ -812,7 +812,7 @@ sub _apply_rules {
         if ( $value_fmt == LINE_VALUE_INSTANCE_PARAMS ) {
           foreach my $instance (sort keys %{$attr_value}) {
             my $params = $attr_value->{$instance};
-            $self->debug(1,"$function_name: formatting instance '$instance' parameters ($params)");
+            *$self->{LOG}->debug(1,"$function_name: formatting instance '$instance' parameters ($params)");
             $config_value = $self->_formatAttributeValue($params,
                                                          $line_fmt,
                                                          $value_fmt,
@@ -821,7 +821,7 @@ sub _apply_rules {
             my $config_param = $keyword;
             my $instance_uc = uc($instance);
             $config_param =~ s/%%INSTANCE%%/$instance_uc/;
-            $self->debug(2,"New variable name generated: >>>$config_param<<<");
+            *$self->{LOG}->debug(2,"New variable name generated: >>>$config_param<<<");
             $self->_updateConfigLine($config_param,$config_value,$line_fmt);
           }
           $config_updated = 1;
@@ -834,7 +834,7 @@ sub _apply_rules {
             # Keys may be escaped if they contain characters like '/': unescaping a non-escaped
             # string is generally harmless.
             my $tmp = unescape($k)." $v";
-            $self->debug(1,"$function_name: formatting (string hash) attribute '".$rule_info->{attribute}."' value ($tmp, value_fmt=$value_fmt)");
+            *$self->{LOG}->debug(1,"$function_name: formatting (string hash) attribute '".$rule_info->{attribute}."' value ($tmp, value_fmt=$value_fmt)");
             $config_value = $self->_formatAttributeValue($tmp,
                                                          $line_fmt,
                                                          $value_fmt,
@@ -849,20 +849,20 @@ sub _apply_rules {
           # options specified (if any).
           @array_values = (@array_values, @$attr_value)
         } else {
-          $self->debug(1,"$function_name: formatting attribute '".$rule_info->{attribute}."' value ($attr_value, value_fmt=$value_fmt)");
+          *$self->{LOG}->debug(1,"$function_name: formatting attribute '".$rule_info->{attribute}."' value ($attr_value, value_fmt=$value_fmt)");
           $config_value .= ' ' if $config_value;
           $config_value .= $self->_formatAttributeValue($attr_value,
                                                         $line_fmt,
                                                         $value_fmt,
                                                         $value_opt,
                                                        );
-          $self->debug(2,"$function_name: adding attribute '".$rule_info->{attribute}."' from option set '".$option_set.
+          *$self->{LOG}->debug(2,"$function_name: adding attribute '".$rule_info->{attribute}."' from option set '".$option_set.
                                                                 "' to value (config_value=".$config_value.")");
         }
       }
     } else {
       # $rule_info->{attribute} empty means an empty rule : in this case,just write the configuration param.
-      $self->debug(1,"$function_name: no attribute specified in rule '$rule'");
+      *$self->{LOG}->debug(1,"$function_name: no attribute specified in rule '$rule'");
     }
 
     # There is a delayed formatting of arrays after collecting all the values from all
@@ -873,7 +873,7 @@ sub _apply_rules {
         # With this value format, several lines with the same keyword are generated,
         # one for each array value (if value_opt is not LINE_VALUE_OPT_SINGLE, all
         # the values are concatenated on one line).
-        $self->debug(1,"$function_name: formatting (array) attribute '".$rule_info->{attribute}."as LINE_VALUE_OPT_SINGLE");
+        *$self->{LOG}->debug(1,"$function_name: formatting (array) attribute '".$rule_info->{attribute}."as LINE_VALUE_OPT_SINGLE");
         foreach my $val (@array_values) {
           $config_value = $self->_formatAttributeValue($val,
                                                        $line_fmt,
