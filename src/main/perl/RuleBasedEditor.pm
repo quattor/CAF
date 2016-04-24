@@ -10,13 +10,11 @@
 # updating the file is the Quattor configuration and conditions can be defined
 # based on the contents of this configuration.
 #
-# This module extends the base methods of the CAF FileEditor: it contains
-# all the methods making the rule-based editor (only one being a public method).
+# This module is a subclass of the CAF FileEditor: it extends the base methods of 
+# the CAF FileEditor. In addition to the constructor it has only one public method.
 # The methods provided in this module can be used at the same time as the
 # base methods of the FileEditor.
 #
-# The code of the rule-based editor is maintained in a separate module only for
-# clarity. It cannot be used directly (there is intentionally not constructor).
 #
 #######################################################################
 
@@ -24,10 +22,10 @@ package CAF::RuleBasedEditor;
 
 use strict;
 use warnings;
-use NCM::Component;
 use vars qw(@ISA $EC);
-@ISA = qw(NCM::Component);
 $EC=LC::Exception::Context->new->will_store_all;
+
+use parent qw(CAF::FileEditor Exporter);
 
 use EDG::WP4::CCM::Element;
 
@@ -37,11 +35,8 @@ use Encode qw(encode_utf8);
 
 local(*DTA);
 
-# Constant duplicated from FileEditor:
-# Importing them from it failed due to a chicken and egg problem...
-use Fcntl qw(:seek);
-use constant BEGINNING_OF_FILE => (SEEK_SET, 0);
-use constant ENDING_OF_FILE => (SEEK_END, 0);
+# Constants from FileEditor
+use CAF::FileEditor qw(BEGINNING_OF_FILE ENDING_OF_FILE);
 
 
 #########################################################
@@ -118,8 +113,9 @@ Readonly my $BACKUP_FILE_EXT => ".old";
 
 =head1 DESCRIPTION
 
-This module implements a rule-based editor. It extends the B<CAF::FileEditor>. It has only 
-one public method: B<updatefile> (see below) and no specific constructor.
+This module implements a rule-based editor. It is a subclass of the B<CAF::FileEditor>
+and extends it. In addition to the constructor, it has only 
+one public method: B<updatefile> (see below).
 
 Rules used to edit the file are defined as hashes: each entry defines a rule.
 Multiple rules can be applied to the same file: it is important that they are
@@ -207,6 +203,23 @@ configuration-modules-grid repository.
 =head2 Public methods
 
 =over
+
+=item new
+
+This is the constructor. It mainly executes the FileEditor constructor and supports the
+same arguments.
+
+==cut
+
+sub new
+{
+    my $class = shift;
+    my $self = $class->SUPER::new (@_);
+    return $self;
+}
+
+
+=pod
 
 =item updateFile
 

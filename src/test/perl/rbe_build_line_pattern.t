@@ -8,7 +8,6 @@ use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/modules";
 use testapp;
-use CAF::FileEditor;
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
@@ -46,7 +45,7 @@ $SIG{__DIE__} = \&confess;
 open ($log, ">", \$str);
 $this_app->set_report_logfile ($log);
 
-my $fh = CAF::FileEditor->open($FILENAME, log => $this_app);
+my $fh = CAF::RuleBasedEditor->open($FILENAME, log => $this_app);
 ok(defined($fh), $FILENAME." was opened");
 
 

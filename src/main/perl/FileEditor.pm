@@ -12,8 +12,7 @@ use LC::File;
 use Exporter;
 use Fcntl qw(:seek);
 
-use CAF::RuleBasedEditor qw(:rule_constants);
-use parent qw(CAF::FileWriter Exporter CAF::RuleBasedEditor);
+use parent qw(CAF::FileWriter Exporter);
 our @EXPORT = qw(BEGINNING_OF_FILE ENDING_OF_FILE);
 
 use constant BEGINNING_OF_FILE => (SEEK_SET, 0);
