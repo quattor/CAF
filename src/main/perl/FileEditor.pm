@@ -46,16 +46,16 @@ the class constructor.
 =item new
 
 Returns a new object it accepts the same arguments as the constructor
-for C<CAF::FileWriter> with one additional option: 
+for C<CAF::FileWriter> with one additional option:
 
 =over
 
-=item source 
+=item source
 
 This option, when present, must be a file name whose contents will be used
 as the initial contents for the edited file if the source modification time
 is more recent than the edited file modification time. This allows to rebuild
-the file contents based on a new version of the reference file. 
+the file contents based on a new version of the reference file.
 
 The C<source> can be a pipe: in this case, it is always considered more recent
 than the edited file.
@@ -87,20 +87,19 @@ sub _is_reference_newer
             $is_newer = 1
         } elsif ( $self->_is_valid_file(*$self->{options}->{source}) ) {
             # stat()[9] is modification time
-            if ( !$self->_is_valid_file(*$self->{filename}) || 
+            if ( !$self->_is_valid_file(*$self->{filename}) ||
                  ((stat(*$self->{options}->{source}))[9] > (stat(*$self->{filename}))[9]) ) {
                 $is_newer = 1
             }
         }
     }
-    #FIXME: replace by $self->debug() after PR #154 has been merged...
-    if ( *$self->{LOG} ) {
-        if ( $is_newer ) {
-            *$self->{LOG}->debug(1, "File ", *$self->{filename}, " older than reference file (", *$self->{options}->{source}, ",");
-        } else {
-            *$self->{LOG}->debug(1, "Reference file (", *$self->{options}->{source}, ") older than ", *$self->{filename});
-        };
+
+    if ( $is_newer ) {
+        $self->debug(1, "File ", *$self->{filename}, " older than reference file (", *$self->{options}->{source}, ",");
+    } else {
+        $self->debug(1, "Reference file (", *$self->{options}->{source}, ") older than ", *$self->{filename});
     };
+
     return $is_newer;
 }
 
@@ -114,13 +113,13 @@ sub new
     *$self->{options}->{source} = $opts{source} if exists ($opts{source});
     if ( $self->_is_reference_newer() ) {
         # As this is a non reproducible event, be sure to log it when it happens
-        *$self->{LOG}->info("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.") if *$self->{LOG};
+        $self->info("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.");
         $src_file = *$self->{options}->{source};
     } elsif ($self->_is_valid_file(*$self->{filename})) {
         $src_file = *$self->{filename};
     }
     if ( $src_file ) {
-        *$self->{LOG}->debug(2, "Reading initial contents from $src_file") if *$self->{LOG};
+        $self->debug(2, "Reading initial contents from $src_file");
         my $txt = LC::File::file_contents ($src_file);
         $self->IO::String::open ($txt);
         $self->seek(IO_SEEK_END);
@@ -173,7 +172,7 @@ sub head_print
     return $self;
 }
 
-=pod 
+=pod
 
 =item seek_begin
 
@@ -187,7 +186,7 @@ sub seek_begin
     $self->seek(IO_SEEK_BEGIN);
 }
 
-=pod 
+=pod
 
 =item seek_end
 
@@ -248,7 +247,7 @@ sub replace_lines
 =item add_or_replace_sysconfig_lines(key, value, whence)
 
 Replace the C<value> in lines matching the C<key>. If
-there is no match, a new line will be added to the where C<whence> 
+there is no match, a new line will be added to the where C<whence>
 and C<offset> tells us.
 The sysconfig_separator value can be changed if it's not the usual '='.
 
@@ -258,12 +257,12 @@ The sysconfig_separator value can be changed if it's not the usual '='.
 sub add_or_replace_sysconfig_lines {
     my ($self, $key, $value, $whence, $offset) = @_;
 
-    ($offset, $whence) = IO_SEEK_END if (not defined($whence)); 
-    $offset = 0 if (not defined($offset)); 
+    ($offset, $whence) = IO_SEEK_END if (not defined($whence));
+    $offset = 0 if (not defined($offset));
 
     $self->add_or_replace_lines('^/s*'.$key.'/s*'.SYSCONFIG_SEPARATOR,
                                 '^'.$key.'/s*'.SYSCONFIG_SEPARATOR.'/s*'.$value,
-                                $key.SYSCONFIG_SEPARATOR.$value."\n", 
+                                $key.SYSCONFIG_SEPARATOR.$value."\n",
                                 $whence, $offset);
 }
 
@@ -273,18 +272,18 @@ sub add_or_replace_sysconfig_lines {
 
 Replace lines matching C<re> but not C<goodre> with C<newvalue>. If
 there is no match, a new line will be added where the C<whence>
-and C<offset> tell us. See C<IO::String::seek> 
-for details; e.g. use the constants tuple 
+and C<offset> tell us. See C<IO::String::seek>
+for details; e.g. use the constants tuple
 BEGINNING_OF_FILE or ENDING_OF_FILE.
 If C<add_after_newline> is true or undef, before adding the new line,
 it is verified that a newline precedes this position. If no newline
 char is found, one is added first.
 
-C<whence> must be one of SEEK_SET, SEEK_CUR or SEEK_END; 
-everything else will be ignored (an error is logged if 
-logging is set)). 
+C<whence> must be one of SEEK_SET, SEEK_CUR or SEEK_END;
+everything else will be ignored (an error is logged if
+logging is set)).
 
-Reminder: if the offset position lies beyond SEEK_END, padding will 
+Reminder: if the offset position lies beyond SEEK_END, padding will
 occur with $self->pad, which defaults to C<\0>.
 
 =cut
@@ -293,24 +292,23 @@ sub add_or_replace_lines
 {
     my ($self, $re, $goodre, $newvalue, $whence, $offset, $add_after_newline) = @_;
 
-    $offset = 0 if (not defined($offset)); 
+    $offset = 0 if (not defined($offset));
     $add_after_newline = 1 if (not defined($add_after_newline));
 
-    if (*$self->{LOG}) {
-        my $fname = *$self->{'filename'};
-        my $nv = $newvalue;
-        chop $nv;
-        *$self->{LOG}->debug (5, "add_or_replace_lines ($fname):",
-                                 " re = '$re'\tgoodre = '$goodre'",
-                                 " newvalue = '$nv'",
-                                 " whence = '$whence'",
-                                 " offset = '$offset'",
-                                 " add_after_newline = '$add_after_newline'",
-                                 );
-    }
+    my $fname = *$self->{'filename'};
+    my $nv = $newvalue;
+    chop $nv;
+    $self->debug (5, "add_or_replace_lines ($fname):",
+                  " re = '$re'\tgoodre = '$goodre'",
+                  " newvalue = '$nv'",
+                  " whence = '$whence'",
+                  " offset = '$offset'",
+                  " add_after_newline = '$add_after_newline'",
+        );
+
     my $add = 1;
     my @lns;
-    
+
     my $cur_pos=$self->pos;
     $self->seek (IO_SEEK_BEGIN);
     while (my $l = <$self>) {
@@ -325,10 +323,10 @@ sub add_or_replace_lines
             push (@lns, $l);
         }
     }
-    
+
 
     if ($add) {
-        if ($whence == SEEK_SET || $whence == SEEK_CUR || $whence == SEEK_END) { 
+        if ($whence == SEEK_SET || $whence == SEEK_CUR || $whence == SEEK_END) {
             # seek to proper position
             if ($whence == SEEK_CUR) {
                 # restore position only relevant for SEEK_CUR
@@ -339,7 +337,7 @@ sub add_or_replace_lines
 
             # new current position
             my $new_cur_pos = $self->pos;
-            
+
             # read in all remaining text
             my $remainder = join('', <$self>);
 
@@ -350,8 +348,7 @@ sub add_or_replace_lines
                 my $buf = "";
                 read($self, $buf, 1);
                 $print_newline = ($buf ne "\n") && (substr($newvalue, 0, 1) ne "\n");
-                *$self->{LOG}->debug (5, "add_or_replace_lines: inserting newline: $print_newline")
-                    if *$self->{LOG};
+                $self->debug (5, "add_or_replace_lines: inserting newline: $print_newline");
             }
 
             # seek to position and insert text
@@ -359,8 +356,8 @@ sub add_or_replace_lines
             print $self "\n" if $print_newline;
             print $self $newvalue;
             print $self $remainder;
-        } elsif (*$self->{LOG}) {
-            *$self->{LOG}->error ("Wrong whence $whence");
+        } else {
+            $self->error ("Wrong whence $whence");
         }
     } else {
         $self->set_contents (join ("", @lns));
@@ -373,14 +370,14 @@ sub add_or_replace_lines
 
 =item get_all_positions(regex, whence, offset)
 
-Return reference to the arrays with the positions 
-before and after all matches of the compiled regular expression 
-C<regex>, starting from C<whence> (default 
-beginning) and C<offset> (default 0). (If the regexp 
+Return reference to the arrays with the positions
+before and after all matches of the compiled regular expression
+C<regex>, starting from C<whence> (default
+beginning) and C<offset> (default 0). (If the regexp
 does not match, references to empty arrays are returned).
 
-Global regular expression matching is performed (i.e. C<m/$regex/g>). 
-The text is searched without line-splitting, but multiline regular 
+Global regular expression matching is performed (i.e. C<m/$regex/g>).
+The text is searched without line-splitting, but multiline regular
 expressions like C<qr{^something.*$}m> can be used for per line matching.
 
 =cut
@@ -389,33 +386,33 @@ sub get_all_positions
 {
     my ($self, $regex, $whence, $offset) = @_;
 
-    ($offset, $whence) = IO_SEEK_BEGIN if (not defined($whence)); 
-    $offset = 0 if (not defined($offset)); 
-    
+    ($offset, $whence) = IO_SEEK_BEGIN if (not defined($whence));
+    $offset = 0 if (not defined($offset));
+
     my $cur_pos = $self->pos;
 
     my @before = ();
     my @after = ();
 
-    if ($whence == SEEK_SET || $whence == SEEK_CUR || $whence == SEEK_END) { 
+    if ($whence == SEEK_SET || $whence == SEEK_CUR || $whence == SEEK_END) {
         $self->seek($offset, $whence);
 
         my $remainder = join('', <$self>);
 
-        # This has to be global match, otherwise this becomes 
+        # This has to be global match, otherwise this becomes
         # an infinite loop if there is a match
         while ($remainder =~ /$regex/g) {
             push(@before, $-[0]);
             push(@after, $+[0]+1);
         }
-        
+
         # restore original position
         $self->seek ($cur_pos, SEEK_SET);
-    } elsif (*$self->{LOG}) {
-        *$self->{LOG}->error ("Wrong whence $whence");
+    } else {
+        $self->error ("Wrong whence $whence");
     }
 
-    return (\@before, \@after);    
+    return (\@before, \@after);
 }
 
 
@@ -424,11 +421,11 @@ sub get_all_positions
 =item get_header_positions(regex, whence, offset)
 
 Return the position before and after the "header".
-A header is a block of lines that start with same 
-compiled regular expression C<regex>. 
+A header is a block of lines that start with same
+compiled regular expression C<regex>.
 Default value for C<regex> is C<qr{^\s*#.*$}m>
-(matching a block of text with each line starting with a C<#>); 
-the default value is also used when C<regex> is C<undef>. 
+(matching a block of text with each line starting with a C<#>);
+the default value is also used when C<regex> is C<undef>.
 C<(-1, -1)> is returned if no match was found.
 
 C<whence> and C<offset> are passed to underlying C<get_all_positions>
@@ -444,7 +441,7 @@ sub get_header_positions
     my ($before, $after) = $self->get_all_positions($regex, $whence, $offset);
 
     my ($start, $end)= (-1, -1);
-    
+
     my $matches = scalar @$before;
     if ($matches) {
         # start is the first match
@@ -477,10 +474,9 @@ sub remove_lines
 {
     my ($self, $re, $goodre) = @_;
 
-    if (*$self->{LOG}) {
-        my $fname = *$self->{'filename'};
-        *$self->{LOG}->debug (5, "remove_lines ($fname): re = '$re'\tgoodre = '$goodre'");
-    }
+    my $fname = *$self->{'filename'};
+    $self->debug(5, "remove_lines ($fname): re = '$re'\tgoodre = '$goodre'");
+
     my @lns;
     $self->seek_begin();
 
@@ -508,13 +504,13 @@ The following constants are automatically exported when using this module:
 =item C<BEGINNING_OF_FILE>
 
 Flag to pass to C<add_or_replace_lines>. Lines should be added at the
-beginning of the file. (To be used in list context, as this is actually 
+beginning of the file. (To be used in list context, as this is actually
 C<(SEEK_SET, 0)>.)
 
 =item C<ENDING_OF_FILE>
 
 Flag to pass to C<add_or_replace_lines>. Lines should be added at the
-end of the file. (To be used in list context, as this is actually 
+end of the file. (To be used in list context, as this is actually
 C<(SEEK_END, 0)>.)
 
 =back
