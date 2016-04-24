@@ -14,7 +14,7 @@ use File::Temp qw(tempfile);
 
 my $testdir = 'target/test/editor';
 mkpath($testdir);
-our $filename = tempfile(DIR => $testdir);
+(undef, our $filename) = tempfile(DIR => $testdir);
 
 chomp($filename);
 
