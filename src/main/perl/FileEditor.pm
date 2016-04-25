@@ -7,9 +7,7 @@ package CAF::FileEditor;
 
 use strict;
 use warnings;
-use CAF::FileWriter;
 use LC::File;
-use Exporter;
 use Fcntl qw(:seek);
 
 use parent qw(CAF::FileWriter Exporter);
