@@ -7,13 +7,13 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/modules";
-use testapp;
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
 use Test::More tests => 8;
 use Test::NoWarnings;
 use Test::Quattor;
+use Test::Quattor::Object;
 use Carp qw(confess);
 
 Test::NoWarnings::clear_warnings();
@@ -29,23 +29,12 @@ Basic test for rule-based editor (line pattern build)
 
 Readonly my $FILENAME => '/my/file';
 
-our %opts = ();
-our $path;
-my ($log, $str);
-my $this_app = testapp->new ($0, qw (--verbose));
+my $obj = Test::Quattor::Object->new();
 
 $SIG{__DIE__} = \&confess;
 
-*testapp::error = sub {
-    my $self = shift;
-    $self->{ERROR} = @_;
-};
 
-
-open ($log, ">", \$str);
-$this_app->set_report_logfile ($log);
-
-my $fh = CAF::RuleBasedEditor->open($FILENAME, log => $this_app);
+my $fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($fh), $FILENAME." was opened");
 
 

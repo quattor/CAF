@@ -7,13 +7,13 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/modules";
-use testapp;
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
 use Test::More tests => 20;
 use Test::NoWarnings;
 use Test::Quattor;
+use Test::Quattor::Object;
 use Carp qw(confess);
 
 Test::NoWarnings::clear_warnings();
@@ -29,24 +29,13 @@ Basic test for rule-based editor (value formatting)
 
 Readonly my $FILENAME => '/my/file';
 
-our %opts = ();
-our $path;
-my ($log, $str);
-my $this_app = testapp->new ($0, qw (--verbose));
+my $obj = Test::Quattor::Object->new();
 
 $SIG{__DIE__} = \&confess;
 
-*testapp::error = sub {
-    my $self = shift;
-    $self->{ERROR} = @_;
-};
-
-
-open ($log, ">", \$str);
-$this_app->set_report_logfile ($log);
 
 my $formatted_value;
-my $rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $this_app);
+my $rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($rbe_fh), $FILENAME." was opened");
 
 # LINE_VALUE_BOOLEAN
@@ -151,7 +140,7 @@ Readonly my @TEST_ARRAY => ('confFile', 'logFile', 'unused', 'logKeep', 'logFile
 Readonly my $FORMATTED_ARRAY => 'confFile logFile unused logKeep logFile';
 Readonly my $FORMATTED_ARRAY_SORTED => 'confFile logFile logFile logKeep unused';
 Readonly my $FORMATTED_ARRAY_UNIQUE => 'confFile logFile logKeep unused';
-my $rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $this_app);
+my $rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($rbe_fh), $FILENAME." was opened");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
                                                   LINE_FORMAT_KEY_VAL,

@@ -3,9 +3,9 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/modules";
-use testapp;
 use CAF::RuleBasedEditor;
 use Test::More;
+use Test::Quattor::Object;
 use Carp qw(confess);
 use File::Path;
 use File::Temp qw(tempfile);
@@ -27,17 +27,10 @@ our $text = TEXT;
 
 our %opts = ();
 our $path;
-my ($log, $str);
-my $this_app = testapp->new ($0, qw (--verbose));
+my $obj = Test::Quattor::Object->new();
 
 $SIG{__DIE__} = \&confess;
 
-*testapp::error = sub {
-    my $self = shift;
-    $self->{ERROR} = @_;
-};
-
-open ($log, ">", \$str);
 my $fh = CAF::RuleBasedEditor->new ($filename);
 isa_ok ($fh, "CAF::RuleBasedEditor", "Correct class after new method");
 isa_ok ($fh, "CAF::FileEditor", "Correct class inheritance after new method");

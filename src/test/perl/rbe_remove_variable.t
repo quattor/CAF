@@ -7,13 +7,13 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/modules";
-use testapp;
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
 use Test::More tests => 12;
 use Test::NoWarnings;
 use Test::Quattor;
+use Test::Quattor::Object;
 use Carp qw(confess);
 
 Test::NoWarnings::clear_warnings();
@@ -154,19 +154,9 @@ set_caf_file_close_diff(1);
 
 our %opts = ();
 our $path;
-my ($log, $str);
-my $this_app = testapp->new ($0, qw (--verbose));
+my $obj = Test::Quattor::Object->new();
 
 $SIG{__DIE__} = \&confess;
-
-*testapp::error = sub {
-    my $self = shift;
-    $self->{ERROR} = @_;
-};
-
-
-open ($log, ">", \$str);
-$this_app->set_report_logfile ($log);
 
 my $changes;
 my $fh;
@@ -175,7 +165,7 @@ my $fh;
 # Test negated keywords
 my $dpm_options = {};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $this_app);
+my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_1,
                            $dpm_options,
@@ -186,7 +176,7 @@ $fh->close();
 # Test removal of a config line is config option is not defined
 $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $this_app);
+my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_2,
                            $dpm_options,
@@ -197,7 +187,7 @@ $fh->close();
 # Test removal of a config line is rule condition is not met
 $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $this_app);
+my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_3,
                            $dpm_options,
@@ -209,7 +199,7 @@ $fh->close();
 # when keyword is prefixed by ?
 $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $this_app);
+my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_4,
                            $dpm_options);
@@ -220,7 +210,7 @@ $fh->close();
 # Test removal of config lines appearing multiple times
 $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_2);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $this_app);
+my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_1,
                            $dpm_options,
