@@ -8,81 +8,84 @@
 =head1 DESCRIPTION
 
 This module implements a rule-based editor that is used to modify the content
-of an existing file without taking care of the whole file. Each rule
-driving the edition process is applied to all matching lines. The input for
-updating the file is the Quattor configuration and conditions can be defined
-based on the contents of this configuration.
+of an existing file. Each rule driving the editing process is applied to all 
+lines wose "keyword" is matching the one specified in the rule. The input for
+updating the file is a hash typically built from the Quattor configuration when
+the rule-based editor is called from a configuration module. Conditions can be defined
+based on the contents of this configuration. Lines in the configuration file
+that don't match any rule are kept unmodified.
 
 This module is a subclass of the L<CAF::FileEditor>: it extends the base methods of 
-the CAF FileEditor. In addition to the constructor it has only one public method.
-The methods provided in this module can be used at the same time as the
-base methods of the L<CAF::FileEditor>.
+the L<CAF::FileEditor>. It has only one public method (it uses the L<CAF::FileEditor> constructor).
+The methods provided in this module can be combined with L<CAF::FileEditor>
+methods to edit a file.
 
-Rules used to edit the file are defined as hashes: each entry defines a rule.
+Rules used to edit the file are defined in a hash: each entry (key/value pair) defines a rule.
 Multiple rules can be applied to the same file: it is important that they are
-orthogonal, else the result is unpredictable. The order used to apply rules is undefined.
-The result of applying the rules with the same configuration is idempotent when starting 
-from the same initial file but sucessive edition of a file (with different configuration values)
-may not necessarily be idempotent (in general they are).
+orthogonal, else the result is unpredictable. The order used to apply rules is the alphabetical
+order of keywords. Applying the rules to the same configuration always give the same result
+but the changes are not necessarily idempotent (order in which successive edits occured
+may matter, depending on the actual rules).
 
 The hash entry key represents the line keyword in configuration file and
 hash value is the parsing rule for the keyword value. Parsing rule format is :
 
       [condition->]option_name:option_set[,option_set,...];line_fmt[;value_fmt[:value_fmt_opt]]
 
-If the line keyword (hash key) is starting with a '-', this means that the matching
-configuration line must be removed/commented out (instead of added/updated) from the
-configuration file if present. If it is starting with a '?', this means that the
-matching line must be removed/commented out if the option is undefined.
+If the line keyword (hash key) starts with a '-', the matching
+configuration line will be removed/commented out (instead of added/updated) from the
+configuration file if present. If it starts with a '?', the
+matching line will be removed/commented out if the option is undefined.
 
 =over
 
 =item condition
 
-an option or an option set that must exist for the rule to be applied.
-Both option_set and option_name:option_set are accepted (see below).
-Only one option set is allowed and only its existence, not its value is tested.
-In addition, the condition may be negated (option or option_set must
-not exist) by prepending it with '!'.
+An option or an option set (see below) that must exist for the rule to be applied.
+Both C<option_set> and C<option_name:option_set> are accepted.
+One option set only is allowed and only its existence (not its value) is tested.
+It is possible to negate the condition (option or option_set must not exist) 
+by prepending it with '!'.
 
 =item option_name 
 
-the name of an option that will be retrieved from the configuration.
+The name of an option that will be retrieved from the configuration. An option is
+a key in the option set hash.
 
 =item option_set 
 
-the name of an option set where the option is located in (for example 'dpnsHost:dpm'
-means C<dpnsHost> option of 'dpm' option set. An option set is a sub-hash in the configuration
-hash. C<GLOBAL> is a special value for 'option_set' indicating that the option is a global option,
-instead of belonging to a specific option set (global options are at the top level of the option
+The name of an option set where the option is located in (for example 'dpnsHost:dpm'
+means C<dpnsHost> option of C<dpm> option set). An option set is a sub-hash in the configuration
+hash. C<GLOBAL> is a special value for C<option_set> indicating that the option is a global option,
+instead of belonging to a specific option set (global options are at the top level of the configuration
 hash).
 
 =item line_fmt 
 
-defines the format used to represent the key/value pair. 3 formats are
+Defines the format used to represent the key/value pair. The following formats are
 supported (see LINE_FORMAT_xxx constants below):
 
 =over
 
-=item 
+=item *
 
-a SH shell environment variable definition (export key=val).
+A SH shell environment variable definition (export key=val).
 
-=item 
+=item *
 
-a SH shell variable definition (key=val).
+A SH shell variable definition (key=val).
 
-=item 
+=item *
 
-a 'keyword value' line, as used by Xrootd or Apache config files.
+A 'keyword value' line, as used by Xrootd or Apache config files.
 
-=item 
+=item *
 
-a 'setenv keyword value' line, as used by Xrootd config files mainly. It can also be used in a CSH shell script.
+A 'setenv keyword value' line, as used by Xrootd config files mainly. It can also be used in a CSH shell script.
 
-=item 
+=item *
 
-a 'set keyword value' line, as used by Xrootd config files mainly. It doesn't work in a CSH shell script (C<=> missing).
+A 'set keyword value' line, as used by Xrootd config files mainly. It doesn't work in a CSH shell script (C<=> missing).
 
 =back
 
@@ -885,7 +888,7 @@ sub _apply_rules
     }
 
 
-    # Loop over all config rule entries.
+    # Loop over all config rule entries, sorted by keyword alphabetical order.
     # Config rules are stored in a hash whose key is the variable to write
     # and whose value is the rule itself.
     # If the variable name start with a '-', this means that the matching configuration
