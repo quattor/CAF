@@ -313,7 +313,8 @@ Supported entries for options hash:
     remove_if_undef: if true, remove matching configuration line is rule condition is not met (D: false)
 
 Return value
-    always 0
+    sucess: 1
+    argument error: undef
     
 =cut
 
@@ -324,11 +325,11 @@ sub updateFile
 
     unless ($config_rules) {
         *$self->{LOG}->error("$function_name: 'config_rules' argument missing (internal error)");
-        return 1;
+        return;
     }
     unless ($config_options) {
         *$self->{LOG}->error("$function_name: 'config_options' argument missing (internal error)");
-        return 1;
+        return;
     }
     unless (defined($parser_options)) {
         *$self->{LOG}->debug(2, "$function_name: 'parser_options' undefined");
@@ -353,7 +354,7 @@ sub updateFile
                         $parser_options
                        );
 
-    return 0;
+    return 1;
 }
 
 
