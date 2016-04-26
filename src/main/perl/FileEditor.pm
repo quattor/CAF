@@ -71,6 +71,7 @@ sub _is_reference_newer
     my ($self) = @_;
     my $is_newer = 0;   # Assume false
     if (  exists(*$self->{options}->{source}) && $self->_is_valid_source(*$self->{options}->{source}) ) {
+        # stat()[9] is modification time
         if ( !$self->_is_valid_source(*$self->{filename}) || 
              ((stat(*$self->{options}->{source}))[9] > (stat(*$self->{filename}))[9]) ) {
           $is_newer = 1
@@ -102,7 +103,7 @@ sub new
         $src_file = *$self->{filename};
     }
     if ( $src_file ) {
-        *$self->{LOG}->debug(2, "Reading initial contents from $src_file");
+        *$self->{LOG}->debug(2, "Reading initial contents from $src_file") if *$self->{LOG};
         my $txt = LC::File::file_contents ($src_file);
         $self->IO::String::open ($txt);
         $self->seek(IO_SEEK_END);
