@@ -5,11 +5,29 @@ use FindBin qw($Bin);
 use lib "$Bin/modules";
 use CAF::FileEditor;
 use Test::More tests => 7;
+use Test::MockModule;
 use Test::Quattor::Object;
 use Carp qw(confess);
 use File::Path;
 use File::Temp qw(tempfile);
 use Readonly;
+
+$SIG{__DIE__} = \&confess;
+
+# FIXME:
+# LC::File::file_contents (used by CAF::FileEditor constructor) doesn't work 
+# in the unit test context. Mock it until we find a better solution...
+our $lcfile = Test::MockModule->new("LC::File");
+
+sub read_file_contents {
+    my $fname = shift;
+    my $fh;
+    open($fh, "<", $fname) || die ("failed to open $fname");
+    my $contents = join('', <$fh>);
+    return $contents;
+}
+$lcfile->mock("file_contents", \&read_file_contents);
+
 
 my $testdir = 'target/test/editor';
 mkpath($testdir);
@@ -23,8 +41,6 @@ Readonly my $ANOTHER_TEXT => "adarga antigua, rocín flaco y galgo corredor.";
 
 my $fh;
 my $obj = Test::Quattor::Object->new();
-
-$SIG{__DIE__} = \&confess;
 
 
 # Create a file and check that it is empty
