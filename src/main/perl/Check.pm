@@ -7,6 +7,8 @@ use Readonly;
 
 use File::Path qw(rmtree);
 use File::Copy qw(move);
+use File::Temp qw(tempdir);
+use File::Basename qw(dirname);
 
 Readonly my $KEEPS_STATE => 'keeps_state';
 
@@ -20,6 +22,7 @@ Readonly::Hash my %CLEANUP_DISPATCH => {
 Readonly::Hash my %LC_CHECK_DISPATCH => {
     directory => \&LC::Check::directory,
     status => \&LC::Check::status,
+    reset_exception => sub {return 1;}, # do nothing
 };
 
 our $EC = LC::Exception::Context->new->will_store_all;
@@ -190,7 +193,7 @@ a broken symlink either exists with C<-l> or not.)
 sub directory_exists
 {
     my ($self, $directory) = @_;
-    return -d $directory;
+    return $directory && -d $directory;
 }
 
 =item file_exists
@@ -208,7 +211,7 @@ a broken symlink either exists with C<-l> or not.)
 sub file_exists
 {
     my ($self, $filename) = @_;
-    return -f $filename;
+    return $filename && -f $filename;
 }
 
 =item any_exists
@@ -228,7 +231,7 @@ a broken symlink either exists with C<-l> or not.
 sub any_exists
 {
     my ($self, $path) = @_;
-    return -e $path || -l $path;
+    return $path && (-e $path || -l $path);
 }
 
 =item cleanup
@@ -312,12 +315,70 @@ Makes parent directories as needed,
 is a wrapper around C<LC::Check::directory>
 and executed with C<LC_Check>.
 
+Returns the directory name on SUCCESS, undef otherwise.
+
+Additional options
+
+=over
+
+=item temp
+
+A boolean if true will create a a temporary directory using
+L<File::Temp::tempdir>.
+
+The directory name is the template to use (any trailing
+C<X> characters will be replaced with random characters by C<tempdir>;
+and the directory name will be padded up to at least 4 C<X>).
+
+The C<CLEANUP> option is also set (an removal
+attempt (incl. any files and/or subdirectries)
+will be made at the end of the program).
+
+=back
+
 =cut
+
+# perl5.8.8 has no Temp::File->new() way of making a tempdir
+# tempdir + CLEANUP is supported in 5.8.8x
 
 sub directory
 {
     my ($self, $directory, %opts) = @_;
-    return $self->LC_Check("directory", [$directory], \%opts);
+
+    my $is_temp = delete $opts{temp};
+
+    if ($is_temp) {
+        # pad to at least X by adding 4
+        $directory .= 'X' x 4 if $directory !~ m/X{4}$/;
+
+        if($self->_get_noaction($opts{$KEEPS_STATE}, "directory: (tempdir) ")) {
+            $self->verbose("NoAction set, not going to create a temporary directory $directory with tempdir");
+        } else {
+            # reset any exceptions
+            $self->_function_catch($LC_CHECK_DISPATCH{reset_exception});
+
+            my $base = dirname($directory);
+            if (! $self->directory_exists($base)) {
+                if (! $self->directory($base, %opts)) {
+                    return $self->fail("Failed to create basedir for temporary directory $directory");
+                };
+            }
+
+            local $@;
+            eval {
+                $directory = tempdir($directory, CLEANUP => 1);
+            };
+
+            if($@) {
+                chomp($@);
+                return $self->fail("Failed to create temporary directory $directory: $@");
+            } else {
+                $self->verbose("Created temporary directory $directory with tempdir");
+            }
+        }
+    }
+
+    return defined($self->LC_Check("directory", [$directory], \%opts)) ? $directory : undef;
 }
 
 =item status

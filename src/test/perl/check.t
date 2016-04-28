@@ -240,17 +240,49 @@ $CAF::Object::NoAction = 0;
 
 # add a/b/c to test mkdir -p behaviour
 rmtree($basetest) if -d $basetest;
-ok($mc->directory("$basetest/a/b/c"), "directory returns success");
-ok($mc->directory_exists("$basetest/a/b/c"), "directory_exists true on directory with NoAction=0");
+my $testdir = "$basetest/a/b/c";
+is($mc->directory($testdir), $testdir, "directory returns directory name with NoAction=0");
+ok($mc->directory_exists($testdir), "directory_exists true on directory with NoAction=0");
 
 # Tests with NoAction
 $CAF::Object::NoAction = 1;
 
 # add a/b/c to test mkdir -p behaviour
 rmtree($basetest) if -d $basetest;
-ok($mc->directory("$basetest/a/b/c"), "directory returns success");
+is($mc->directory($testdir), $testdir, "directory returns directory name with NoAction=1");
 ok(! $mc->directory_exists("$basetest/a/b/c"), "directory_exists false on directory with NoAction=1");
 
+
+=head2 temporary directory creation
+
+=cut
+
+
+$CAF::Object::NoAction = 0;
+
+# add a/b/c to test mkdir -p behaviour
+rmtree($basetest) if -d $basetest;
+$testdir = "$basetest/a/b/c-X";
+my $pat = '^'.$basetest.'/a/b/c-\w{5}$';
+my $tempdir = $mc->directory($testdir, temp => 1);
+like($tempdir, qr{$pat}, "directory returns padded temp directory name with NoAction=0");
+unlike($tempdir, qr{c-X{5}$}, "temp directory templated padded Xs with NoAction=0");
+ok($mc->directory_exists($tempdir), "directory_exists true on tempdir directory with NoAction=0");
+ok(! $mc->directory_exists($testdir), "directory_exists false on orginal directory template with NoAction=0");
+
+# Tests with NoAction
+$CAF::Object::NoAction = 1;
+
+# add a/b/c to test mkdir -p behaviour
+rmtree($basetest) if -d $basetest;
+$pat = '^'.$basetest.'/a/b/c-X{5}$';
+$tempdir = $mc->directory($testdir, temp => 1);
+like($tempdir, qr{$pat}, "directory returns padded non-templated temp directory name with NoAction=1");
+ok(! $mc->directory_exists($tempdir), "directory_exists false on tempdir directory with NoAction=1");
+ok(! $mc->directory_exists($testdir), "directory_exists false on orginal directory template with NoAction=1");
+
+# reenable NoAction
+$CAF::Object::NoAction = 1;
 
 =head2 cleanup
 
@@ -337,7 +369,7 @@ $ec_check->error($myerror);
 
 ok($ec_check->error(), "Error before directory creation");
 
-ok($mc->directory("$basetest/a/b/c"), "directory returns success");
+is($mc->directory("$basetest/a/b/c"), "$basetest/a/b/c", "directory returns directory name");
 
 ok(! defined($mc->{fail}), "Fail attribute reset after succesful directory/LC_Check");
 ok(! $ec_check->error(), "Error reset after directory creation");
@@ -351,7 +383,7 @@ makefile($basetestfile);
 # Test failure
 #
 # Try to create dir on top of existing broken symlink.
-ok(symlink("really_really_missing", $brokenlink), "broken symlink created");
+ok(symlink("really_really_missing", $brokenlink), "broken symlink created 1");
 
 ok(!$mc->directory_exists($brokenlink), "brokenlink is not a directory");
 
@@ -374,6 +406,76 @@ is($mc->{fail}, '*** mkdir(target/test/check/broken_symlink, 0755): File exists'
 ok(! $ec_check->error(), "No errors after failed directory creation");
 ok(! $mc->directory_exists("$brokenlink/exist"), "directory brokenlink/exist not created");
 ok(! $mc->directory_exists($brokenlink), "brokenlink still not a directory");
+
+
+# trigger tempdir failure, impossible subdir
+# reset original exception also in this case
+
+rmtree($basetest) if -d $basetest;
+makefile($basetestfile);
+
+# Try to create dir on top of existing broken symlink.
+ok(symlink("really_really_missing", $brokenlink), "broken symlink created 2");
+
+ok(!$mc->directory_exists($brokenlink), "brokenlink is not a directory 2");
+
+# Set the fail attribute, it should be reset
+$mc->{fail} = 'somefailure';
+is($mc->{fail}, 'somefailure', "Fail attribute set before directory 2");
+
+# Inject an error, getTree should handle it gracefully (i.e. ignore it)
+$myerror = LC::Exception->new();
+$myerror->reason('origexception');
+$myerror->is_error(1);
+$ec_check->error($myerror);
+
+ok($ec_check->error(), "Error set before directory creation 2");
+
+ok(!defined($mc->directory("$brokenlink/sub/exist-X", temp => 1)),
+   "temp directory on broken symlink parent returns undef on failure missing subdir");
+is($mc->{fail}, 'Failed to create basedir for temporary directory target/test/check/broken_symlink/sub/exist-XXXXX',
+   "Fail attribute set (and existing value reset) 2");
+ok(! $ec_check->error(), "No errors after failed directory creation 2");
+ok(! $mc->directory_exists("$brokenlink/exist"), "directory brokenlink/exist not created 2");
+ok(! $mc->directory_exists($brokenlink), "brokenlink still not a directory 2");
+
+
+# trigger tempdir failure, make tempdir in non-writeable directory
+# reset original exception also in this case
+
+rmtree($basetest) if -d $basetest;
+makefile($basetestfile);
+
+# Set the fail attribute, it should be reset
+$mc->{fail} = 'somefailure';
+is($mc->{fail}, 'somefailure', "Fail attribute set before directory 3");
+
+# Inject an error, getTree should handle it gracefully (i.e. ignore it)
+$myerror = LC::Exception->new();
+$myerror->reason('origexception');
+$myerror->is_error(1);
+$ec_check->error($myerror);
+
+ok($ec_check->error(), "Error set before directory creation 3");
+
+$tempdir = "$basetest/sub/exist-X";
+ok($mc->directory($tempdir), "Testdir template exists");
+my $basetempdir = dirname($tempdir);
+ok($mc->directory_exists($basetempdir), "Testdir basedir exists");
+
+# remove all permissions on basedir
+chmod(0000, $basetempdir);
+
+ok(!defined($mc->directory($tempdir, temp => 1)),
+   "temp directory on broken symlink parent returns undef on failure tempdir");
+like($mc->{fail}, qr{^Failed to create temporary directory target/test/check/sub/exist-XXXXX: Error in tempdir\(\) using target/test/check/sub/exist-XXXXX: Could not create directory target/test/check/sub/exist-\w{5}: Permission denied at},
+   "Fail attribute set (and existing value reset) 3");
+ok(! $ec_check->error(), "No errors after failed directory creation 3");
+ok(! $mc->directory_exists("$brokenlink/exist"), "directory brokenlink/exist not created 3");
+ok(! $mc->directory_exists($brokenlink), "brokenlink still not a directory 3");
+
+# reset write bits for removal
+chmod(0700, $basetempdir);
 
 
 # reenable NoAction
