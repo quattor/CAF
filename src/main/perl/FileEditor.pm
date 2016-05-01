@@ -47,15 +47,18 @@ the class constructor.
 =item new
 
 Returns a new object it accepts the same arguments as the constructor
-for C<CAF::FileWriter> with one additional option: C<source>. This
-option, when present, must be a file name whose contents will be used
+for C<CAF::FileWriter> with one additional option: 
+
+=over
+
+=item source 
+
+This option, when present, must be a file name whose contents will be used
 as the initial contents for the edited file if the source modification time
 is more recent than the edited file modification time. This allows to rebuild
-the file contents based on a new version of the reference/template file. 
+the file contents based on a new version of the reference file. 
 
-An example is:
-
-    my $fh = CAF::FileEditor('/my/file', source => '/ref/file');
+=back
 
 =cut
 
@@ -66,6 +69,11 @@ sub _is_valid_source
     return -f $fn;
 }
 
+# This method is only intended to be used in the context of the constructor
+# and entirely relies on the internal structure of the FileEditor object.
+# 'filename`  is the file name passed with instantiating the FileEditor and
+# 'options/sources' the 'source' parameter value (called a reference file
+# internally).
 sub _is_reference_newer
 {
     my ($self) = @_;
