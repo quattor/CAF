@@ -4,7 +4,7 @@
   <artifactId>perl-CAF</artifactId>
   <packaging>pom</packaging>
   <version>16.2.1-SNAPSHOT</version>
-  <name>Configuration Cache Manager for Quattor</name>
+  <name>Common Application Framework for Quattor</name>
   <parent>
     <groupId>org.quattor.maven</groupId>
     <artifactId>build-profile</artifactId>
@@ -72,6 +72,30 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-resources-plugin</artifactId>
             <executions>
+              <execution>
+                <id>filter-changelog</id>
+                <phase>compile</phase>
+                <goals>
+                  <goal>copy-resources</goal>
+                </goals>
+                <configuration>
+                  <encoding>UTF-8</encoding>
+                  <delimiters>
+                    <delimiter>${*}</delimiter>
+                  </delimiters>
+                  <useDefaultDelimiters>false</useDefaultDelimiters>
+                  <outputDirectory>${project.build.directory}</outputDirectory>
+                  <resources>
+                    <resource>
+                      <directory>${project.build.directory}/dependency/build-scripts</directory>
+                      <filtering>true</filtering>
+                      <includes>
+                        <include>ChangeLog.template</include>
+                      </includes>
+                    </resource>
+                  </resources>
+                </configuration>
+              </execution>
               <execution>
                 <id>filter-perl-sources</id>
                 <phase>process-sources</phase>
@@ -179,7 +203,7 @@
                 <id>tarballs</id>
                 <configuration combine.self="override">
                   <descriptors>
-                    <descriptor>target/dependency/assemblies/bin.xml</descriptor>
+                    <descriptor>${project.build.directory}/dependency/assemblies/bin.xml</descriptor>
                   </descriptors>
                 </configuration>
               </execution>
@@ -212,15 +236,15 @@
                   <workingDirectory>${basedir}</workingDirectory>
                   <arguments>
                     <argument>-I</argument>
-                    <argument>target/lib/perl</argument>
+                    <argument>${project.build.directory}/lib/perl</argument>
                     <argument>-I</argument>
                     <argument>src/test/resources</argument>
                     <argument>${prove.args}</argument>
                     <argument>-I</argument>
-                    <argument>target/dependency/build-scripts</argument>
+                    <argument>${project.build.directory}/dependency/build-scripts</argument>
                     <argument>src/test/perl/${unittest}</argument>
                   </arguments>
-		</configuration>
+		        </configuration>
               </execution>
             </executions>
           </plugin>
@@ -237,12 +261,7 @@
           <configuration>
             <summary>Common Application Framework for Quattor Perl applications</summary>
             <name>${project.artifactId}</name>
-            <provides>
-              <provide>edg-caf-perl</provide>
-            </provides>
-            <requires>
-              <require>perl-LC</require>
-            </requires>
+            <url>https://github.com/quattor/CAF/tree/master</url>
             <mappings>
               <mapping>
                 <directory>/usr/lib/perl/CAF</directory>
@@ -266,9 +285,9 @@
                 <directoryIncluded>false</directoryIncluded>
                 <sources>
                   <source>
-                    <location>${basedir}</location>
+                    <location>${project.build.directory}</location>
                     <includes>
-                      <include>ChangeLog</include>
+                      <include>ChangeLog.template</include>
                     </includes>
                   </source>
                 </sources>
