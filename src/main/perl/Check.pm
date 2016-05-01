@@ -1,14 +1,17 @@
 ${PMpre} CAF::Check${PMpost}
 
-use CAF::Object;
+use CAF::Object qw(SUCCESS CHANGED);
 use LC::Check;
-use LC::Exception qw (SUCCESS throw_error);
+use LC::Exception qw (throw_error);
+
 use Readonly;
 
 use File::Path qw(rmtree);
 use File::Copy qw(move);
 use File::Temp qw(tempdir);
 use File::Basename qw(dirname);
+
+use Scalar::Util qw(dualvar);
 
 Readonly my $KEEPS_STATE => 'keeps_state';
 
@@ -22,7 +25,6 @@ Readonly::Hash my %CLEANUP_DISPATCH => {
 Readonly::Hash my %LC_CHECK_DISPATCH => {
     directory => \&LC::Check::directory,
     status => \&LC::Check::status,
-    reset_exception => sub {return 1;}, # do nothing
 };
 
 our $EC = LC::Exception::Context->new->will_store_all;
@@ -59,6 +61,18 @@ The class is based on L<LC::Check> with following major difference
 undef on failure and store the error message in the C<fail> attribute.
 
 =item available as class-methods
+
+=item return values
+
+=over
+
+=item undef: failure occured
+
+=item SUCCESS: nothing changed (boolean true)
+
+=item CHANGED: something changed (boolean true).
+
+=back
 
 =back
 
@@ -110,18 +124,17 @@ sub _get_noaction
     return $noaction;
 }
 
-=item _function_catch
+=item _reset_exception_fail
 
-Execute function reference C<funcref> with arrayref C<$args> and hashref C<$opts>.
-
-Method resets/ignores any existing errors and fail attribute, and catches any exception thrown.
-No error is reported, it returns undef in this case and the fail attribute is set.
+Reset previous exceptions and/or fail attribute.
 
 =cut
 
-sub _function_catch
+# TODO: move to CAF::Object ?
+
+sub _reset_exception_fail
 {
-    my ($self, $funcref, $args, $opts) = @_;
+    my ($self) = shift;
 
     # Reset the fail attribute
     if ($self->{fail}) {
@@ -138,6 +151,25 @@ sub _function_catch
         $EC->ignore_error();
     };
 
+    return SUCCESS;
+}
+
+
+=item _function_catch
+
+Execute function reference C<funcref> with arrayref C<$args> and hashref C<$opts>.
+
+Method resets/ignores any existing errors and fail attribute, and catches any exception thrown.
+No error is reported, it returns undef in this case and the fail attribute is set.
+
+=cut
+
+sub _function_catch
+{
+    my ($self, $funcref, $args, $opts) = @_;
+
+    $self->_reset_exception_fail();
+
     my $res = $funcref->(@$args, %$opts);
 
     if ($EC->error()) {
@@ -149,6 +181,47 @@ sub _function_catch
 
     return $res;
 }
+
+# TODO: move to CAF::Object ?
+
+=item _safe_eval
+
+Run function reference C<funcref> with arrayref C<argsref> and hashref C<optsref>.
+
+Return and set fail attribute with C<failmsg> on die, verbose C<msg> on success
+(resp. $@ and stringified result are appended).
+
+Resets previous exceptions and/or fail attribute
+
+=cut
+
+sub _safe_eval
+{
+    my ($self, $funcref, $argsref, $optsref, $failmsg, $msg) = @_;
+
+    $self->_reset_exception_fail();
+
+    my ($res, @args, %opts);
+    @args = @$argsref if $argsref;
+    %opts = %$optsref if $optsref;
+
+    local $@;
+    eval {
+        $res = $funcref->(@args, %opts);
+    };
+
+    if($@) {
+        chomp($@);
+        return $self->fail("$failmsg: $@");
+    } else {
+        my $res_txt = defined($res) ? "$res" : '<undef>';
+        chomp($res);
+        $self->verbose("$msg: $res");
+    }
+
+    return $res;
+}
+
 
 =item LC_Check
 
@@ -241,7 +314,8 @@ cleanup removes C<dest> with backup support.
 (Works like C<LC::Check::_unlink>, but has directory support
 and no error throwing).
 
-Returns SUCCESS on success; on failure it returns undef and reports error.
+Returns CHANGED is something was cleaned-up, SUCCESS if nothing was done
+and undef on failure (and sets the fail attribute).
 
 The <backup> is a suffix for C<dest>.
 
@@ -253,13 +327,13 @@ Any previous backup is C<cleanup>ed (without backup).
 
 =cut
 
-# TODO: option to not report error? (but if no error reporting is required on failure,
-#       why bother to cleanup in the first place?)
 # TODO: is the $self->{backup} a good idea?
 
 sub cleanup
 {
     my ($self, $dest, $backup, %opts) = @_;
+
+    $self->_reset_exception_fail();
 
     return SUCCESS if (! $self->any_exists($dest));
 
@@ -276,8 +350,7 @@ sub cleanup
     my @args = ($dest);
     if ($old) {
         if (! $self->cleanup($old, '', %opts)) {
-            $self->error("cleanup of previous backup $old failed");
-            return;
+            return $self->fail("cleanup of previous backup $old failed");
         };
 
         # simply rename/move dest to backup
@@ -294,32 +367,45 @@ sub cleanup
 
     if($self->_get_noaction($opts{$KEEPS_STATE}, "cleanup: ")) {
         $self->verbose("NoAction set, not going to $method with args ", join(',', @args));
-        return SUCCESS;
     } else {
-        if($CLEANUP_DISPATCH{$method}->(@args)) {
-            $self->verbose("cleanup $method removed $dest");
-            return SUCCESS;
+        my $res = $self->_safe_eval(
+            $CLEANUP_DISPATCH{$method}, \@args, undef,
+            "Cleanup $method failed to remove $dest",
+            "Cleanup $method removed $dest",
+            );
+        # move and unlink return 0 on failure, set $!
+        # rmtree dies on failure
+        if ($method eq 'rmtree') {
+            return if defined($self->{fail});
         } else {
-            $self->error("cleanup $method failed to remove $dest: $!");
-            return;
-        }
+            return $self->fail("Cleanup $method failed to remove $dest: $!") if ! $res;
+        };
     };
+
+    return CHANGED;
 }
 
 
 =item directory
 
-Make sure a directory exists. If not, it is created.
+Make sure a directory exists with proper options.
 
-Makes parent directories as needed,
-is a wrapper around C<LC::Check::directory>
-and executed with C<LC_Check>.
+If the directory does not exists (or the C<temp> option is set),
+it is created (including the parent directories as needed),
+and uses C<LC::Check::directory> via C<LC_Check>.
 
-Returns the directory name on SUCCESS, undef otherwise.
+Returns CHANGED if a change was made, SUCCESS if no changes were made
+and undef in case of failure (and the C<fail> attribute is set).
+
+The return value in absence of failure is a dualvar with integer value
+SUCCESS/CHANGED, and the directory as string value
+(in particular relevant for temporary directories).
 
 Additional options
 
 =over
+
+=item owner/group/mode/mtime : options for C<CAF::Check::status>
 
 =item temp
 
@@ -338,6 +424,13 @@ will be made at the end of the program).
 
 =cut
 
+# Differences with LC::Check::directory
+#    only accepts one directory
+#    returns directory name or undef (LC::Check::directory returns number of created directories)
+#    tempdir support
+#    set the status of existing directory
+#    set the owner/group/mtime of new directory
+#
 # perl5.8.8 has no Temp::File->new() way of making a tempdir
 # tempdir + CLEANUP is supported in 5.8.8x
 
@@ -345,18 +438,18 @@ sub directory
 {
     my ($self, $directory, %opts) = @_;
 
-    my $is_temp = delete $opts{temp};
+    # assume we will create a new directory
+    my $newdir = 1;
 
-    if ($is_temp) {
+    $self->_reset_exception_fail();
+
+    if (delete $opts{temp}) {
         # pad to at least X by adding 4
         $directory .= 'X' x 4 if $directory !~ m/X{4}$/;
 
         if($self->_get_noaction($opts{$KEEPS_STATE}, "directory: (tempdir) ")) {
             $self->verbose("NoAction set, not going to create a temporary directory $directory with tempdir");
         } else {
-            # reset any exceptions
-            $self->_function_catch($LC_CHECK_DISPATCH{reset_exception});
-
             my $base = dirname($directory);
             if (! $self->directory_exists($base)) {
                 if (! $self->directory($base, %opts)) {
@@ -364,22 +457,36 @@ sub directory
                 };
             }
 
-            local $@;
-            eval {
-                $directory = tempdir($directory, CLEANUP => 1);
-            };
-
-            if($@) {
-                chomp($@);
-                return $self->fail("Failed to create temporary directory $directory: $@");
-            } else {
-                $self->verbose("Created temporary directory $directory with tempdir");
-            }
+            $directory = $self->_safe_eval(
+                \&tempdir, [$directory], {CLEANUP => 1},
+                "Failed to create temporary directory $directory",
+                "Created temporary directory with tempdir",
+                );
+            return if defined($self->{fail});
         }
-    }
+    } elsif ($self->directory_exists($directory)) {
+        $newdir = 0;
+    } else {
+        # Directory does not exist
+        # LC_Check directory returns false only if there was a problem
+        # Only mode option is used
+        my $dopts = {%opts}; # a copy
+        foreach my $invalid_opt (qw(user group mtime)) {
+            delete $dopts->{$invalid_opt};
+        }
+        return if ! $self->LC_Check('directory', [$directory], $dopts);
+    };
 
-    return defined($self->LC_Check("directory", [$directory], \%opts)) ? $directory : undef;
+    # Always run status, but track newly created directories
+    my $status = $self->status($directory, %opts);
+    return if ! defined($status);
+
+    # If we got here, no failures occured.
+    # A new directory always implies something changed
+    my $changed = ($newdir || $status == CHANGED) ? CHANGED : SUCCESS;
+    return dualvar( $changed, $directory);
 }
+
 
 =item status
 
@@ -388,12 +495,24 @@ Set the path stat options: C<owner>, C<group>, C<mode> and/or C<mtime>.
 This is a wrapper around C<LC::Check::status>
 and executed with C<LC_Check>.
 
+Returns CHANGED if a change was made, SUCCESS if no changes were made
+and undef in case of failure (and the C<fail> attribute is set).
+
 =cut
+
+# Satus on missing files returns undef (and file is not created).
+# Status on a missing file returns CHANGED with NoAction.
+
 
 sub status
 {
     my ($self, $path, %opts) = @_;
-    return $self->LC_Check("status", [$path], \%opts);
+    my $status = $self->LC_Check("status", [$path], \%opts);
+    if(defined($self->{fail})) {
+        return;
+    } else {
+        return $status ? CHANGED : SUCCESS;
+    }
 }
 
 =pod
