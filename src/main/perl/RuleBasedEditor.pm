@@ -373,11 +373,15 @@ sub updateFile
 
 This function formats an attribute value based on the value format specified.
 
-Arguments :
+Arguments:
     attr_value : attribue value
     line_fmt : line format (see LINE_FORMAT_xxx constants)
     value_fmt : value format (see LINE_VALUE_xxx constants)
     value_opt : value interpretation/formatting options (bitmask, see LINE_VALUE_OPT_xxx constants)
+
+Return value:
+    A string corresponding to the value formatted according to the format specified by arguments
+    or undef in case of an internal error (missing arguments)
 
 =cut
 
@@ -388,19 +392,19 @@ sub _formatAttributeValue
 
     unless (defined($attr_value)) {
         *$self->{LOG}->error("$function_name: 'attr_value' argument missing (internal error)");
-        return 1;
+        return undef;
     }
     unless (defined($line_fmt)) {
         *$self->{LOG}->error("$function_name: 'list_fmt' argument missing (internal error)");
-        return 1;
+        return undef;
     }
     unless (defined($value_fmt)) {
         *$self->{LOG}->error("$function_name: 'value_fmt' argument missing (internal error)");
-        return 1;
+        return undef;
     }
     unless (defined($value_opt)) {
         *$self->{LOG}->error("$function_name: 'value_opt' argument missing (internal error)");
-        return 1;
+        return undef;
     }
 
     *$self->{LOG}->debug(2,
@@ -471,6 +475,10 @@ Arguments :
     value : keyword value (can be empty)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
 
+Return value:
+    A string corresponding to the line formatted according to line_fmt
+    or undef in case of an internal error (missing arguments)
+
 =cut
 
 sub _formatConfigLine
@@ -480,15 +488,15 @@ sub _formatConfigLine
 
     unless ($keyword) {
         *$self->{LOG}->error("$function_name: 'keyword' argument missing (internal error)");
-        return 1;
+        return undef;
     }
     unless (defined($value)) {
         *$self->{LOG}->error("$function_name: 'value' argument missing (internal error)");
-        return 1;
+        return undef;
     }
     unless (defined($line_fmt)) {
         *$self->{LOG}->error("$function_name: 'line_fmt' argument missing (internal error)");
-        return 1;
+        return undef;
     }
 
     my $config_line = "";
@@ -533,6 +541,10 @@ Arguments :
     line_fmt: line format (see LINE_FORMAT_xxx constants)
     config_value: when defined, make it part of the pattern (used when multiple lines
                   with the same keyword are allowed)
+
+Return value:
+    A string containing the pattern to use to match the line in the file or undef
+    in case of an internal error (missing argument).
 
 =cut
 
@@ -600,6 +612,9 @@ Arguments :
     config_param: parameter to update
     line_fmt : line format (see LINE_FORMAT_xxx constants)
 
+Return value:
+    None or 1 in case of an internal error (missing argument)
+
 =cut
 
 sub _removeConfigLine
@@ -658,6 +673,9 @@ Arguments :
     config_value : parameter value (can be empty)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
     multiple : if true, multiple lines with the same keyword can exist (D: false)
+
+Return value:
+    None or 1 in case of an internal error (missing argument)
 
 =cut
 
@@ -861,6 +879,9 @@ Supported entries for options hash:
     always_rules_only: if true, apply only rules with ALWAYS condition (D: false)
     remove_if_undef: if true, remove matching configuration line is rule condition is not met (D: false)
 
+Return value:
+    None or 1 in case of an internal error (missing argument)
+
 =cut
 
 sub _apply_rules
@@ -895,8 +916,9 @@ sub _apply_rules
     # line must be commented out unconditionally.
     # Each rule format is '[condition->]attribute:option_set[,option_set,...];line_fmt' where
     #     condition: either a role that must be enabled or ALWAYS if the rule must be applied
-    #                when 'always_rules_only' is true. A role is enabled if 'role_enabled' is
-    #                true in the corresponding option set.
+    #                when 'always_rules_only' is true. A role is defined by an option set (see
+    #                Description at the beginning of this file, basically a sub-hash in the config)
+    #                and it is enabled if 'role_enabled' is true in the corresponding option set.
     #     option_set and attribute: attribute in option set that must be substituted
     #     line_fmt: the format to use when building the line
     # An empty rule is valid and means that the keyword part must be
@@ -914,7 +936,7 @@ sub _apply_rules
         # Check if the keyword is prefixed by:
         #     -  a '-': in this case the corresponding line must be unconditionally
         #               commented out if it is present
-        #     -  a '*': in this case the corresponding line must be commented out if
+        #     -  a '?': in this case the corresponding line must be commented out if
         #               it is present and the option is undefined
         my $comment_line = 0;
         if ($keyword =~ /^-/) {
@@ -962,8 +984,7 @@ sub _apply_rules
 
             if (exists($rule_info->{error_msg})) {
                 *$self->{LOG}->error("Error parsing rule >>>$rule<<<: " . $rule_info->{error_msg});
-                # FIXME: decide whether an invalid rule is just ignored or causes any modification to be prevented.
-                # $self->cancel()
+                # An invalid rule is just ignored
                 next;
             } elsif ($rule_info->{remove_matching_lines}) {
                 if ($rule_parsing_options->{remove_if_undef}) {
