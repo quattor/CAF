@@ -63,7 +63,7 @@ the file contents based on a new version of the reference file.
 =cut
 
 # FileEditor supports reading/editing a file
-sub _is_valid_source
+sub _is_valid_file
 {
     my ($self, $fn) = @_;
     return -f $fn;
@@ -78,9 +78,9 @@ sub _is_reference_newer
 {
     my ($self) = @_;
     my $is_newer = 0;   # Assume false
-    if (  exists(*$self->{options}->{source}) && $self->_is_valid_source(*$self->{options}->{source}) ) {
+    if (  exists(*$self->{options}->{source}) && $self->_is_valid_file(*$self->{options}->{source}) ) {
         # stat()[9] is modification time
-        if ( !$self->_is_valid_source(*$self->{filename}) || 
+        if ( !$self->_is_valid_file(*$self->{filename}) || 
              ((stat(*$self->{options}->{source}))[9] > (stat(*$self->{filename}))[9]) ) {
           $is_newer = 1
         }
@@ -107,7 +107,7 @@ sub new
     *$self->{options}->{source} = $opts{source} if exists ($opts{source});
     if ( $self->_is_reference_newer() ) {
         $src_file = *$self->{options}->{source};
-    } elsif ($self->_is_valid_source(*$self->{filename})) {
+    } elsif ($self->_is_valid_file(*$self->{filename})) {
         $src_file = *$self->{filename};
     }
     if ( $src_file ) {
