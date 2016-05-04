@@ -29,7 +29,7 @@ sub read_file_contents {
 $lcfile->mock("file_contents", \&read_file_contents);
 
 
-my $testdir = 'target/test/editor';
+my $testdir = 'target/test/test_caffileeditor_source';
 mkpath($testdir);
 (undef, my $filename) = tempfile(DIR => $testdir);
 
@@ -52,7 +52,8 @@ $fh->close();
 
 # Check that reference file contents is used as the initial contents when it
 # is newer than the file edited.
-sleep 2;
+my $time=time();
+utime(undef, $time - 10, $filename); # make filename old enough
 my ($ref_fh, $ref_filename) = tempfile(DIR => $testdir);
 print $ref_fh $TEXT;
 $ref_fh->close();
@@ -64,7 +65,8 @@ $fh->close();
 
 # Check that reference file contents is not used as the initial contents when it
 # is older than the file edited.
-sleep 2;
+$time=time();
+utime(undef, $time - 10, $ref_filename); # make ref_filename old enough
 my ($new_fh, $new_filename) = tempfile(DIR => $testdir);
 print $new_fh $ANOTHER_TEXT;
 $new_fh->close();
