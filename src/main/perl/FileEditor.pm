@@ -58,6 +58,9 @@ as the initial contents for the edited file if the source modification time
 is more recent than the edited file modification time. This allows to rebuild
 the file contents based on a new version of the reference file. 
 
+The C<source> can be a pipe: in this case, it is always considered more recent
+than the edited file.
+
 =back
 
 =cut
@@ -82,22 +85,21 @@ sub _is_reference_newer
         # It is valid for the source value to be a pipe: in this case consider it
         # as newer than an existing file.
         if ( -p *$self->{options}->{source} ) {
-          $is_newer = 1
+            $is_newer = 1
         } elsif ( $self->_is_valid_file(*$self->{options}->{source}) ) {
-        # stat()[9] is modification time
+            # stat()[9] is modification time
             if ( !$self->_is_valid_file(*$self->{filename}) || 
                  ((stat(*$self->{options}->{source}))[9] > (stat(*$self->{filename}))[9]) ) {
-               $is_newer = 1
+                $is_newer = 1
             }
         }
     }
     #FIXME: replace by $self->debug() after PR #154 has been merged...
     if ( *$self->{LOG} ) {
         if ( $is_newer ) {
-            # As this is a non reproducible event, be sure to log it when it happens
-            *$self->{LOG}->info("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.");
+            *$self->{LOG}->debug(1, "File ", *$self->{filename}, " older than reference file (", *$self->{options}->{source}, ",");
         } else {
-            *$self->{LOG}->debug(1, "Reference file (", *$self->{options}->{source}, ") older than ", *$self->{filename}, ": ignoring it");
+            *$self->{LOG}->debug(1, "Reference file (", *$self->{options}->{source}, ") older than ", *$self->{filename});
         };
     };
     return $is_newer;
@@ -112,6 +114,8 @@ sub new
 
     *$self->{options}->{source} = $opts{source} if exists ($opts{source});
     if ( $self->_is_reference_newer() ) {
+        # As this is a non reproducible event, be sure to log it when it happens
+        *$self->{LOG}->info("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.") if *$self->{LOG};
         $src_file = *$self->{options}->{source};
     } elsif ($self->_is_valid_file(*$self->{filename})) {
         $src_file = *$self->{filename};
