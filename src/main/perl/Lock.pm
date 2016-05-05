@@ -93,7 +93,7 @@ sub set_lock {
 
   if ($self->{LOCK_SET}) {
     # oops.
-    $self->error("lock already set by this application instance");
+    $self->error("lock already set by this application instance: $self->{LOCK_FILE}");
     return;
   }
 
@@ -107,7 +107,7 @@ sub set_lock {
     return SUCCESS if $self->_try_lock($force);
   } while ($tries < $retries && $timeout);
 
-  $self->error("cannot acquire lock: " . $self->{LOCK_FILE});
+  $self->error("cannot acquire lock: $self->{LOCK_FILE}");
   return;
 }
 
@@ -128,16 +128,16 @@ sub unlock {
     # if we forced the lock LOCK_FH can be undef
     if ($self->{LOCK_FH}) {
       unless (flock($self->{LOCK_FH}, LOCK_UN)) {
-        $self->error("cannot release lock: ",$self->{LOCK_FILE});
+        $self->error("cannot release lock: $self->{LOCK_FILE}");
         return;
       }
-      $self->error("cannot close lock file: ",$self->{LOCK_FILE})
+      $self->error("cannot close lock file: $self->{LOCK_FILE}")
           unless $self->{LOCK_FH}->close();
     }
     $self->{LOCK_SET} = undef;
     $self->{LOCK_FH} = undef;
   } else {
-    $self->error("lock not held by this application instance, not unlocking");
+    $self->error("lock not held by this application instance: $self->{LOCK_FILE}, not unlocking");
     return;
   }
   return SUCCESS;
