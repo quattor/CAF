@@ -1,4 +1,4 @@
-${PMpre} CAF::Check${PMpost}
+${PMpre} CAF::Path${PMpost}
 
 use CAF::Object qw(SUCCESS CHANGED);
 use LC::Check;
@@ -33,7 +33,7 @@ our $EC = LC::Exception::Context->new->will_store_all;
 
 =head1 NAME
 
-CAF::Check - check that things are really the way we expect them to be
+CAF::Path - check that things are really the way we expect them to be
 
 =head1 DESCRIPTION
 
@@ -405,7 +405,7 @@ Additional options
 
 =over
 
-=item owner/group/mode/mtime : options for C<CAF::Check::status>
+=item owner/group/mode/mtime : options for C<CAF::Path::status>
 
 =item temp
 

@@ -1,11 +1,11 @@
-package mycheck;
+package mypath;
 
 use strict;
 use warnings;
 
 use CAF::Object qw (SUCCESS);
 
-use parent qw(CAF::Object CAF::Check);
+use parent qw(CAF::Object CAF::Path);
 
 sub _initialize {
     my ($self, %opts) = @_;

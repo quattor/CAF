@@ -13,24 +13,24 @@ use Test::More;
 use Test::MockModule;
 
 use CAF::Object qw(SUCCESS CHANGED);
-use CAF::Check;
+use CAF::Path;
 
 use Test::Quattor::Object;
 
 use FindBin qw($Bin);
 use lib "$Bin/modules";
-use mycheck;
+use mypath;
 
 use File::Path qw(mkpath rmtree);
 use File::Basename qw(dirname);
 
 $CAF::Object::NoAction = 1;
 
-my $ec_check = $CAF::Check::EC;
+my $ec_check = $CAF::Path::EC;
 
 my $obj = Test::Quattor::Object->new();
 
-my $mock = Test::MockModule->new('CAF::Check');
+my $mock = Test::MockModule->new('CAF::Path');
 
 # cannot use mocked filewriter
 sub makefile
@@ -57,7 +57,7 @@ my $brokenlink = "$basetest/broken_symlink";
 my $filelink = "$basetest/file_symlink";
 my $dirlink = "$basetest/directory_symlink";
 
-my $mc = mycheck->new(log => $obj);
+my $mc = mypath->new(log => $obj);
 
 =head2 _get_noaction
 
