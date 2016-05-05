@@ -99,6 +99,12 @@ ok(! defined($krb->_split_principal_string('/b@c')),
 # Test generation, incl failure
 ok(! defined($krb->_principal_string({'noprimary' => 'woohoo'})),
    '_principal_string returns undef if no primary is set');
+ok(! defined($krb->_principal_string({'primary' => '()woohoo'})),
+   '_principal_string returns undef if primary has invalid characters');
+ok(! defined($krb->_principal_string({'primary' => 'woohoo', instances => ["valid", "invalid()"]})),
+   '_principal_string returns undef if one of the instances has invalid characters');
+ok(! defined($krb->_principal_string({'primary' => 'woohoo', realm => 'realm()'})),
+   '_principal_string returns undef if realm has invalid characters');
 is($krb->_principal_string({'primary' => 'p', 'instances' => [qw(i0 i1)], 'realm' => 'realm'}),
    'p/i0/i1@realm', 'Correct principal string generated from provided hashref');
 is($krb->_principal_string(),
@@ -116,6 +122,10 @@ ok(! defined($krb->update_principal(principal => 'a@b@c')),
 ok(! defined($krb->update_principal(instances => 'myinstances')),
    'update_principal failed with invalid instances (must be arrayref)');
 is_deeply($krb->{principal}, $init_principal, 'principal unmodified with update_principal error');
+
+# This does modify the current attributes, all valid ones are changed
+ok(! defined($krb->update_principal(principal => 'a/()b@c')),
+   'update_principal failed with principal with valid structure but with invalid characters');
 
 # Test update
 $krb->update_principal(primary => 'newprim', instances => [qw(i0 i1)], realm => 'r1');
@@ -147,7 +157,8 @@ is_deeply($krb->{principal}, {
 $tmppath = "target/cc_dir";
 ok($krb->create_credential_cache(), 'create_credential_cache returns success');
 is($krb->{ccdir}, $tmppath, 'expected credential cache directory');
-is($krb->{ENV}->{KRB5CCNAME}, "DIR:$tmppath", 'define credential cache directory KRB5CCNAME');
+is($krb->{ENV}->{KRB5CCNAME}, "FILE:$tmppath/tkt",
+   'define credential cache FILE as tkt in directory KRB5CCNAME');
 
 
 # _process is tested in kerberos-process
@@ -238,6 +249,8 @@ foreach my $class (sort keys %$gssapi_wrappers) {
         # reset fail attribute
         $krb->{fail} = '';
         my $fname = "_gssapi_$method";
+        my $fclass = join('::', 'GSSAPI', $class);
+        my $fmethod = join('::', $fclass, $method);
 
         # Test that there are no doubles (e.g. same method name in Context and Name)
         is(scalar (grep {$_ eq $fname} @fnames), 0, "$fname is unique method name");
@@ -246,10 +259,24 @@ foreach my $class (sort keys %$gssapi_wrappers) {
         # only testing failures, very hard to mock the XS stuff
         ok($krb->can($fname), "$fname method exists");
 
+        my ($a, $b, $c) = qw(a b c);
+        if ($method ne 'display') {
+            # There's something very strange display
+            # perl -e 'use GSSAPI;eval {GSSAPI::Name::display->(1,2,3,4,5)};print "end $@\n"'
+            #    Not enough arguments for GSSAPI::Name::display at -e line 1, near "GSSAPI::Name::display->"
+            #    Execution of -e aborted due to compilation errors.
+            # eval{} does not catch this. Is this some bug in the XS?
+            $krb->{fail} = '';
+            ok(! defined($krb->$fname($a, $b, $c)), "$fname returns undef in of croak");
+            my $err_regexp = "^$fname $fmethod croaked:";
+            like($krb->{fail}, qr{$err_regexp}, "$fname fails with croaked message when incorrect args are passed");
+        }
+
         $krb->{fail} = '';
-        ok(! defined($krb->$fname('a', 'b', 'c')), "$fname returns undef in case of instance mismatch");
-        my $err_regexp = "^(GSSAPI::$class::$method croaked:|$fname expected a GSSAPI::$class instance, got ref)";
-        like($krb->{fail}, qr{$err_regexp}, "$fname fails with instance mismatch or croaked message");
+        $a = {};
+        ok(! defined($krb->$fname($a, $b, $c)), "$fname returns undef in case of instance mismatch");
+        my $err_regexp = "^$fname expected a $fclass instance, got ref";
+        like($krb->{fail}, qr{$err_regexp}, "$fname fails with instance mismatch");
     }
 }
 
