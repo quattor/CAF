@@ -158,23 +158,6 @@ sub is_set {
   return;
 }
 
-##############################################################################
-#
-# The following methods are provided for backwards compatibility only
-# and have been deprecated
-#
-sub get_lock_pid {
-  return;
-}
-
-sub is_stale {
-  return;
-}
-
-*is_locked = \&is_set;
-##############################################################################
-
-
 =pod
 
 =back
