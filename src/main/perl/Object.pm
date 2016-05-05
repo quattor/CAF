@@ -11,13 +11,16 @@ use warnings;
 use Exporter;
 our @ISA = qw(Exporter);
 
-use LC::Exception qw (SUCCESS throw_error);
+use LC::Exception qw (throw_error);
+
+use constant SUCCESS => LC::Exception::SUCCESS();
+use constant CHANGED => SUCCESS + 1;
 
 our $NoAction;
 
 our @EXPORT = qw();
 # For convenience, export most common LC-related constants and methods
-our @EXPORT_OK = qw(SUCCESS throw_error);
+our @EXPORT_OK = qw(SUCCESS CHANGED throw_error);
 
 my $ec = LC::Exception::Context->new()->will_store_all();
 
