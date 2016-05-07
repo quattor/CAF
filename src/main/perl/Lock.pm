@@ -72,8 +72,8 @@ The B<CAF::Lock> class provides methods for handling application locking.
 =item set_lock(I<retries>, I<timeout>, I<force>)
 
 Tries I<retries> times to set the lock.  If I<force> is set to B<FORCE_NONE>
-or not defined and the lock is set, it sleeps for
-rand(I<timeout>).  Returns B<SUCCESS>, or B<undef> on failure.
+or not defined and the lock is set, it sleeps for I<timeout>.  Returns
+B<SUCCESS>, or B<undef> on failure.
 
 If I<retries> or I<timeout> are not defined or set to 0, only a single
 attempt is done to acquire the lock.
@@ -101,7 +101,7 @@ sub set_lock {
   do {
     if ($tries > 0) {
       $self->verbose("lock file is already held, try $tries out of $retries");
-      sleep(rand($timeout));
+      sleep($timeout);
     }
     $tries++;
     return SUCCESS if $self->_try_lock($force);
