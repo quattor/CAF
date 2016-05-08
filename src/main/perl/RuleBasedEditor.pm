@@ -603,7 +603,7 @@ sub _buildLinePattern
 
 =pod
 
-=item _removeConfigLine
+=item _commentConfigLine
 
 This function comments out a configuration line matching the configuration parameter.
 Match operation takes into account the line format.
@@ -617,9 +617,9 @@ Return value:
 
 =cut
 
-sub _removeConfigLine
+sub _commentConfigLine
 {
-    my $function_name = "_removeConfigLine";
+    my $function_name = "_commentConfigLine";
     my ($self, $config_param, $line_fmt) = @_;
 
     unless ($config_param) {
@@ -968,7 +968,7 @@ sub _apply_rules
         # If the keyword was "negated", remove (comment out) configuration line if present and enabled
         if ($comment_line) {
             *$self->{LOG}->debug(1, "$function_name: keyword '$keyword' negated, removing configuration line");
-            $self->_removeConfigLine($keyword, $line_fmt);
+            $self->_commentConfigLine($keyword, $line_fmt);
             next;
         }
 
@@ -989,7 +989,7 @@ sub _apply_rules
             } elsif ($rule_info->{remove_matching_lines}) {
                 if ($rule_parsing_options->{remove_if_undef}) {
                     *$self->{LOG}->debug(1, "$function_name: removing configuration lines for keyword '$keyword'");
-                    $self->_removeConfigLine($keyword, $line_fmt);
+                    $self->_commentConfigLine($keyword, $line_fmt);
                 } else {
                     *$self->{LOG}->debug(1, "$function_name: remove_if_undef not set, ignoring line to remove");
                 }
@@ -1042,7 +1042,7 @@ sub _apply_rules
                                                  "$function_name: attribute '"
                                                . $rule_info->{attribute}
                                                . "' undefined, removing configuration line");
-                        $self->_removeConfigLine($keyword, $line_fmt);
+                        $self->_commentConfigLine($keyword, $line_fmt);
                     }
                     next;
                 }
