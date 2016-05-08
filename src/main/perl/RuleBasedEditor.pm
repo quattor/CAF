@@ -41,11 +41,19 @@ matching line will be removed/commented out if the option is undefined.
 
 =item condition
 
-An option or an option set (see below) that must exist for the rule to be applied.
-Both C<option_set> and C<option_name:option_set> are accepted.
+An option or an option set (see below) that must exist for the rule to be applied
+or the keyword C<ALWAYS>.
+Both C<option_set> and C<option_name:option_set> are accepted. option and option set
+in the condition are normally different from the C<option_name> and C<option_set>
+parameters in the rule as this is the default behaviour to apply the rule only if
+they exist.
 One option set only is allowed and only its existence (not its value) is tested.
 It is possible to negate the condition (option or option_set must not exist) 
 by prepending it with '!'.
+
+C<ALWAYS> is a special condition that means that rules must be applied whether 
+the C<option_name:option_set> exist in the configuration or not. When they don't exist
+the result is to comment out the matching configuration lines.
 
 =item option_name 
 
@@ -77,15 +85,15 @@ A SH shell variable definition (key=val).
 
 =item *
 
-A 'keyword value' line, as used by Xrootd or Apache config files.
+A 'keyword value' line, as used by Apache config files (similar to Config::General).
 
 =item *
 
-A 'setenv keyword value' line, as used by Xrootd config files mainly. It can also be used in a CSH shell script.
+A 'setenv keyword=value' line, as used by Xrootd config files mainly. It doesn't work in a CSH shell script (C<=> present).
 
 =item *
 
-A 'set keyword value' line, as used by Xrootd config files mainly. It doesn't work in a CSH shell script (C<=> missing).
+A 'set keyword=value' line, as used in a a CSH shell script to define a shell variable.
 
 =back
 
@@ -154,34 +162,37 @@ There is a different group of constants for each part of the rule.
 
 =item *
 
-LINE_FORMAT_SH_VAR:         key=val (e.g. SH shell family)
+LINE_FORMAT_SH_VAR:         key=val (e.g. SH shell family). A comment is added at the 
+end of the line if it is modified by L<CAF::RuleBasedEditor>.
 
 =item *
 
-LINE_FORMAT_ENV_VAR:        export key=val (e.g. SH shell family)
+LINE_FORMAT_ENV_VAR:        export key=val (e.g. SH shell family). A comment is added at the 
+end of the line if it is modified by L<CAF::RuleBasedEditor>.
+
 
 =item *
 
 LINE_FORMAT_KEY_VAL:        key val (e.g. Xrootd, Apache)
 
 =item *
-LINE_FORMAT_KEY_VAL_SETENV: setenv key val  (used by Xrootd in particular)
+LINE_FORMAT_KEY_VAL_SETENV: setenv key=val  (used by Xrootd in particular)
 
 =item *
 
-LINE_FORMAT_KEY_VAL_SET:    set key val  (used by Xrootd in particular)
+LINE_FORMAT_KEY_VAL_SET:    set key=val  (CSH shell variable)
 
 =back
 
 =cut
 
 use enum qw(
-  LINE_FORMAT_SH_VAR=1
-  LINE_FORMAT_ENV_VAR
-  LINE_FORMAT_KEY_VAL
-  LINE_FORMAT_KEY_VAL_SETENV
-  LINE_FORMAT_KEY_VAL_SET
-  );
+    LINE_FORMAT_SH_VAR=1
+    LINE_FORMAT_ENV_VAR
+    LINE_FORMAT_KEY_VAL
+    LINE_FORMAT_KEY_VAL_SETENV
+    LINE_FORMAT_KEY_VAL_SET
+    );
 
 =pod
 
@@ -220,13 +231,13 @@ LINE_VALUE_INSTANCE_PARAMS: specific to L<ncm-xrootd>
 =cut
 
 use enum qw(
-  LINE_VALUE_AS_IS
-  LINE_VALUE_BOOLEAN
-  LINE_VALUE_ARRAY
-  LINE_VALUE_HASH_KEYS
-  LINE_VALUE_STRING_HASH
-  LINE_VALUE_INSTANCE_PARAMS
-  );
+    LINE_VALUE_AS_IS
+    LINE_VALUE_BOOLEAN
+    LINE_VALUE_ARRAY
+    LINE_VALUE_HASH_KEYS
+    LINE_VALUE_STRING_HASH
+    LINE_VALUE_INSTANCE_PARAMS
+    );
 
 =pod
 
@@ -253,10 +264,10 @@ LINE_VALUE_OPT_SORTED: values are sorted
 =cut
 
 use enum qw(
-  BITMASK: LINE_VALUE_OPT_SINGLE
-  LINE_VALUE_OPT_UNIQUE
-  LINE_VALUE_OPT_SORTED
-  );
+    BITMASK: LINE_VALUE_OPT_SINGLE
+    LINE_VALUE_OPT_UNIQUE
+    LINE_VALUE_OPT_SORTED
+    );
 
 # Internal constants
 Readonly my $LINE_FORMAT_DEFAULT            => LINE_FORMAT_SH_VAR;
@@ -270,21 +281,21 @@ Readonly my $RULE_OPTION_SET_GLOBAL         => 'GLOBAL';
 # Export constants used to build rules
 # Needs to be updated when a constant is added or removed
 Readonly my @RULE_CONSTANTS => qw(
-  LINE_FORMAT_SH_VAR
-  LINE_FORMAT_ENV_VAR
-  LINE_FORMAT_KEY_VAL
-  LINE_FORMAT_KEY_VAL_SETENV
-  LINE_FORMAT_KEY_VAL_SET
-  LINE_VALUE_AS_IS
-  LINE_VALUE_BOOLEAN
-  LINE_VALUE_INSTANCE_PARAMS
-  LINE_VALUE_ARRAY
-  LINE_VALUE_HASH_KEYS
-  LINE_VALUE_STRING_HASH
-  LINE_VALUE_OPT_SINGLE
-  LINE_VALUE_OPT_UNIQUE
-  LINE_VALUE_OPT_SORTED
-  );
+    LINE_FORMAT_SH_VAR
+    LINE_FORMAT_ENV_VAR
+    LINE_FORMAT_KEY_VAL
+    LINE_FORMAT_KEY_VAL_SETENV
+    LINE_FORMAT_KEY_VAL_SET
+    LINE_VALUE_AS_IS
+    LINE_VALUE_BOOLEAN
+    LINE_VALUE_INSTANCE_PARAMS
+    LINE_VALUE_ARRAY
+    LINE_VALUE_HASH_KEYS
+    LINE_VALUE_STRING_HASH
+    LINE_VALUE_OPT_SINGLE
+    LINE_VALUE_OPT_UNIQUE
+    LINE_VALUE_OPT_SORTED
+    );
 
 
 our @EXPORT_OK;
@@ -309,11 +320,12 @@ Update configuration file contents,  applying configuration rules.
 Arguments :
     config_rules: config rules corresponding to the file to build
     config_options: configuration parameters used to build actual configuration
-    options: a hash setting options to modify the behaviour of this function
+    options: a hashref defining options to modify the behaviour of this function
 
 Supported entries for options hash:
-    always_rules_only: if true, apply only rules with ALWAYS condition (D: false)
-    remove_if_undef: if true, remove matching configuration line is rule condition is not met (D: false)
+    always_rules_only: if true, apply only rules with ALWAYS condition (D: false). See introduction
+                       about the ALWAYS condition.
+    remove_if_undef: if true, remove matching configuration line if rule condition is not met (D: false)
 
 Return value
     sucess: 1
@@ -374,7 +386,7 @@ sub updateFile
 This function formats an attribute value based on the value format specified.
 
 Arguments:
-    attr_value : attribue value
+    attr_value : attribute value (type interpreted based on C<value_fmt>)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
     value_fmt : value format (see LINE_VALUE_xxx constants)
     value_opt : value interpretation/formatting options (bitmask, see LINE_VALUE_OPT_xxx constants)
@@ -411,11 +423,16 @@ sub _formatAttributeValue
                          "$function_name: formatting attribute value >>>$attr_value<<< (line fmt=$line_fmt, value fmt=$value_fmt, value_opt=$value_opt)"
                         );
 
+    #FIXME: replace this if..elsif.. block by a dispatch table that would be easier to extend,
+    #possibly with code out of CAF::RuleBasedEditor. Dispatch table may need to be implemented
+    #in a few other methods.
     my $formatted_value;
     if ($value_fmt == LINE_VALUE_BOOLEAN) {
         $formatted_value = $attr_value ? 'yes' : 'no';
 
     } elsif ($value_fmt == LINE_VALUE_INSTANCE_PARAMS) {
+        # LINE_VALUE_INSTANCE_PARAMS is a value format specific to XrootD (http://xrootd.org).
+        # The value is a hash containing 3 keys that are used to construct a command option line.
         $formatted_value = '';    # Don't return undef if no matching attributes is found
                                   # Instance parameters are described in a nlist
         $formatted_value .= " -l $attr_value->{logFile}"    if $attr_value->{logFile};
@@ -423,6 +440,8 @@ sub _formatAttributeValue
         $formatted_value .= " -k $attr_value->{logKeep}"    if $attr_value->{logKeep};
 
     } elsif ($value_fmt == LINE_VALUE_ARRAY) {
+        # An array can contain several occurences of the same value. By default they are all kept
+        # in the index order. Some LINE_VALUE_OPT_xxx options allow to change this default behaviour.
         *$self->{LOG}->debug(2, "$function_name: array values received: ", join(",", @$attr_value));
         if ($value_opt & LINE_VALUE_OPT_UNIQUE) {
             my %values = map(($_ => 1), @$attr_value);
@@ -431,7 +450,7 @@ sub _formatAttributeValue
         }
         # LINE_VALUE_OPT_UNIQUE implies LINE_VALUE_OPT_SORTED
         if ($value_opt & (LINE_VALUE_OPT_UNIQUE | LINE_VALUE_OPT_SORTED)) {
-            $attr_value = [sort(@$attr_value)] if $value_opt & (LINE_VALUE_OPT_UNIQUE | LINE_VALUE_OPT_SORTED);
+            $attr_value = [sort(@$attr_value)];
             *$self->{LOG}->debug(2, "$function_name: array values sorted: ", join(",", @$attr_value));
         }
         $formatted_value = join " ", @$attr_value;
@@ -444,9 +463,11 @@ sub _formatAttributeValue
 
     } else {
         *$self->{LOG}->error("$function_name: invalid value format ($value_fmt) (internal error)");
+        return undef;
     }
 
-    # Quote value if necessary
+    # Quote value if necessary (only for shell variables).
+    # If you do not want the line interpolated, use explicit single quotes.
     if (($line_fmt == LINE_FORMAT_SH_VAR) || ($line_fmt == LINE_FORMAT_ENV_VAR)) {
         if (   (($formatted_value =~ /\s+/) && ($formatted_value !~ /^(["']).*\g1$/))
             || ($value_fmt == LINE_VALUE_BOOLEAN)
@@ -472,7 +493,7 @@ quoted if the line format is not LINE_FORMAT_KEY_VAL.
 
 Arguments :
     keyword : line keyword
-    value : keyword value (can be empty)
+    value : keyword value (can be an empty string)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
 
 Return value:
@@ -511,10 +532,10 @@ sub _formatConfigLine
         $config_line = "set $keyword = $value";
     } elsif ($line_fmt == LINE_FORMAT_KEY_VAL) {
         $config_line = $keyword;
-        $config_line .= " $value" if $value;
-        # In trust (shift.conf) format, there should be only one blank between
-        # tokens and no trailing spaces.
-        $config_line =~ s/\s\s+/ /g;
+        $config_line .= " $value" if defined($value);
+        # In this format, ensure that there is only one blank between
+        # tokens and no trailing spaces as it is important in some use cases.
+        $config_line =~ s/\s+/ /g;
         $config_line =~ s/\s+$//;
     } else {
         *$self->{LOG}->error("$function_name: invalid line format ($line_fmt). Internal inconsistency.");
@@ -533,7 +554,7 @@ This function builds a pattern that will match an existing configuration line fo
 the configuration parameter specified. The pattern built takes into account the line format.
 Every whitespace in the pattern (configuration parameter) are replaced by \s+.
 If the line format is LINE_FORMAT_KEY_VAL, no whitespace is
-imposed at the end of the pattern, as these format can be used to write a configuration
+imposed at the end of the pattern, as this format can be used to write a configuration
 directive as a keyword with no value.
 
 Arguments :
@@ -544,7 +565,7 @@ Arguments :
 
 Return value:
     A string containing the pattern to use to match the line in the file or undef
-    in case of an internal error (missing argument).
+    in case of an internal error (missing argument or an invalid line format).
 
 =cut
 
@@ -572,7 +593,7 @@ sub _buildLinePattern
 
     # config_param is generally a keyword and in this case it contains no whitespace.
     # A special case is when config_param (the rule keyword) is used to match a line
-    # without specifying a rule: in this case it may contains whitespaces. Remove strict
+    # without specifying a rule: in this case it may contain whitespaces. Remove strict
     # matching of them (match any type/number of whitespaces at the same position).
     # Look at %trust_config_rules in ncm-dpmlfc Perl module for an example.
     $config_param =~ s/\s+/\\s+/g;
@@ -581,7 +602,7 @@ sub _buildLinePattern
     if ($line_fmt == LINE_FORMAT_SH_VAR) {
         $config_param_pattern = "#?\\s*$config_param=" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
-        $config_param_pattern = "#?\\s*export $config_param=" . $config_value;
+        $config_param_pattern = "#?\\s*export\\s+$config_param=" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SETENV) {
         $config_param_pattern = "#?\\s*setenv\\s+$config_param\\s*=\\s*" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SET) {
@@ -613,7 +634,7 @@ Arguments :
     line_fmt : line format (see LINE_FORMAT_xxx constants)
 
 Return value:
-    None or 1 in case of an internal error (missing argument)
+    undef or 1 in case of an internal error (missing argument)
 
 =cut
 
@@ -633,6 +654,10 @@ sub _commentConfigLine
 
     # Build a pattern to look for.
     my $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt);
+    unless ( defined($config_param_pattern) ) {
+        *$self->{LOG}->error("$function_name: _buildLinePattern() encountered an internal error. Cannot comment out lines matching $config_param");
+        return;
+    }
 
     *$self->{LOG}->debug(1, "$function_name: commenting out lines matching pattern >>>" . $config_param_pattern . "<<<");
     # All matching lines must be commented out, except if they are already commented out.
@@ -670,12 +695,12 @@ line formatting based on the line format.
 
 Arguments :
     config_param: parameter to update
-    config_value : parameter value (can be empty)
+    config_value : parameter value (can be an empty string)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
     multiple : if true, multiple lines with the same keyword can exist (D: false)
 
 Return value:
-    None or 1 in case of an internal error (missing argument)
+    undef or 1 in case of an internal error (missing argument)
 
 =cut
 
@@ -702,21 +727,39 @@ sub _updateConfigLine
 
     my $config_param_pattern;
     my $new_line = $self->_formatConfigLine($config_param, $config_value, $line_fmt);
+    unless ( defined($new_line) ) {
+        *$self->{LOG}->error("$function_name: _formatConfigLine() encountered an internal error. Cannot update lines matching $config_param");
+        return;
+    }
 
     # Build a pattern to look for.
+    # When multiple lines for the same keyword can exist, update only those matching the specific value.
     if ($multiple) {
         *$self->{LOG}->debug(2, "$function_name: 'multiple' flag enabled");
         $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt, $config_value);
+        unless ( defined($config_param_pattern) ) {
+            *$self->{LOG}->error("$function_name: _buildLinePattern() encountered an internal error. Cannot update lines matching $config_param");
+            return;
+        }
     } else {
         $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt);
-        if (($line_fmt == LINE_FORMAT_KEY_VAL) && $config_value) {
-            $config_param_pattern .= "\\s+";    # If the value is defined in these formats, impose a whitespace at the end
+        unless ( defined($config_param_pattern) ) {
+          *$self->{LOG}->error("$function_name: _buildLinePattern() encountered an internal error. Cannot update lines matching $config_param");
+          return;
+        }
+        if (($line_fmt == LINE_FORMAT_KEY_VAL) && defined($config_value)) {
+            # For this format, if the value is defined impose a whitespace at the end to prevent matching a keyword starting
+            # with the same letters.
+            $config_param_pattern .= "\\s+";
         }
     }
 
     # Update the matching configuration lines
-    if ($new_line) {
+    if ( $new_line ) {
         my $comment = "";
+        # For shell variables, add a comment at the end of the line indicating it was edited by Quattor
+        # Not done for other formats as comments at the end of the line are not supported in many
+        # configuration files.
         if (($line_fmt == LINE_FORMAT_SH_VAR) || ($line_fmt == LINE_FORMAT_ENV_VAR)) {
             $comment = $LINE_QUATTOR_COMMENT;
         }
@@ -724,8 +767,7 @@ sub _updateConfigLine
                                  "$function_name: checking expected configuration line ($new_line) with pattern >>>"
                                . $config_param_pattern
                                . "<<<");
-        $self->add_or_replace_lines(
-                                    qr/^\s*$config_param_pattern/,
+        $self->add_or_replace_lines(qr/^\s*$config_param_pattern/,
                                     qr/^\s*$new_line$/,
                                     $new_line . $comment . "\n",
                                     ENDING_OF_FILE,
@@ -745,11 +787,12 @@ information about the error.
 Arguments :
     rule: rule to parse
     config_options: configuration parameters used to build actual configuration
-    parser_options: a hash setting options to modify the behaviour of this method
+    parser_options: a hashref defining options to modify the behaviour of this function
 
 Supported entries for options hash:
-    always_rules_only: if true, apply only rules with ALWAYS condition (D: false)
-    remove_if_undef: if true, remove matching configuration line is rule condition is not met (D: false)
+    always_rules_only: if true, apply only rules with ALWAYS condition (D: false). See introduction
+                       about the ALWAYS condition.
+    remove_if_undef: if true, remove matching configuration line if rule condition is not met (D: false)
 
 Return value: undef if the rule condition is not met or a hash with the following information:
     error_msg: a non empty string if an error happened during parsing
@@ -786,7 +829,7 @@ sub _parse_rule
         $parser_options->{always_rules_only} = $LINE_OPT_DEF_ALWAYS_RULES_ONLY;
     }
 
-    (my $condition, my $tmp) = split /->/, $rule;
+    my ($condition, $tmp) = split /->/, $rule;
     if ($tmp) {
         $rule = $tmp;
     } else {
@@ -812,7 +855,7 @@ sub _parse_rule
     if ($condition ne "") {
         *$self->{LOG}->debug(1, "$function_name: checking condition >>>$condition<<<");
 
-        # Condition may be negated if it starts with a !: remove it from the condition value.
+        # Condition is negated if it starts with a !: remove it from the condition value.
         # If the condition is negated, when the condition is true the rule must not be applied.
         my $negate = 0;
         if ($condition =~ /^!/) {
@@ -877,10 +920,10 @@ Arguments :
 
 Supported entries for options hash:
     always_rules_only: if true, apply only rules with ALWAYS condition (D: false)
-    remove_if_undef: if true, remove matching configuration line is rule condition is not met (D: false)
+    remove_if_undef: if true, remove matching configuration line if rule condition is not met (D: false)
 
 Return value:
-    None or 1 in case of an internal error (missing argument)
+    undef or 1 in case of an internal error (missing argument)
 
 =cut
 
