@@ -363,13 +363,12 @@ sub updateFile
                                 BEGINNING_OF_FILE,
                                );
 
-    $self->_apply_rules(
-                        $config_rules,
-                        $config_options,
-                        $parser_options
-                       );
+    my $status = $self->_apply_rules($config_rules,
+                                     $config_options,
+                                     $parser_options
+                                    );
 
-    return 1;
+    return $status;
 }
 
 
@@ -404,19 +403,19 @@ sub _formatAttributeValue
 
     unless (defined($attr_value)) {
         *$self->{LOG}->error("$function_name: 'attr_value' argument missing (internal error)");
-        return undef;
+        return;
     }
     unless (defined($line_fmt)) {
         *$self->{LOG}->error("$function_name: 'list_fmt' argument missing (internal error)");
-        return undef;
+        return;
     }
     unless (defined($value_fmt)) {
         *$self->{LOG}->error("$function_name: 'value_fmt' argument missing (internal error)");
-        return undef;
+        return;
     }
     unless (defined($value_opt)) {
         *$self->{LOG}->error("$function_name: 'value_opt' argument missing (internal error)");
-        return undef;
+        return;
     }
 
     *$self->{LOG}->debug(2,
@@ -433,7 +432,7 @@ sub _formatAttributeValue
     } elsif ($value_fmt == LINE_VALUE_INSTANCE_PARAMS) {
         # LINE_VALUE_INSTANCE_PARAMS is a value format specific to XrootD (http://xrootd.org).
         # The value is a hash containing 3 keys that are used to construct a command option line.
-        $formatted_value = '';    # Don't return undef if no matching attributes is found
+        $formatted_value = '';    # Don't return if no matching attributes is found
                                   # Instance parameters are described in a nlist
         $formatted_value .= " -l $attr_value->{logFile}"    if $attr_value->{logFile};
         $formatted_value .= " -c $attr_value->{configFile}" if $attr_value->{configFile};
@@ -463,7 +462,7 @@ sub _formatAttributeValue
 
     } else {
         *$self->{LOG}->error("$function_name: invalid value format ($value_fmt) (internal error)");
-        return undef;
+        return;
     }
 
     # Quote value if necessary (only for shell variables).
@@ -509,15 +508,15 @@ sub _formatConfigLine
 
     unless ($keyword) {
         *$self->{LOG}->error("$function_name: 'keyword' argument missing (internal error)");
-        return undef;
+        return;
     }
     unless (defined($value)) {
         *$self->{LOG}->error("$function_name: 'value' argument missing (internal error)");
-        return undef;
+        return;
     }
     unless (defined($line_fmt)) {
         *$self->{LOG}->error("$function_name: 'line_fmt' argument missing (internal error)");
-        return undef;
+        return;
     }
 
     my $config_line = "";
@@ -576,11 +575,11 @@ sub _buildLinePattern
 
     unless ($config_param) {
         *$self->{LOG}->error("$function_name: 'config_param' argument missing (internal error)");
-        return undef;
+        return;
     }
     unless (defined($line_fmt)) {
         *$self->{LOG}->error("$function_name: 'line_fmt' argument missing (internal error)");
-        return undef;
+        return;
     }
     if (defined($config_value)) {
         *$self->{LOG}->debug(2, "$function_name: configuration value '$config_value' will be added to the pattern");
@@ -615,7 +614,7 @@ sub _buildLinePattern
         }
     } else {
         *$self->{LOG}->error("$function_name: invalid line format ($line_fmt). Internal inconsistency.");
-        return undef;
+        return;
     }
 
     return $config_param_pattern;
@@ -871,10 +870,10 @@ sub _parse_rule
                              . "condition attribute = '$cond_attribute', negate=$negate");
         my $cond_satisfied = 1;    # Assume condition is satisfied
         if ($cond_attribute) {
-         # Due to Perl autovivification, testing directly exists($config_options->{$cond_option_set}->{$cond_attribute}) will spring
-         # $config_options->{$cond_option_set} into existence if it doesn't exist.
+            # Due to Perl autovivification, testing directly exists($config_options->{$cond_option_set}->{$cond_attribute}) will spring
+            # $config_options->{$cond_option_set} into existence if it doesn't exist.
             my $cond_true = $config_options->{$cond_option_set}
-              && exists($config_options->{$cond_option_set}->{$cond_attribute});
+                            && exists($config_options->{$cond_option_set}->{$cond_attribute});
             if ($negate) {
                 $cond_satisfied = 0 if $cond_true;
             } else {
@@ -888,8 +887,8 @@ sub _parse_rule
             }
         }
         if (!$cond_satisfied) {
-            # When the condition is not satisfied and if option remove_if_undef is set,
-            # remove configuration line (if present).
+            # When the condition is not satisfied and option remove_if_undef is set,
+            # remove (comment out) configuration line (if present).
             *$self->{LOG}->debug(1, "$function_name: condition not satisfied, flag set to remove matching configuration lines");
             $rule_info{remove_matching_lines} = 1;
             return \%rule_info;
@@ -923,7 +922,8 @@ Supported entries for options hash:
     remove_if_undef: if true, remove matching configuration line if rule condition is not met (D: false)
 
 Return value:
-    undef or 1 in case of an internal error (missing argument)
+    success: 1
+    undef in case of an internal error (missing argument)
 
 =cut
 
@@ -934,11 +934,11 @@ sub _apply_rules
 
     unless ($config_rules) {
         *$self->{LOG}->error("$function_name: 'config_rules' argument missing (internal error)");
-        return 1;
+        return;
     }
     unless ($config_options) {
         *$self->{LOG}->error("$function_name: 'config_options' argument missing (internal error)");
-        return 1;
+        return;
     }
     unless (defined($parser_options)) {
         *$self->{LOG}->debug(2, "$function_name: 'parser_options' undefined");
