@@ -41,7 +41,7 @@ seek to the beginning and C<cancel> any (future) changes.
 =cut
 
 # FileReader supports reading a file or pipe
-sub _is_valid_source
+sub _is_valid_file
 {
     my ($self, $fn) = @_;
     return -f $fn || -p $fn;

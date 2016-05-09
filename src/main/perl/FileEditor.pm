@@ -47,24 +47,82 @@ the class constructor.
 =item new
 
 Returns a new object it accepts the same arguments as the constructor
-for C<CAF::FileWriter>
+for C<CAF::FileWriter> with one additional option: 
+
+=over
+
+=item source 
+
+This option, when present, must be a file name whose contents will be used
+as the initial contents for the edited file if the source modification time
+is more recent than the edited file modification time. This allows to rebuild
+the file contents based on a new version of the reference file. 
+
+The C<source> can be a pipe: in this case, it is always considered more recent
+than the edited file.
+
+=back
 
 =cut
 
 # FileEditor supports reading/editing a file
-sub _is_valid_source
+sub _is_valid_file
 {
     my ($self, $fn) = @_;
     return -f $fn;
 }
 
+# This method is only intended to be used in the context of the constructor
+# and entirely relies on the internal structure of the FileEditor object.
+# 'filename`  is the file name passed with instantiating the FileEditor and
+# 'options/sources' the 'source' parameter value (called a reference file
+# internally).
+sub _is_reference_newer
+{
+    my ($self) = @_;
+    my $is_newer = 0;   # Assume false
+    if (  exists(*$self->{options}->{source}) ) {
+        # It is valid for the source value to be a pipe: in this case consider it
+        # as newer than an existing file.
+        if ( -p *$self->{options}->{source} ) {
+            $is_newer = 1
+        } elsif ( $self->_is_valid_file(*$self->{options}->{source}) ) {
+            # stat()[9] is modification time
+            if ( !$self->_is_valid_file(*$self->{filename}) || 
+                 ((stat(*$self->{options}->{source}))[9] > (stat(*$self->{filename}))[9]) ) {
+                $is_newer = 1
+            }
+        }
+    }
+    #FIXME: replace by $self->debug() after PR #154 has been merged...
+    if ( *$self->{LOG} ) {
+        if ( $is_newer ) {
+            *$self->{LOG}->debug(1, "File ", *$self->{filename}, " older than reference file (", *$self->{options}->{source}, ",");
+        } else {
+            *$self->{LOG}->debug(1, "Reference file (", *$self->{options}->{source}, ") older than ", *$self->{filename});
+        };
+    };
+    return $is_newer;
+}
 
 sub new
 {
     my $class = shift;
     my $self = $class->SUPER::new (@_);
-    if ($self->_is_valid_source(*$self->{filename})) {
-        my $txt = LC::File::file_contents (*$self->{filename});
+    my $src_file;
+    my ($path, %opts) = @_;
+
+    *$self->{options}->{source} = $opts{source} if exists ($opts{source});
+    if ( $self->_is_reference_newer() ) {
+        # As this is a non reproducible event, be sure to log it when it happens
+        *$self->{LOG}->info("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.") if *$self->{LOG};
+        $src_file = *$self->{options}->{source};
+    } elsif ($self->_is_valid_file(*$self->{filename})) {
+        $src_file = *$self->{filename};
+    }
+    if ( $src_file ) {
+        *$self->{LOG}->debug(2, "Reading initial contents from $src_file") if *$self->{LOG};
+        my $txt = LC::File::file_contents ($src_file);
         $self->IO::String::open ($txt);
         $self->seek(IO_SEEK_END);
     }
