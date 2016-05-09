@@ -451,7 +451,9 @@ sub _formatAttributeValue
     # Quote value if necessary (only for shell variables).
     # If you do not want the line interpolated, use explicit single quotes.
     if (($line_fmt == LINE_FORMAT_SH_VAR) || ($line_fmt == LINE_FORMAT_ENV_VAR)) {
-        if (   (($formatted_value =~ /\s+/) && ($formatted_value !~ /^(["']).*\g1$/))
+        # In the regexp, \g1 would have been better than \1 but is not supported
+        # in perl 5.8 (SL5). \1 seems to achieve the same result in this context.
+        if (   (($formatted_value =~ /\s+/) && ($formatted_value !~ /^(["']).*\1$/))
             || ($value_fmt == LINE_VALUE_BOOLEAN)
             || ($formatted_value eq ''))
         {
