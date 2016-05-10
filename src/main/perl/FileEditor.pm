@@ -7,12 +7,10 @@ package CAF::FileEditor;
 
 use strict;
 use warnings;
-use CAF::FileWriter;
 use LC::File;
-use Exporter;
 use Fcntl qw(:seek);
 
-our @ISA = qw (CAF::FileWriter Exporter);
+use parent qw(CAF::FileWriter Exporter);
 our @EXPORT = qw(BEGINNING_OF_FILE ENDING_OF_FILE);
 
 use constant BEGINNING_OF_FILE => (SEEK_SET, 0);
@@ -23,6 +21,7 @@ use constant IO_SEEK_BEGIN => (0, SEEK_SET);
 use constant IO_SEEK_END => (0, SEEK_END);
 
 use constant SYSCONFIG_SEPARATOR => '=';
+
 
 =pod
 
