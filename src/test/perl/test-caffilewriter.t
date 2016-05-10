@@ -77,6 +77,14 @@ is ($opts{contents}, TEXT, "The file has the correct contents");
 is ($opts{mode}, 0600, "The file is created with the correct permissions");
 ok (!*$fh->{save},  "File marked not to be saved after closing");
 is ($path, FILENAME, "The correct file is opened");
+
+my @methods = qw(info verbose report debug warn error event);
+foreach my $method (@methods) {
+    ok($fh->can($method), "FileWriter instance has $method method");
+    ok(! defined($fh->$method("abc")), "conditional logger without log defined returns undef");
+}
+
+
 init_test;
 $fh = CAF::FileWriter->new (FILENAME, mode => 0400);
 print $fh TEXT;
@@ -84,6 +92,7 @@ $fh = "";
 is ($opts{contents}, TEXT, "The file is written when the object is destroyed");
 is ($opts{mode}, 0400, "The file gets the correct permissions when the object is destroyed");
 is ($path, FILENAME, "Correct path opened on object destruction");
+
 
 init_test;
 $fh = CAF::FileWriter->new (FILENAME);

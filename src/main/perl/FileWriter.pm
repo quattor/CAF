@@ -136,37 +136,10 @@ sub new
     bless ($self, $class);
 
     # Tracking on new() when CAF::History is setup to track INSTANCES
-    $self->_event(init => 1);
+    $self->event(init => 1);
 
     return $self;
 }
-
-
-=item _event
-
-Private method to track an event via LOG C<CAF::History> instance (if any).
-Following metadata is added
-
-=over
-
-=item filename
-
-Adds the filename as metadata
-
-=back
-
-=cut
-
-sub _event
-{
-    my ($self, %metadata) = @_;
-
-    if (*$self->{LOG} && *$self->{LOG}->can('event')) {
-        $metadata{filename} = *$self->{filename};
-        *$self->{LOG}->event($self, %metadata);
-    }
-}
-
 
 =pod
 
@@ -202,17 +175,18 @@ sub close
     my ($str, $ret, $cmd, $diff);
 
     # We have to do this because Text::Diff is not present in SL5. :(
-    if (*$self->{LOG} && $CAF::Reporter::_REP_SETUP->{VERBOSE}
+    if (*$self->{LOG}
+        && *$self->{LOG}->can('is_verbose') && *$self->{LOG}->is_verbose()
         && -e *$self->{filename} && *$self->{buf}) {
         $cmd = CAF::Process->new (["diff", "-u", *$self->{filename}, "-"],
                                   stdin => "$self", stdout => \$diff,
                                   keeps_state => 1);
         $cmd->execute();
         if ($diff) {
-            *$self->{LOG}->verbose ("Changes to ", *$self->{filename}, ":");
-            *$self->{LOG}->report ($diff);
+            $self->verbose ("Changes to ", *$self->{filename}, ":");
+            $self->report ($diff);
         } else {
-            *$self->{LOG}->debug(1, "No changes to make to ", *$self->{filename});
+            $self->debug(1, "No changes to make to ", *$self->{filename});
         }
     }
 
@@ -223,26 +197,20 @@ sub close
         $ret = LC::Check::file (*$self->{filename}, %{*$self->{options}});
         # Restore the SELinux context in case of modifications.
         if ($ret) {
-            *$self->{LOG}->verbose ("File ",  *$self->{filename},
-                                    " was modified")
-                    if *$self->{LOG};
             $self->change_hook();
-        } else {
-            *$self->{LOG}->verbose ("File ", *$self->{filename},
-                                    " was not modified")
-                if *$self->{LOG};
         }
+        $self->verbose("File ", *$self->{filename}, " was", ($ret ? '' : ' not')," modified");
     }
 
-    # TODO: cleanup
+    # TODO: cleanup CAF#153
     if (*$self->{LOG} && *$self->{LOG}->can('add_files')) {
         *$self->{LOG}->add_files(*$self->{filename});
     }
 
-    $self->_event(modified => $ret,
-                  noaction => *$self->{options}->{noaction}, # TODO: useful to track?
-                  backup => *$self->{options}->{backup},
-        );
+    $self->event(modified => $ret,
+                 noaction => *$self->{options}->{noaction}, # TODO: useful to track?
+                 backup => *$self->{options}->{backup},
+                 );
 
     $self->SUPER::close();
     return $ret;
@@ -258,9 +226,9 @@ altered.
 sub cancel
 {
     my $self = shift;
-    if (*$self->{LOG}) {
-        *$self->{LOG}->verbose ("Not saving file ", *$self->{filename});
-    }
+
+    $self->verbose("Not saving file ", *$self->{filename});
+
     *$self->{save} = 0;
 }
 
@@ -294,6 +262,60 @@ sub stringify
      my $str = $self->string_ref;
      return $$str;
 }
+
+# Compatibility with CAF::Object
+# event is handled differently (as opposed to CAF::Object).
+
+=item error, warn, info, verbose, debug, report, OK
+
+Convenience methods to access the log/reporter instance that might
+be passed during initialisation and set to C<*$self->{LOG}>.
+
+=cut
+
+
+no strict 'refs';
+foreach my $i (qw(error warn info verbose debug report OK)) {
+    *{$i} = sub {
+        my ($self, @args) = @_;
+        if (*$self->{LOG}) {
+            return *$self->{LOG}->$i(@args);
+        } else {
+            return;
+        }
+    }
+}
+use strict 'refs';
+
+=item event
+
+Method to track an event via LOG C<CAF::History> instance (if any).
+
+Following metadata is added
+
+=over
+
+=item filename
+
+Adds the filename as metadata
+
+=back
+
+=cut
+
+sub event
+{
+    my ($self, %metadata) = @_;
+
+    $metadata{filename} = *$self->{filename};
+
+    my $res;
+    if (*$self->{LOG}) {
+        $res = *$self->{LOG}->event($self, %metadata);
+    }
+    return $res;
+}
+
 
 =back
 
