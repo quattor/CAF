@@ -80,25 +80,31 @@ sub _is_reference_newer
 {
     my ($self) = @_;
     my $is_newer = 0;   # Assume false
-    if (  exists(*$self->{options}->{source}) ) {
+
+    my $reference = *$self->{options}->{source};
+
+    if ($reference) {
         # It is valid for the source value to be a pipe: in this case consider it
         # as newer than an existing file.
-        if ( -p *$self->{options}->{source} ) {
+        my $type = 'file';
+        if ( -p $reference ) {
+            $type = 'pipe';
             $is_newer = 1
-        } elsif ( $self->_is_valid_file(*$self->{options}->{source}) ) {
+        } elsif ( $self->_is_valid_file($reference) ) {
             # stat()[9] is modification time
             if ( !$self->_is_valid_file(*$self->{filename}) ||
-                 ((stat(*$self->{options}->{source}))[9] > (stat(*$self->{filename}))[9]) ) {
+                 ((stat($reference))[9] > (stat(*$self->{filename}))[9]) ) {
                 $is_newer = 1
             }
         }
-    }
-
-    if ( $is_newer ) {
-        $self->debug(1, "File ", *$self->{filename}, " older than reference file (", *$self->{options}->{source}, ",");
+        if ( $is_newer ) {
+            $self->debug(1, "File ", *$self->{filename}, " older than reference $type ($reference,");
+        } else {
+            $self->debug(1, "Reference $type ($reference) older than ", *$self->{filename});
+        };
     } else {
-        $self->debug(1, "Reference file (", *$self->{options}->{source}, ") older than ", *$self->{filename});
-    };
+        $self->debug(3, "No reference file/pipe via source option. Returning false.");
+    }
 
     return $is_newer;
 }
