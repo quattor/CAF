@@ -10,7 +10,7 @@ use lib "$Bin/modules";
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
-use Test::More tests => 8;
+use Test::More tests => 9;
 use Test::NoWarnings;
 use Test::Quattor;
 use Test::Quattor::Object;
@@ -54,12 +54,15 @@ Readonly my $VALUE_1 => 'dpns.example.com';
 Readonly my $EXPECTED_PATTERN_1 => '#?\s*export\s+DPNS_HOST=dpns\.example\.com';
 Readonly my $VALUE_2 => 0;
 Readonly my $EXPECTED_PATTERN_2 => '#?\s*export\s+DPNS_HOST=0';
-Readonly my $VALUE_3 => '^dp$n-s.*ex] a+m(ple[.c)o+m?';
-Readonly my $EXPECTED_PATTERN_3 => '#?\s*export\s+DPNS_HOST=\^dp\$n\-s\.\*ex\]\s+a\+m\(ple\[\.c\)o\+m\?';
+Readonly my $VALUE_3 => '^dp$n-s.*ex] a+m(p{le[.c)o}+m?';
+Readonly my $EXPECTED_PATTERN_3 => '#?\s*export\s+DPNS_HOST=\^dp\$n\-s\.\*ex\]\s+a\+m\(p\{le\[\.c\)o\}\+m\?';
 # Test \ escaping separately as it also needs the expected value also needs to be escaped for the test
 # to be successful!
 Readonly my $VALUE_4 => 'a\b';
 Readonly my $EXPECTED_PATTERN_4 => '#?\s*export\s+DPNS_HOST=a\\\\b';
+Readonly my $KEYWORD_SPECIAL => 'DPM$H{OS}T';
+Readonly my $KEYWORD_SPECIAL_VALUE => 'value';
+Readonly my $EXPECTED_PATTERN_5 => '#?\s*export\s+DPM\$H\{OS\}T=value';
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                           LINE_FORMAT_ENV_VAR,
                                           $VALUE_1);
@@ -76,6 +79,10 @@ $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                           LINE_FORMAT_ENV_VAR,
                                           $VALUE_4);
 is($escaped_pattern, $EXPECTED_PATTERN_4, "Environment variable with value (backslash): pattern ok");
+$escaped_pattern = $fh->_buildLinePattern($KEYWORD_SPECIAL,
+                                          LINE_FORMAT_ENV_VAR,
+                                          $KEYWORD_SPECIAL_VALUE);
+is($escaped_pattern, $EXPECTED_PATTERN_5, "Environment variable with special characters in keyword: pattern ok");
 
 
 # Test::NoWarnings::had_no_warnings();

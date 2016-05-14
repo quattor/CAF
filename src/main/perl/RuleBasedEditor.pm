@@ -41,13 +41,17 @@ matching line will be removed/commented out if the option is undefined.
 
 =item condition
 
-An option or an option set (see below) that must exist for the rule to be applied
+An option or an option set/subset (see below) that must exist for the rule to be applied
 or the keyword C<ALWAYS>.
 Both C<option_set> and C<option_name:option_set> are accepted. option and option set
 in the condition are normally different from the C<option_name> and C<option_set>
 parameters in the rule as this is the default behaviour to apply the rule only if
-they exist.
-One option set only is allowed and only its existence (not its value) is tested.
+they exist. One option set only is allowed and only its existence (not its value) is tested.
+
+C<option_set> can be either an actual option set as defined below or a subset of an option set
+(a subhash of the option set hash). To specify a subset, use C</> as a level separator, 
+e.g. C<xroot/securityProtocol/gsi> (C<gsi> subet of C<securityProtocol> subset of C<xroot> option set).
+
 It is possible to negate the condition (option or option_set must not exist)
 by prepending it with '!'.
 
@@ -583,12 +587,19 @@ sub _buildLinePattern
     }
     if (defined($config_value)) {
         $self->debug(2, "$function_name: configuration value '$config_value' will be added to the pattern");
+        # config_value: scape characters with a specific meaning in the regexp
         $config_value =~ s/\\/\\\\/g;
-        $config_value =~ s/([\-\+\?\.\*\[\]()\^\$])/\\$1/g;
+        $config_value =~ s/([\-\+\?\.\*\[\]()\^\$\{\}])/\\$1/g;
         $config_value =~ s/\s+/\\s+/g;
     } else {
         $config_value = "";
     }
+
+    # config_param: escape characters with a specific meaning in the regexp.
+    # This is unusual but allowed to have such characters in the key part of the rules.
+    $config_param =~ s/\\/\\\\/g;
+    $config_param =~ s/([\-\+\?\.\*\[\]()\^\$\{\}])/\\$1/g;
+    $config_param =~ s/\s+/\\s+/g;
 
     # config_param is generally a keyword and in this case it contains no whitespace.
     # A special case is when config_param (the rule keyword) is used to match a line
@@ -832,7 +843,9 @@ sub _parse_rule
     }
 
     my ($condition, $tmp) = split /->/, $rule;
-    if ($tmp) {
+    # rule can be an empty string: in this case the value will remain undefined but
+    # the condition will be checked in the usual way.
+    if ( defined($tmp) ) {
         $rule = $tmp;
     } else {
         $condition = "";
@@ -853,7 +866,10 @@ sub _parse_rule
         $condition = '';
     }
 
-    # Check if rule condition is met if one is defined
+    # Check if rule condition is met if one is defined.
+    # A condition consists on the existence of a given option set (called condition set)and optionally
+    # an entry in the option set, in the format condition_option:condition_set. The condition set
+    # can be an option subset, expressed as set/subset/subsubset...
     if ($condition ne "") {
         $self->debug(1, "$function_name: checking condition >>>$condition<<<");
 
@@ -872,22 +888,25 @@ sub _parse_rule
         $self->debug(2, "$function_name: condition option set = '$cond_option_set', ",
                      "condition attribute = '$cond_attribute', negate=$negate");
         my $cond_satisfied = 1;    # Assume condition is satisfied
+        my $cond_true = 1;
+        my $tmp_options = $config_options;
+        foreach my $set (split /\//, $cond_option_set) {
+          if ( $tmp_options->{$set} ) {
+            $tmp_options = $tmp_options->{$set};
+          } else {
+            $cond_true = 0;
+            last;
+          }
+        }
         if ($cond_attribute) {
             # Due to Perl autovivification, testing directly exists($config_options->{$cond_option_set}->{$cond_attribute}) will spring
             # $config_options->{$cond_option_set} into existence if it doesn't exist.
-            my $cond_true = $config_options->{$cond_option_set}
-                            && exists($config_options->{$cond_option_set}->{$cond_attribute});
-            if ($negate) {
-                $cond_satisfied = 0 if $cond_true;
-            } else {
-                $cond_satisfied = 0 unless $cond_true;
-            }
-        } elsif ($cond_option_set) {
-            if ($negate) {
-                $cond_satisfied = 0 if exists($config_options->{$cond_option_set});
-            } else {
-                $cond_satisfied = 0 unless exists($config_options->{$cond_option_set});
-            }
+            $cond_true = $cond_true && exists($tmp_options->{$cond_attribute});          
+        }
+        if ( $negate ) {
+            $cond_satisfied = 0 if $cond_true;
+        } else {          
+            $cond_satisfied = 0 unless $cond_true;
         }
         if (!$cond_satisfied) {
             # When the condition is not satisfied and option remove_if_undef is set,
