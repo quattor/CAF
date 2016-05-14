@@ -10,7 +10,7 @@ use lib "$Bin/modules";
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
-use Test::More tests => 20;
+use Test::More tests => 23;
 use Test::NoWarnings;
 use Test::Quattor;
 use Test::Quattor::Object;
@@ -140,7 +140,9 @@ Readonly my @TEST_ARRAY => ('confFile', 'logFile', 'unused', 'logKeep', 'logFile
 Readonly my $FORMATTED_ARRAY => 'confFile logFile unused logKeep logFile';
 Readonly my $FORMATTED_ARRAY_SORTED => 'confFile logFile logFile logKeep unused';
 Readonly my $FORMATTED_ARRAY_UNIQUE => 'confFile logFile logKeep unused';
-my $rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
+# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() does nothihng and returns the array
+Readonly my $FORMATTED_ARRAY_SINGLE => 'ARRAY\(0x[a-f\d]+\)';
+$rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($rbe_fh), $FILENAME." was opened");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
                                                   LINE_FORMAT_KEY_VAL,
@@ -160,6 +162,12 @@ $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
                                                   LINE_VALUE_OPT_UNIQUE,
                                                  );
 is($formatted_value, $FORMATTED_ARRAY_UNIQUE, "Array values (unique) correctly formatted");
+$formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
+                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_VALUE_ARRAY,
+                                                  LINE_VALUE_OPT_SINGLE,
+                                                 );
+like($formatted_value, qr/$FORMATTED_ARRAY_SINGLE/, "Array values (single) correctly formatted");
 
 
 # LINE_VALUE_HASH_KEYS
@@ -169,6 +177,27 @@ $formatted_value = $rbe_fh->_formatAttributeValue(\%INSTANCE_PARAMS,
                                                   0,
                                                  );
 is($formatted_value, $FORMATTED_ARRAY_UNIQUE, "Hash keys correctly formatted");
+
+
+# LINE_VALUE_HASH
+Readonly my %STRING_HASH => ('abc' => 'cde',
+                             '-crl' => 3,
+                            );
+Readonly my $FORMATTED_STRING_HASH => '-crl 3 abc cde';
+# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() does nothihng and returns the hash
+Readonly my $FORMATTED_STRING_HASH_SINGLE => 'HASH\(0x[a-f\d]+\)';
+$formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
+                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_VALUE_HASH,
+                                                  0,
+                                                 );
+is($formatted_value, $FORMATTED_STRING_HASH, "String hash correctly formatted");
+$formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
+                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_VALUE_HASH,
+                                                  LINE_VALUE_OPT_SINGLE,
+                                                 );
+like($formatted_value, qr/$FORMATTED_STRING_HASH_SINGLE/, "String hash (1 key/val per line) correctly formatted");
 
 
 Test::NoWarnings::had_no_warnings();

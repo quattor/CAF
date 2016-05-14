@@ -193,11 +193,11 @@ LINE_VALUE_ARRAY: the value is an array. Rendering controlled by LINE_VALUE_OPT_
 
 =item
 
-LINE_VALUE_HASH_KEYS: the value is hash whose keys are the value. Rendering similar to arrays.
+LINE_VALUE_HASH: the value is a hash of string. Rendering controlled by LINE_VALUE_OPT_xxx constants.
 
 =item
 
-LINE_VALUE_STRING_HASH: the value is a hash of string. Rendering controlled by LINE_VALUE_OPT_xxx constants.
+LINE_VALUE_HASH_KEYS: the value is hash whose keys are the value. Rendering similar to arrays.
 
 =item
 
@@ -211,8 +211,8 @@ use enum qw(
     LINE_VALUE_AS_IS
     LINE_VALUE_BOOLEAN
     LINE_VALUE_ARRAY
+    LINE_VALUE_HASH
     LINE_VALUE_HASH_KEYS
-    LINE_VALUE_STRING_HASH
     LINE_VALUE_INSTANCE_PARAMS
     );
 
@@ -226,7 +226,8 @@ These options mainly apply to lists and hashes and are interpreted as a bitmask.
 
 =item
 
-LINE_VALUE_OPT_SINGLE: each value must be a separate instance of the keyword (multiple lines)
+LINE_VALUE_OPT_SINGLE: each value in an array or keyword/value pair in a hash must be on a separate line. This results in
+several instances of the same keyword (multiple lines) in the configuration file.
 
 =item
 
@@ -267,8 +268,8 @@ Readonly my @RULE_CONSTANTS => qw(
     LINE_VALUE_BOOLEAN
     LINE_VALUE_INSTANCE_PARAMS
     LINE_VALUE_ARRAY
+    LINE_VALUE_HASH
     LINE_VALUE_HASH_KEYS
-    LINE_VALUE_STRING_HASH
     LINE_VALUE_OPT_SINGLE
     LINE_VALUE_OPT_UNIQUE
     LINE_VALUE_OPT_SORTED
@@ -421,7 +422,7 @@ sub _formatAttributeValue
         $formatted_value .= " -c $attr_value->{configFile}" if $attr_value->{configFile};
         $formatted_value .= " -k $attr_value->{logKeep}"    if $attr_value->{logKeep};
 
-    } elsif ($value_fmt == LINE_VALUE_ARRAY) {
+    } elsif ( ($value_fmt == LINE_VALUE_ARRAY) && !($value_opt & LINE_VALUE_OPT_SINGLE) ) {
         # An array can contain several occurences of the same value. By default they are all kept
         # in the index order. Some LINE_VALUE_OPT_xxx options allow to change this default behaviour.
         $self->debug(2, "$function_name: array values received: ", join(",", @$attr_value));
@@ -437,10 +438,24 @@ sub _formatAttributeValue
         }
         $formatted_value = join " ", @$attr_value;
 
+    } elsif ( $value_fmt == LINE_VALUE_HASH && !($value_opt & LINE_VALUE_OPT_SINGLE) ) {
+        $self->debug(2, "$function_name: hash received with keys: ", join(",",(sort keys %$attr_value)));
+        my @tmp_values;
+        foreach my $k (sort keys %$attr_value) {
+            my $v = $attr_value->{$k};
+            # Keys may be escaped if they contain characters like '/': unescaping a non-escaped
+            # string is generally harmless.
+            my $tmp = unescape($k)." $v";
+            $self->debug(2,"$function_name: hash key/value string: '".$tmp);
+            push @tmp_values, $tmp;
+        }
+        $formatted_value = join " ", @tmp_values;
+
     } elsif ($value_fmt == LINE_VALUE_HASH_KEYS) {
         $formatted_value = join " ", sort keys %$attr_value;
 
-    } elsif (($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_STRING_HASH)) {
+    } elsif ( ($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_HASH) || ($value_fmt == LINE_VALUE_ARRAY) ) {
+        # Do nothing when LINE_VALUE_HASH or LINE_VALUE_ARRAY and LINE_VALUE_OPT_SINGLE 
         $formatted_value = $attr_value;
 
     } else {
@@ -462,7 +477,7 @@ sub _formatAttributeValue
         }
     }
 
-    $self->debug(2, "$function_name: formatted value >>>$formatted_value<<<");
+    $self->debug(1, "$function_name: formatted value >>>$formatted_value<<<");
     return $formatted_value;
 }
 
@@ -1046,6 +1061,7 @@ sub _apply_rules
         my $attribute_present = 1;
         my $config_updated    = 0;
         my @array_values;
+        my %hash_values;
         if ($rule_info->{attribute}) {
             foreach my $option_set (@{$rule_info->{option_sets}}) {
                 my $attr_value;
@@ -1074,7 +1090,7 @@ sub _apply_rules
                 # remove_if_undef to be set.
                 # Note that this will never match instance parameters and will not remove entries
                 # no longer part of the configuration in a still existing LINE_VALUE_ARRAY or
-                # LINE_VALUE_STRING_HASH.
+                # LINE_VALUE_HASH.
                 unless ($attribute_present) {
                     if ($rule_parsing_options->{remove_if_undef}) {
                         $self->debug(1, "$function_name: attribute '$rule_info->{attribute}' undefined, ",
@@ -1104,28 +1120,12 @@ sub _apply_rules
                         $self->_updateConfigLine($config_param, $config_value, $line_fmt);
                     }
                     $config_updated = 1;
-                } elsif ($value_fmt == LINE_VALUE_STRING_HASH) {
-                    # With this value format, several lines with the same keyword are generated,
-                    # one for each keyword/value pair.
-                    foreach my $k (sort keys %$attr_value) {
-                        my $v = $attr_value->{$k};
-                        # Value is made by joining key and value as a string.
-                        # Keys may be escaped if they contain characters like '/'. Generally harmless if
-                        # they are not, except if the unescaped key as a sequence '_' + 2 hex digits.
-                        # Unlikely in this context: to prevent problems use camel case for keys.
-                        my $tmp = unescape($k) . " $v";
-                        $self->debug(1, "$function_name: formatting (string hash) ",
-                                     "attribute '$rule_info->{attribute}' value ($tmp, value_fmt=$value_fmt)");
-                        $config_value =
-                          $self->_formatAttributeValue(
-                                                       $tmp,
-                                                       $line_fmt,
-                                                       $value_fmt,
-                                                       $value_opt,
-                                                      );
-                        $self->_updateConfigLine($keyword, $config_value, $line_fmt, 1);
-                    }
-                    $config_updated = 1;
+          
+                } elsif ( $value_fmt == LINE_VALUE_HASH ) {
+                    # Hash are not processed immediately. First, all the values from all the options sets
+                    # are collected into one hash that will be processed later according to LINE_VALUE_OPT_xxx 
+                    # options specified (if any).
+                    %hash_values = (%hash_values, %$attr_value)
                 } elsif ($value_fmt == LINE_VALUE_ARRAY) {
                     # Arrays are not processed immediately. First, all the values from all the options sets
                     # are collected into one array that will be processed later according to LINE_VALUE_OPT_xxx
@@ -1150,7 +1150,7 @@ sub _apply_rules
             $self->debug(1, "$function_name: no attribute specified in rule '$rule'");
         }
 
-        # There is a delayed formatting of arrays after collecting all the values from all
+        # There is a delayed formatting of arrays and hashes after collecting all the values from all
         # the option sets in the rule. Formatting is done taking into account the relevant
         # LINE_VALUE_OPT_xxx specified (bitmask).
         if ($value_fmt == LINE_VALUE_ARRAY) {
@@ -1164,15 +1164,43 @@ sub _apply_rules
                     $config_value = $self->_formatAttributeValue(
                                                                  $val,
                                                                  $line_fmt,
-                                                                 LINE_VALUE_AS_IS,
+                                                                 $value_fmt,
                                                                  $value_opt,
                                                                 );
                     $self->_updateConfigLine($keyword, $config_value, $line_fmt, 1);
                 }
                 $config_updated = 1;
             } else {
-                $config_value = $self->_formatAttributeValue(
-                                                             \@array_values,
+                $config_value = $self->_formatAttributeValue(\@array_values,
+                                                             $line_fmt,
+                                                             $value_fmt,
+                                                             $value_opt,
+                                                            );
+            }
+        
+        } elsif ( $value_fmt == LINE_VALUE_HASH ) {
+            # With this value format, either several lines with the same keyword are generated,
+            # one for each key/value pair if LINE_VALUE_OPT_SINGLE is set or all the key/value
+            # pairs are concatenated to create the value.
+            if ( $value_opt & LINE_VALUE_OPT_SINGLE ) {
+                foreach my $k (sort keys %hash_values) {
+                    my $v = $hash_values{$k};
+                    # Value is made by joining key and value as a string
+                    # Keys may be escaped if they contain characters like '/': unescaping a non-escaped
+                    # string is generally harmless.
+                    my $tmp = unescape($k)." $v";
+                    $self->debug(1,"$function_name: formatting (string hash) attribute '".$rule_info->{attribute}."' value ($tmp, value_fmt=$value_fmt)");
+                    $config_value = $self->_formatAttributeValue($tmp,
+                                                                 $line_fmt,
+                                                                 $value_fmt,
+                                                                 $value_opt,
+                                                                );
+                    $self->_updateConfigLine($keyword,$config_value,$line_fmt,1);
+                }
+                $config_updated = 1;
+
+            } else {
+                $config_value = $self->_formatAttributeValue(\%hash_values,
                                                              $line_fmt,
                                                              $value_fmt,
                                                              $value_opt,
