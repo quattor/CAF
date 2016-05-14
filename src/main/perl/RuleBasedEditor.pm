@@ -152,27 +152,27 @@ end of the line if it is modified by L<CAF::RuleBasedEditor>.
 
 =item *
 
-LINE_FORMAT_KEY_VAL:        key val (e.g. Xrootd, Apache)
+LINE_FORMAT_KW_VAL:        key val (e.g. Xrootd, Apache)
 
 =item *
-LINE_FORMAT_KEY_VAL_SETENV: setenv key=val  (used by Xrootd in particular)
+LINE_FORMAT_KW_VAL_SETENV: setenv key=val  (used by Xrootd in particular)
 
 =item *
 
-LINE_FORMAT_KEY_VAL_SET:    set key=val  (CSH shell variable)
+LINE_FORMAT_KW_VAL_SET:    set key=val  (CSH shell variable)
 
 =back
 
-Inline comments are not supported for the LINE_FORMAT_KEY_VAL_xxx formats.
+Inline comments are not supported for the LINE_FORMAT_KW_VAL_xxx formats.
 
 =cut
 
 use enum qw(
     LINE_FORMAT_SH_VAR=1
     LINE_FORMAT_ENV_VAR
-    LINE_FORMAT_KEY_VAL
-    LINE_FORMAT_KEY_VAL_SETENV
-    LINE_FORMAT_KEY_VAL_SET
+    LINE_FORMAT_KW_VAL
+    LINE_FORMAT_KW_VAL_SETENV
+    LINE_FORMAT_KW_VAL_SET
     );
 
 =pod
@@ -275,9 +275,9 @@ Readonly my $RULE_OPTION_SET_GLOBAL         => 'GLOBAL';
 Readonly my @RULE_CONSTANTS => qw(
     LINE_FORMAT_SH_VAR
     LINE_FORMAT_ENV_VAR
-    LINE_FORMAT_KEY_VAL
-    LINE_FORMAT_KEY_VAL_SETENV
-    LINE_FORMAT_KEY_VAL_SET
+    LINE_FORMAT_KW_VAL
+    LINE_FORMAT_KW_VAL_SETENV
+    LINE_FORMAT_KW_VAL_SET
     LINE_VALUE_AS_IS
     LINE_VALUE_BOOLEAN
     LINE_VALUE_INSTANCE_PARAMS
@@ -511,7 +511,7 @@ sub _formatAttributeValue
 
 This function formats a configuration line using keyword and value,
 according to the line format requested. Values containing spaces are
-quoted if the line format is not LINE_FORMAT_KEY_VAL.
+quoted if the line format is not LINE_FORMAT_KW_VAL.
 
 Arguments :
     keyword : line keyword
@@ -548,11 +548,11 @@ sub _formatConfigLine
         $config_line = "$keyword=$value";
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
         $config_line = "export $keyword=$value";
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SETENV) {
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
         $config_line = "setenv $keyword = $value";
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SET) {
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
         $config_line = "set $keyword = $value";
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL) {
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL) {
         $config_line = $keyword;
         $config_line .= " $value" if defined($value);
         # In this format, ensure that there is only one blank between
@@ -575,7 +575,7 @@ sub _formatConfigLine
 This function builds a pattern that will match an existing configuration line for
 the configuration parameter specified. The pattern built takes into account the line format.
 Every whitespace in the pattern (configuration parameter) are replaced by \s+.
-If the line format is LINE_FORMAT_KEY_VAL, no whitespace is
+If the line format is LINE_FORMAT_KW_VAL, no whitespace is
 imposed at the end of the pattern, as this format can be used to write a configuration
 directive as a keyword with no value.
 
@@ -632,11 +632,11 @@ sub _buildLinePattern
         $config_param_pattern = "#?\\s*$config_param=" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
         $config_param_pattern = "#?\\s*export\\s+$config_param=" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SETENV) {
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
         $config_param_pattern = "#?\\s*setenv\\s+$config_param\\s*=\\s*" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SET) {
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
         $config_param_pattern = "#?\\s*set\\s+$config_param\\s*=\\s*" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL) {
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL) {
         $config_param_pattern = "#?\\s*$config_param";
         # Avoid adding a whitespace requirement if there is no config_value
         if ($config_value ne "") {
@@ -781,7 +781,7 @@ sub _updateConfigLine
                        "Cannot update lines matching $config_param");
           return;
         }
-        if (($line_fmt == LINE_FORMAT_KEY_VAL) && defined($config_value)) {
+        if (($line_fmt == LINE_FORMAT_KW_VAL) && defined($config_value)) {
             # For this format, if the value is defined impose a whitespace at the end to prevent matching a keyword starting
             # with the same letters.
             $config_param_pattern .= "\\s+";

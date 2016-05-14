@@ -43,13 +43,13 @@ Readonly my $FALSE => 'no';
 Readonly my $TRUE => 'yes';
 Readonly my $TRUE_QUOTED => '"yes"';
 $formatted_value = $rbe_fh->_formatAttributeValue(0,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_BOOLEAN,
                                                   0,
                                                  );
 is($formatted_value, $FALSE, "Boolean (false) correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(1,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_BOOLEAN,
                                                   0,
                                                  );
@@ -69,7 +69,7 @@ Readonly my $AS_IS_VALUE_SINGLE_QUOTED => "'This is a Test'";
 Readonly my $EMPTY_VALUE => '';
 Readonly my $EMPTY_VALUE_QUOTED => '""';
 $formatted_value = $rbe_fh->_formatAttributeValue($AS_IS_VALUE,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_AS_IS,
                                                   0,
                                                  );
@@ -81,7 +81,7 @@ $formatted_value = $rbe_fh->_formatAttributeValue($AS_IS_VALUE,
                                                  );
 is($formatted_value, $AS_IS_VALUE_DOUBLE_QUOTED, "Literal value (quoted) correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue($AS_IS_VALUE_DOUBLE_QUOTED,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_AS_IS,
                                                   0,
                                                  );
@@ -99,7 +99,7 @@ $formatted_value = $rbe_fh->_formatAttributeValue($AS_IS_VALUE_SINGLE_QUOTED,
                                                  );
 is($formatted_value, $AS_IS_VALUE_SINGLE_QUOTED, "Already single quoted literal value correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue($EMPTY_VALUE,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_AS_IS,
                                                   0,
                                                  );
@@ -122,7 +122,7 @@ Readonly my %INSTANCE_PARAMS => (logFile => '/test/instance.log',
 Readonly my $FORMATTED_INSTANCE_PARAMS => ' -l /test/instance.log -k 60';
 Readonly my $FORMATTED_INSTANCE_PARAMS_QUOTED => '" -l /test/instance.log -k 60"';
 $formatted_value = $rbe_fh->_formatAttributeValue(\%INSTANCE_PARAMS,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_INSTANCE_PARAMS,
                                                   0,
                                                  );
@@ -145,25 +145,25 @@ Readonly my $FORMATTED_ARRAY_SINGLE => 'ARRAY\(0x[a-f\d]+\)';
 $rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($rbe_fh), $FILENAME." was opened");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_ARRAY,
                                                   0,
                                                  );
 is($formatted_value, $FORMATTED_ARRAY, "Array values correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_ARRAY,
                                                   LINE_VALUE_OPT_SORTED,
                                                  );
 is($formatted_value, $FORMATTED_ARRAY_SORTED, "Array values (sorted) correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_ARRAY,
                                                   LINE_VALUE_OPT_UNIQUE,
                                                  );
 is($formatted_value, $FORMATTED_ARRAY_UNIQUE, "Array values (unique) correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_ARRAY,
                                                   LINE_VALUE_OPT_SINGLE,
                                                  );
@@ -172,7 +172,7 @@ like($formatted_value, qr/$FORMATTED_ARRAY_SINGLE/, "Array values (single) corre
 
 # LINE_VALUE_HASH_KEYS
 $formatted_value = $rbe_fh->_formatAttributeValue(\%INSTANCE_PARAMS,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_HASH_KEYS,
                                                   0,
                                                  );
@@ -187,13 +187,13 @@ Readonly my $FORMATTED_STRING_HASH => '-crl 3 abc cde';
 # When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() does nothihng and returns the hash
 Readonly my $FORMATTED_STRING_HASH_SINGLE => 'HASH\(0x[a-f\d]+\)';
 $formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_HASH,
                                                   0,
                                                  );
 is($formatted_value, $FORMATTED_STRING_HASH, "String hash correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
-                                                  LINE_FORMAT_KEY_VAL,
+                                                  LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_HASH,
                                                   LINE_VALUE_OPT_SINGLE,
                                                  );

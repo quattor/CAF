@@ -310,55 +310,55 @@ my %dpm_config_rules_2 = (
      );
 
 my %dav_config_rules = (
-        "NSFlags" =>"NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "NSFlags" =>"NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_conditions = (
-        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
-        "DiskFlags" =>"DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
+        "DiskFlags" =>"DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_conditions_2 = (
-        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
-        "DiskFlags" =>"DiskFlags:dpn->DiskFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
+        "DiskFlags" =>"DiskFlags:dpn->DiskFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_neg_conds = (
-        "NSFlags" =>"!DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
-        "DiskFlags" =>"!DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "NSFlags" =>"!DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
+        "DiskFlags" =>"!DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_no_rule = (
-        "RFIO DAEMONV3_WRMT 1" => ";".LINE_FORMAT_KEY_VAL,
+        "RFIO DAEMONV3_WRMT 1" => ";".LINE_FORMAT_KW_VAL,
 );
 
 my %rules_multi_cond_sets = (
-        "DPNS TRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
-        "DPNS WTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_UNIQUE,
-        "DPNS RTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SORTED,
-        "DPNS FTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SINGLE,
+        "DPNS TRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
+        "DPNS WTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_UNIQUE,
+        "DPNS RTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SORTED,
+        "DPNS FTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SINGLE,
 );
 
 my %rules_always = (
-        "NSFlags" => "ALWAYS->NSFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
-        "DiskFlags" => "DiskFlags:dav;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_ARRAY,
+        "NSFlags" => "ALWAYS->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
+        "DiskFlags" => "DiskFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_xrootd_1 = (
-        'sec.protocol /usr/${xrdlibdir} unix' => "security/unix->unix:security;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_HASH,
-        'sec.protocol /usr/${xrdlibdir} gsi' => "security/gsi->gsi:security;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_HASH,
+        'sec.protocol /usr/${xrdlibdir} unix' => "security/unix->unix:security;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_HASH,
+        'sec.protocol /usr/${xrdlibdir} gsi' => "security/gsi->gsi:security;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_HASH,
         # Condition but empty value
-        'dpm.listvoms' => "vomsat:security/gsi->;".LINE_FORMAT_KEY_VAL,
-        'dpm.nohv1' => "vomsfun:security/gsi->;".LINE_FORMAT_KEY_VAL,
+        'dpm.listvoms' => "vomsat:security/gsi->;".LINE_FORMAT_KW_VAL,
+        'dpm.nohv1' => "vomsfun:security/gsi->;".LINE_FORMAT_KW_VAL,
 );
 
 # Same as $rules_xrootd_1 with (LINE_KEY_OPT_PREFIX_DASH | LINE_VALUE_OPT_SEP_COLON) value option
 my %rules_xrootd_2 = (
-        'sec.protocol /usr/${xrdlibdir} unix' => "security/unix->unix:security;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_HASH.':'.(LINE_KEY_OPT_PREFIX_DASH | LINE_VALUE_OPT_SEP_COLON),
-        'sec.protocol /usr/${xrdlibdir} gsi' => "security/gsi->gsi:security;".LINE_FORMAT_KEY_VAL.";".LINE_VALUE_HASH.':'.(LINE_KEY_OPT_PREFIX_DASH | LINE_VALUE_OPT_SEP_COLON),
+        'sec.protocol /usr/${xrdlibdir} unix' => "security/unix->unix:security;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_HASH.':'.(LINE_KEY_OPT_PREFIX_DASH | LINE_VALUE_OPT_SEP_COLON),
+        'sec.protocol /usr/${xrdlibdir} gsi' => "security/gsi->gsi:security;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_HASH.':'.(LINE_KEY_OPT_PREFIX_DASH | LINE_VALUE_OPT_SEP_COLON),
         # Condition but empty value
-        'dpm.listvoms' => "vomsat:security/gsi->;".LINE_FORMAT_KEY_VAL,
-        'dpm.nohv1' => "vomsfun:security/gsi->;".LINE_FORMAT_KEY_VAL,
+        'dpm.listvoms' => "vomsat:security/gsi->;".LINE_FORMAT_KW_VAL,
+        'dpm.nohv1' => "vomsfun:security/gsi->;".LINE_FORMAT_KW_VAL,
 );
 
 # Option sets

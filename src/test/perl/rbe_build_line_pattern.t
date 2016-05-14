@@ -41,13 +41,13 @@ ok(defined($fh), $FILENAME." was opened");
 # Build a line pattern without a parameter value
 Readonly my $KEYWORD => 'DPNS_HOST';
 Readonly my $LINE_PATTERN_ENV_VAR => '#?\s*export\s+DPNS_HOST=';
-Readonly my $LINE_PATTERN_KEY_VALUE => '#?\s*DPNS_HOST';
+Readonly my $LINE_PATTERN_KW_VALUE => '#?\s*DPNS_HOST';
 my $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                              LINE_FORMAT_ENV_VAR);
 is($escaped_pattern, $LINE_PATTERN_ENV_VAR, "Environment variable pattern ok");
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
-                                          LINE_FORMAT_KEY_VAL);
-is($escaped_pattern, $LINE_PATTERN_KEY_VALUE, "Key/value pattern ok");
+                                          LINE_FORMAT_KW_VAL);
+is($escaped_pattern, $LINE_PATTERN_KW_VALUE, "Key/value pattern ok");
 
 # Build a line pattern without a parameter value
 Readonly my $VALUE_1 => 'dpns.example.com';
