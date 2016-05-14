@@ -230,6 +230,10 @@ These options mainly apply to lists and hashes and are interpreted as a bitmask.
 
 =item
 
+LINE_KEY_OPT_PREFIX_DASH: if set, add a C<-> before the keyword when writing it in the configuration file.
+
+=item
+
 LINE_VALUE_OPT_SINGLE: each value in an array or keyword/value pair in a hash must be on a separate line. This results in
 several instances of the same keyword (multiple lines) in the configuration file.
 
@@ -241,14 +245,20 @@ LINE_VALUE_OPT_UNIQUE: each values are concatenated as a space-separated string
 
 LINE_VALUE_OPT_SORTED: values are sorted
 
+=item
+
+LINE_VALUE_OPT_SEP_COLON: use a colon between keyword and value.
+
 =back
 
 =cut
 
-use enum qw(
-    BITMASK: LINE_VALUE_OPT_SINGLE
+use enum qw(BITMASK: 
+    LINE_KEY_OPT_PREFIX_DASH
+    LINE_VALUE_OPT_SINGLE
     LINE_VALUE_OPT_UNIQUE
     LINE_VALUE_OPT_SORTED
+    LINE_VALUE_OPT_SEP_COLON
     );
 
 # Internal constants
@@ -274,9 +284,11 @@ Readonly my @RULE_CONSTANTS => qw(
     LINE_VALUE_ARRAY
     LINE_VALUE_HASH
     LINE_VALUE_HASH_KEYS
+    LINE_KEY_OPT_PREFIX_DASH
     LINE_VALUE_OPT_SINGLE
     LINE_VALUE_OPT_UNIQUE
     LINE_VALUE_OPT_SORTED
+    LINE_VALUE_OPT_SEP_COLON
     );
 
 
@@ -444,12 +456,19 @@ sub _formatAttributeValue
 
     } elsif ( $value_fmt == LINE_VALUE_HASH && !($value_opt & LINE_VALUE_OPT_SINGLE) ) {
         $self->debug(2, "$function_name: hash received with keys: ", join(",",(sort keys %$attr_value)));
+        # Key/value separator (D: space)
+        my $key_val_separator = ' ';
+        $key_val_separator = ':' if ($value_opt & LINE_VALUE_OPT_SEP_COLON);
+        # Prefix to add before key (D: none)
+        my $key_prefix = '';
+        $key_prefix = '-' if ($value_opt & LINE_KEY_OPT_PREFIX_DASH);
+        $self->debug(2,"$function_name: key prefix: >>>$key_prefix<<<; key/value separator: $key_val_separator");
         my @tmp_values;
         foreach my $k (sort keys %$attr_value) {
             my $v = $attr_value->{$k};
             # Keys may be escaped if they contain characters like '/': unescaping a non-escaped
             # string is generally harmless.
-            my $tmp = unescape($k)." $v";
+            my $tmp = $key_prefix.unescape($k).$key_val_separator.$v;
             $self->debug(2,"$function_name: hash key/value string: '".$tmp);
             push @tmp_values, $tmp;
         }
