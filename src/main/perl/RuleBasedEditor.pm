@@ -197,11 +197,12 @@ LINE_VALUE_ARRAY: the value is an array. Rendering controlled by LINE_VALUE_OPT_
 
 =item
 
-LINE_VALUE_HASH: the value is a hash of string. Rendering controlled by LINE_VALUE_OPT_xxx constants.
+LINE_VALUE_HASH: the value is a hash of strings. Rendering controlled by LINE_VALUE_OPT_xxx constants.
 
 =item
 
-LINE_VALUE_HASH_KEYS: the value is hash whose keys are the value. Rendering similar to arrays.
+LINE_VALUE_HASH_KEYS: the value is a hash whose keys are the value. Rendering similar to arrays with 
+C<LINE_VALUE_ARRAY> (the key list is treated as an array).
 
 =item
 
@@ -462,14 +463,14 @@ sub _formatAttributeValue
         # Prefix to add before key (D: none)
         my $key_prefix = '';
         $key_prefix = '-' if ($value_opt & LINE_KEY_OPT_PREFIX_DASH);
-        $self->debug(2,"$function_name: key prefix: >>>$key_prefix<<<; key/value separator: $key_val_separator");
+        $self->debug(2, "$function_name: key prefix: >>>$key_prefix<<<; key/value separator: $key_val_separator");
         my @tmp_values;
         foreach my $k (sort keys %$attr_value) {
             my $v = $attr_value->{$k};
             # Keys may be escaped if they contain characters like '/': unescaping a non-escaped
             # string is generally harmless.
             my $tmp = $key_prefix.unescape($k).$key_val_separator.$v;
-            $self->debug(2,"$function_name: hash key/value string: '".$tmp);
+            $self->debug(2, "$function_name: hash key/value string: '$tmp'");
             push @tmp_values, $tmp;
         }
         $formatted_value = join " ", @tmp_values;
@@ -478,7 +479,8 @@ sub _formatAttributeValue
         $formatted_value = join " ", sort keys %$attr_value;
 
     } elsif ( ($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_HASH) || ($value_fmt == LINE_VALUE_ARRAY) ) {
-        # Do nothing when LINE_VALUE_HASH or LINE_VALUE_ARRAY and LINE_VALUE_OPT_SINGLE 
+        # In addition to LINE_VALUE_AS_IS, do nothing when ether LINE_VALUE_HASH or LINE_VALUE_ARRAY and 
+        # LINE_VALUE_OPT_SINGLE (if it is not set, this is processed before so no need to test it again). 
         $formatted_value = $attr_value;
 
     } else {
@@ -570,6 +572,30 @@ sub _formatConfigLine
 
 =pod
 
+=item _escape_regexp_string
+
+Help method to escape all characters with a special interpretation in the context
+of a regexp.
+
+Arguments:
+    regexp_str: initial regexp string (characters not escaped)
+
+Return value:
+    string: regexp with all specail characters escaped
+
+=cut
+
+sub _escape_regexp_string {
+    my ($self, $regexp_str) = @_;
+
+    $regexp_str =~ s/\\/\\\\/g;
+    $regexp_str =~ s/([\-\+\?\.\*\[\]()\^\$\{\}])/\\$1/g;
+    $regexp_str =~ s/\s+/\\s+/g;
+
+    return $regexp_str;
+}
+
+
 =item _buildLinePattern
 
 This function builds a pattern that will match an existing configuration line for
@@ -607,18 +633,14 @@ sub _buildLinePattern
     if (defined($config_value)) {
         $self->debug(2, "$function_name: configuration value '$config_value' will be added to the pattern");
         # config_value: scape characters with a specific meaning in the regexp
-        $config_value =~ s/\\/\\\\/g;
-        $config_value =~ s/([\-\+\?\.\*\[\]()\^\$\{\}])/\\$1/g;
-        $config_value =~ s/\s+/\\s+/g;
+        $config_value = $self->_escape_regexp_string($config_value);
     } else {
         $config_value = "";
     }
 
     # config_param: escape characters with a specific meaning in the regexp.
     # This is unusual but allowed to have such characters in the key part of the rules.
-    $config_param =~ s/\\/\\\\/g;
-    $config_param =~ s/([\-\+\?\.\*\[\]()\^\$\{\}])/\\$1/g;
-    $config_param =~ s/\s+/\\s+/g;
+    $config_param = $self->_escape_regexp_string($config_param);
 
     # config_param is generally a keyword and in this case it contains no whitespace.
     # A special case is when config_param (the rule keyword) is used to match a line
@@ -886,7 +908,7 @@ sub _parse_rule
     }
 
     # Check if rule condition is met if one is defined.
-    # A condition consists on the existence of a given option set (called condition set)and optionally
+    # A condition consists on the existence of a given option set (called condition set) and optionally
     # an entry in the option set, in the format condition_option:condition_set. The condition set
     # can be an option subset, expressed as set/subset/subsubset...
     if ($condition ne "") {
@@ -909,13 +931,13 @@ sub _parse_rule
         my $cond_satisfied = 1;    # Assume condition is satisfied
         my $cond_true = 1;
         my $tmp_options = $config_options;
-        foreach my $set (split /\//, $cond_option_set) {
-          if ( $tmp_options->{$set} ) {
-            $tmp_options = $tmp_options->{$set};
-          } else {
-            $cond_true = 0;
-            last;
-          }
+        foreach my $set (split(/\//, $cond_option_set)) {
+            if ( $tmp_options->{$set} ) {
+                $tmp_options = $tmp_options->{$set};
+            } else {
+                $cond_true = 0;
+                last;
+            }
         }
         if ($cond_attribute) {
             # Due to Perl autovivification, testing directly exists($config_options->{$cond_option_set}->{$cond_attribute}) will spring
@@ -1160,7 +1182,7 @@ sub _apply_rules
                     $config_updated = 1;
           
                 } elsif ( $value_fmt == LINE_VALUE_HASH ) {
-                    # Hash are not processed immediately. First, all the values from all the options sets
+                    # Hashes are not processed immediately. First, all the values from all the options sets
                     # are collected into one hash that will be processed later according to LINE_VALUE_OPT_xxx 
                     # options specified (if any).
                     %hash_values = (%hash_values, %$attr_value)
@@ -1233,7 +1255,7 @@ sub _apply_rules
                                                                  $value_fmt,
                                                                  $value_opt,
                                                                 );
-                    $self->_updateConfigLine($keyword,$config_value,$line_fmt,1);
+                    $self->_updateConfigLine($keyword, $config_value, $line_fmt, 1);
                 }
                 $config_updated = 1;
 
