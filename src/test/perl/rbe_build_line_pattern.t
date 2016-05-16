@@ -34,6 +34,7 @@ my $obj = Test::Quattor::Object->new();
 $SIG{__DIE__} = \&confess;
 
 my $escaped_pattern;
+my $line_opt = 0;
 
 my $fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($fh), $FILENAME." was opened");
@@ -52,10 +53,12 @@ Readonly my $KEYWORD => 'DPNS_HOST';
 Readonly my $LINE_PATTERN_ENV_VAR => '#?\s*export\s+DPNS_HOST=';
 Readonly my $LINE_PATTERN_KW_VALUE => '#?\s*DPNS_HOST';
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
-                                             LINE_FORMAT_ENV_VAR);
+                                          LINE_FORMAT_ENV_VAR,
+                                          $line_opt);
 is($escaped_pattern, $LINE_PATTERN_ENV_VAR, "Environment variable pattern ok");
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
-                                          LINE_FORMAT_KW_VAL);
+                                          LINE_FORMAT_KW_VAL,
+                                          $line_opt);
 is($escaped_pattern, $LINE_PATTERN_KW_VALUE, "Key/value pattern ok");
 
 # Build a line pattern without a parameter value
@@ -74,22 +77,27 @@ Readonly my $KEYWORD_SPECIAL_VALUE => 'value';
 Readonly my $EXPECTED_PATTERN_5 => '#?\s*export\s+DPM\$H\{OS\}T=value';
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                           LINE_FORMAT_ENV_VAR,
+                                          $line_opt,
                                           $VALUE_1);
 is($escaped_pattern, $EXPECTED_PATTERN_1, "Environment variable with value (host name): pattern ok");
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                           LINE_FORMAT_ENV_VAR,
+                                          $line_opt,
                                           $VALUE_2);
 is($escaped_pattern, $EXPECTED_PATTERN_2, "Environment variable with value (0): pattern ok");
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                           LINE_FORMAT_ENV_VAR,
+                                          $line_opt,
                                           $VALUE_3);
 is($escaped_pattern, $EXPECTED_PATTERN_3, "Environment variable with value (special characters): pattern ok");
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                           LINE_FORMAT_ENV_VAR,
+                                          $line_opt,
                                           $VALUE_4);
 is($escaped_pattern, $EXPECTED_PATTERN_4, "Environment variable with value (backslash): pattern ok");
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD_SPECIAL,
                                           LINE_FORMAT_ENV_VAR,
+                                          $line_opt,
                                           $KEYWORD_SPECIAL_VALUE);
 is($escaped_pattern, $EXPECTED_PATTERN_5, "Environment variable with special characters in keyword: pattern ok");
 
