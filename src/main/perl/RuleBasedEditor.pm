@@ -332,6 +332,7 @@ Supported entries for options hash:
 
 Return value
     sucess: 1
+    error processing of one or more rules: 0
     argument error or error duing rule processing: undef
 
 =cut
@@ -381,7 +382,7 @@ sub updateFile
 
 =over
 
-=item formatAttrValue
+=item formatAttributeValue
 
 This function formats an attribute value based on the value format specified.
 
@@ -479,7 +480,7 @@ sub _formatAttributeValue
         $formatted_value = join " ", sort keys %$attr_value;
 
     } elsif ( ($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_HASH) || ($value_fmt == LINE_VALUE_ARRAY) ) {
-        # In addition to LINE_VALUE_AS_IS, do nothing when ether LINE_VALUE_HASH or LINE_VALUE_ARRAY and 
+        # In addition to LINE_VALUE_AS_IS, do nothing when either LINE_VALUE_HASH or LINE_VALUE_ARRAY and 
         # LINE_VALUE_OPT_SINGLE (if it is not set, this is processed before so no need to test it again). 
         $formatted_value = $attr_value;
 
@@ -585,7 +586,8 @@ Return value:
 
 =cut
 
-sub _escape_regexp_string {
+sub _escape_regexp_string
+{
     my ($self, $regexp_str) = @_;
 
     $regexp_str =~ s/\\/\\\\/g;
@@ -685,7 +687,9 @@ Arguments :
     line_fmt : line format (see LINE_FORMAT_xxx constants)
 
 Return value:
-    undef or 1 in case of an internal error (missing argument)
+    success: 1
+    error during processing: 0
+    internal error (missing argument): undef
 
 =cut
 
@@ -696,11 +700,11 @@ sub _commentConfigLine
 
     unless ($config_param) {
         $self->error("$function_name: 'config_param' argument missing (internal error)");
-        return 1;
+        return;
     }
     unless (defined($line_fmt)) {
         $self->error("$function_name: 'line_fmt' argument missing (internal error)");
-        return 1;
+        return;
     }
 
     # Build a pattern to look for.
@@ -708,7 +712,7 @@ sub _commentConfigLine
     unless ( defined($config_param_pattern) ) {
         $self->error("$function_name: _buildLinePattern() encountered an internal error. ",
                      "Cannot comment out lines matching $config_param");
-        return;
+        return 0;
     }
 
     $self->debug(1, "$function_name: commenting out lines matching pattern >>>", $config_param_pattern, "<<<");
@@ -736,6 +740,7 @@ sub _commentConfigLine
     }
     $self->set_contents(join("", @lns));
 
+    return 1;
 }
 
 
@@ -989,6 +994,7 @@ Supported entries for options hash:
 
 Return value:
     success: 1
+    error processing one or more rules: 0
     undef in case of an internal error (missing argument)
 
 =cut
@@ -1017,6 +1023,8 @@ sub _apply_rules
         $parser_options->{remove_if_undef} = $LINE_OPT_DEF_REMOVE_IF_UNDEF;
     }
 
+    # Initialize global status to success
+    my $ruleset_status = 1;
 
     # Loop over all config rule entries, sorted by keyword alphabetical order.
     # Config rules are stored in a hash whose key is the variable to write
@@ -1078,8 +1086,7 @@ sub _apply_rules
         if ($comment_line) {
             $self->debug(1, "$function_name: keyword '$keyword' negated, removing/commenting configuration line");
             unless ( $self->_commentConfigLine($keyword, $line_fmt) ) {
-                $self->error("$function_name: _commentConfigLine() encountered an internal error, ",
-                             "lines matching '$keyword' not removed");
+                $ruleset_status = 0;
             }
             next;
         }
@@ -1099,13 +1106,13 @@ sub _apply_rules
                 # potential dependency failure)
                 $self->error("Error parsing rule >>>$rule<<<: " . $rule_info->{error_msg});
                 # An invalid rule is just ignored
+                $ruleset_status = 0;
                 next;
             } elsif ($rule_info->{remove_matching_lines}) {
                 if ($rule_parsing_options->{remove_if_undef}) {
                     $self->debug(1, "$function_name: removing/commenting configuration lines for keyword '$keyword'");
                     unless ( $self->_commentConfigLine($keyword, $line_fmt) ) {
-                        $self->error("$function_name: _commentConfigLine() encountered an internal error, ",
-                                     "lines matching '$keyword' not removed");
+                        $ruleset_status = 0;
                     }
                 } else {
                     $self->debug(1, "$function_name: remove_if_undef not set, ignoring line to remove");
@@ -1155,7 +1162,9 @@ sub _apply_rules
                     if ($rule_parsing_options->{remove_if_undef}) {
                         $self->debug(1, "$function_name: attribute '$rule_info->{attribute}' undefined, ",
                                      "removing configuration line");
-                        $self->_commentConfigLine($keyword, $line_fmt);
+                        unless ( $self->_commentConfigLine($keyword, $line_fmt) ) {
+                            $ruleset_status = 0;
+                        }
                     }
                     next;
                 }
@@ -1173,6 +1182,12 @@ sub _apply_rules
                                                                      $value_fmt,
                                                                      $value_opt,
                                                                     );
+                        unless ( defined($config_value) ) {
+                            $self->error("$function_name: _formatAttributeValue() encountered an internal error, ",
+                                         "rule $rule_id ignored.");
+                            $ruleset_status = 0;
+                            next;
+                        }
                         my $config_param = $keyword;
                         my $instance_uc  = uc($instance);
                         $config_param =~ s/%%INSTANCE%%/$instance_uc/;
@@ -1227,6 +1242,12 @@ sub _apply_rules
                                                                  $value_fmt,
                                                                  $value_opt,
                                                                 );
+                     unless ( defined($config_value) ) {
+                         $self->error("$function_name: _formatAttributeValue() encountered an internal error, ",
+                                      "rule $rule_id ignored.");
+                         $ruleset_status = 0;
+                         next;
+                     }
                     $self->_updateConfigLine($keyword, $config_value, $line_fmt, 1);
                 }
                 $config_updated = 1;
@@ -1255,6 +1276,12 @@ sub _apply_rules
                                                                  $value_fmt,
                                                                  $value_opt,
                                                                 );
+                     unless ( defined($config_value) ) {
+                         $self->error("$function_name: _formatAttributeValue() encountered an internal error, ",
+                                      "rule $rule_id ignored.");
+                         $ruleset_status = 0;
+                         next;
+                    }
                     $self->_updateConfigLine($keyword, $config_value, $line_fmt, 1);
                 }
                 $config_updated = 1;
@@ -1270,10 +1297,19 @@ sub _apply_rules
 
         # Instance parameters, string hashes have already been written
         if (!$config_updated && $attribute_present) {
+            # First check that _formatAttributeValue() encountered no error
+            unless ( defined($config_value) ) {
+                $self->error("$function_name: _formatAttributeValue() encountered an internal error, ",
+                             "rule $rule_id ignored.");
+                $ruleset_status = 0;
+                next;
+            }
             $self->_updateConfigLine($keyword, $config_value, $line_fmt);
         }
 
     }
+
+    return $ruleset_status;
 
 }
 
