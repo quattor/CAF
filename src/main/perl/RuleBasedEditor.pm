@@ -201,11 +201,11 @@ LINE_VALUE_BOOLEAN: interpret the value as a boolean rendered as C<yes> or C<no>
 
 =item
 
-LINE_VALUE_ARRAY: the value is an array. Rendering controlled by LINE_VALUE_OPT_xxx constants.
+LINE_VALUE_ARRAY: the value is an array. Rendering controlled by LINE_OPT_xxx constants.
 
 =item
 
-LINE_VALUE_HASH: the value is a hash of strings. Rendering controlled by LINE_VALUE_OPT_xxx constants.
+LINE_VALUE_HASH: the value is a hash of strings. Rendering controlled by LINE_OPT_xxx constants.
 
 =item
 
@@ -231,7 +231,7 @@ use enum qw(
 
 =pod
 
-=head3 LINE__VALUE_OPT_xxx: options for rendering the config line
+=head3 LINE_OPT_xxx: options for rendering the config line
 
 These options mainly apply to lists and hashes and are interpreted as a bitmask.
 
@@ -239,20 +239,20 @@ These options mainly apply to lists and hashes and are interpreted as a bitmask.
 
 =item
 
-LINE_KEY_OPT_PREFIX_DASH: if set, add a C<-> before the keyword when writing it in the configuration file.
+LINE_OPT_KEY_PREFIX_DASH: if set, add a C<-> before the keyword when writing it in the configuration file.
 
 =item
 
-LINE_VALUE_OPT_SINGLE: each value in an array or keyword/value pair in a hash must be on a separate line. This results in
+LINE_OPT_VALUE_ONELINE: each value in an array or keyword/value pair in a hash must be on a separate line. This results in
 several instances of the same keyword (multiple lines) in the configuration file.
 
 =item
 
-LINE_VALUE_OPT_UNIQUE: each values are concatenated as a space-separated string
+LINE_OPT_VALUE_UNIQUE: each values are concatenated as a space-separated string
 
 =item
 
-LINE_VALUE_OPT_SORTED: values are sorted
+LINE_OPT_VALUE_SORTED: values are sorted
 
 =item
 
@@ -260,11 +260,11 @@ LINE_OPT_HASH_SEP_COLON: when LINE_VALUE_HASH, use a colon between each hash key
 
 =item
 
-LINE_VALUE_OPT_SEP_COLON: use a colon between keyword and value.
+LINE_OPT_SEP_COLON: use a colon between keyword and value.
 
 =item
 
-LINE_VALUE_OPT_SEP_EQUAL: use an equal sign between keyword and value.
+LINE_OPT_SEP_EQUAL: use an equal sign between keyword and value.
 
 =item
 
@@ -276,14 +276,14 @@ keyword/value separator.
 =cut
 
 use enum qw(BITMASK: 
-    LINE_KEY_OPT_PREFIX_DASH
-    LINE_VALUE_OPT_SINGLE
-    LINE_VALUE_OPT_UNIQUE
-    LINE_VALUE_OPT_SORTED
+    LINE_OPT_KEY_PREFIX_DASH
+    LINE_OPT_VALUE_ONELINE
+    LINE_OPT_VALUE_UNIQUE
+    LINE_OPT_VALUE_SORTED
     LINE_OPT_HASH_SEP_COLON
-    LINE_VALUE_OPT_SEP_COLON
-    LINE_VALUE_OPT_SEP_EQUAL
-    LINE_VALUE_OPT_SEP_SPACE_AROUND
+    LINE_OPT_SEP_COLON
+    LINE_OPT_SEP_EQUAL
+    LINE_OPT_SEP_SPACE_AROUND
     );
 
 # Internal constants
@@ -309,14 +309,14 @@ Readonly my @RULE_CONSTANTS => qw(
     LINE_VALUE_ARRAY
     LINE_VALUE_HASH
     LINE_VALUE_HASH_KEYS
-    LINE_KEY_OPT_PREFIX_DASH
-    LINE_VALUE_OPT_SINGLE
-    LINE_VALUE_OPT_UNIQUE
-    LINE_VALUE_OPT_SORTED
-    LINE_VALUE_OPT_SEP_COLON
+    LINE_OPT_KEY_PREFIX_DASH
+    LINE_OPT_VALUE_ONELINE
+    LINE_OPT_VALUE_UNIQUE
+    LINE_OPT_VALUE_SORTED
+    LINE_OPT_SEP_COLON
     LINE_OPT_HASH_SEP_COLON
-    LINE_VALUE_OPT_SEP_EQUAL
-    LINE_VALUE_OPT_SEP_SPACE_AROUND
+    LINE_OPT_SEP_EQUAL
+    LINE_OPT_SEP_SPACE_AROUND
     );
 
 
@@ -467,30 +467,30 @@ sub _formatAttributeValue
         $formatted_value .= " -c $attr_value->{configFile}" if $attr_value->{configFile};
         $formatted_value .= " -k $attr_value->{logKeep}"    if $attr_value->{logKeep};
 
-    } elsif ( ($value_fmt == LINE_VALUE_ARRAY) && !($line_opt & LINE_VALUE_OPT_SINGLE) ) {
+    } elsif ( ($value_fmt == LINE_VALUE_ARRAY) && !($line_opt & LINE_OPT_VALUE_ONELINE) ) {
         # An array can contain several occurences of the same value. By default they are all kept
-        # in the index order. Some LINE_VALUE_OPT_xxx options allow to change this default behaviour.
+        # in the index order. Some LINE_OPT_xxx options allow to change this default behaviour.
         $self->debug(2, "$function_name: array values received: ", join(",", @$attr_value));
-        if ($line_opt & LINE_VALUE_OPT_UNIQUE) {
+        if ($line_opt & LINE_OPT_VALUE_UNIQUE) {
             my %values = map(($_ => 1), @$attr_value);
             $attr_value = [keys(%values)];
             $self->debug(2, "$function_name: array values made unique: ", join(",", @$attr_value));
         }
-        # LINE_VALUE_OPT_UNIQUE implies LINE_VALUE_OPT_SORTED
-        if ($line_opt & (LINE_VALUE_OPT_UNIQUE | LINE_VALUE_OPT_SORTED)) {
+        # LINE_OPT_VALUE_UNIQUE implies LINE_OPT_VALUE_SORTED
+        if ($line_opt & (LINE_OPT_VALUE_UNIQUE | LINE_OPT_VALUE_SORTED)) {
             $attr_value = [sort(@$attr_value)];
             $self->debug(2, "$function_name: array values sorted: ", join(",", @$attr_value));
         }
         $formatted_value = join " ", @$attr_value;
 
-    } elsif ( $value_fmt == LINE_VALUE_HASH && !($line_opt & LINE_VALUE_OPT_SINGLE) ) {
+    } elsif ( $value_fmt == LINE_VALUE_HASH && !($line_opt & LINE_OPT_VALUE_ONELINE) ) {
         $self->debug(2, "$function_name: hash received with keys: ", join(",",(sort keys %$attr_value)));
         # Key/value separator (D: space)
         my $key_val_separator = ' ';
         $key_val_separator = ':' if ($line_opt & LINE_OPT_HASH_SEP_COLON);
         # Prefix to add before key (D: none)
         my $key_prefix = '';
-        $key_prefix = '-' if ($line_opt & LINE_KEY_OPT_PREFIX_DASH);
+        $key_prefix = '-' if ($line_opt & LINE_OPT_KEY_PREFIX_DASH);
         $self->debug(2, "$function_name: key prefix: >>>$key_prefix<<<; key/value separator: $key_val_separator");
         my @tmp_values;
         foreach my $k (sort keys %$attr_value) {
@@ -508,7 +508,7 @@ sub _formatAttributeValue
 
     } elsif ( ($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_HASH) || ($value_fmt == LINE_VALUE_ARRAY) ) {
         # In addition to LINE_VALUE_AS_IS, do nothing when either LINE_VALUE_HASH or LINE_VALUE_ARRAY and 
-        # LINE_VALUE_OPT_SINGLE (if it is not set, this is processed before so no need to test it again). 
+        # LINE_OPT_VALUE_ONELINE (if it is not set, this is processed before so no need to test it again). 
         # Just ensure that the value can be interpolated as a string (it is a scalar).
         if ( ref(\$attr_value) eq 'SCALAR' ) {
             $formatted_value = $attr_value;
@@ -587,15 +587,15 @@ sub _formatConfigLine
 
     # Set the separator to use for LINE_FORMAT_KW_VAL_xxx formats.
     # Default separator is a space.
-    # When a non default separator is used, LINE_VALUE_OPT_SEP_SPACE_AROUND means that 
+    # When a non default separator is used, LINE_OPT_SEP_SPACE_AROUND means that 
     # a space must be added before and after the separator.
     my $kw_val_sep = ' ';
-    if ( $line_opt & LINE_VALUE_OPT_SEP_EQUAL ) {
+    if ( $line_opt & LINE_OPT_SEP_EQUAL ) {
         $kw_val_sep = '=';
-    } elsif ( $line_opt & LINE_VALUE_OPT_SEP_COLON ) {
+    } elsif ( $line_opt & LINE_OPT_SEP_COLON ) {
         $kw_val_sep = ':';
     }
-    if ( ($kw_val_sep ne ' ') && ($line_opt & LINE_VALUE_OPT_SEP_SPACE_AROUND) ) {
+    if ( ($kw_val_sep ne ' ') && ($line_opt & LINE_OPT_SEP_SPACE_AROUND) ) {
         $kw_val_sep = " $kw_val_sep ";
     }
 
@@ -707,9 +707,9 @@ sub _buildLinePattern
     $config_param = $self->_escape_regexp_string($config_param);
 
     my $kw_val_sep = '\\s';      # Default keyword/value separator for LINE_FORMAT_KW_xxx
-    if ( $line_opt & LINE_VALUE_OPT_SEP_EQUAL ) {
+    if ( $line_opt & LINE_OPT_SEP_EQUAL ) {
         $kw_val_sep = '\=';
-    } elsif ( $line_opt & LINE_VALUE_OPT_SEP_COLON ) {
+    } elsif ( $line_opt & LINE_OPT_SEP_COLON ) {
         $kw_val_sep = ':';
     }
     
@@ -719,7 +719,7 @@ sub _buildLinePattern
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
         $config_param_pattern = "#?\\s*export\\s+$config_param=" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
-        $config_param_pattern = "#?\\s*setenv\\s+$config_param\\*$kw_val_sep\\s*" . $config_value;
+        $config_param_pattern = "#?\\s*setenv\\s+$config_param\\s*$kw_val_sep\\s*" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
         $config_param_pattern = "#?\\s*set\\s+$config_param\\s*$kw_val_sep\\s*" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_KW_VAL) {
@@ -1270,12 +1270,12 @@ sub _apply_rules
           
                 } elsif ( $value_fmt == LINE_VALUE_HASH ) {
                     # Hashes are not processed immediately. First, all the values from all the options sets
-                    # are collected into one hash that will be processed later according to LINE_VALUE_OPT_xxx 
+                    # are collected into one hash that will be processed later according to LINE_OPT_xxx 
                     # options specified (if any).
                     %hash_values = (%hash_values, %$attr_value)
                 } elsif ($value_fmt == LINE_VALUE_ARRAY) {
                     # Arrays are not processed immediately. First, all the values from all the options sets
-                    # are collected into one array that will be processed later according to LINE_VALUE_OPT_xxx
+                    # are collected into one array that will be processed later according to LINE_OPT_xxx
                     # options specified (if any).
                     @array_values = (@array_values, @$attr_value);
                 } else {
@@ -1299,14 +1299,14 @@ sub _apply_rules
 
         # There is a delayed formatting of arrays and hashes after collecting all the values from all
         # the option sets in the rule. Formatting is done taking into account the relevant
-        # LINE_VALUE_OPT_xxx specified (bitmask).
+        # LINE_OPT_xxx specified (bitmask).
         if ($value_fmt == LINE_VALUE_ARRAY) {
-            if ($line_opt & LINE_VALUE_OPT_SINGLE) {
+            if ($line_opt & LINE_OPT_VALUE_ONELINE) {
                 # With this value format, several lines with the same keyword are generated,
-                # one for each array value (if line_opt is not LINE_VALUE_OPT_SINGLE, all
+                # one for each array value (if line_opt is not LINE_OPT_VALUE_ONELINE, all
                 # the values are concatenated on one line).
                 $self->debug(1, "$function_name: formatting (array) attribute '",
-                             $rule_info->{attribute}, "' as LINE_VALUE_OPT_SINGLE");
+                             $rule_info->{attribute}, "' as LINE_OPT_VALUE_ONELINE");
                 foreach my $val (@array_values) {
                     $config_value = $self->_formatAttributeValue(
                                                                  $val,
@@ -1333,9 +1333,9 @@ sub _apply_rules
         
         } elsif ( $value_fmt == LINE_VALUE_HASH ) {
             # With this value format, either several lines with the same keyword are generated,
-            # one for each key/value pair if LINE_VALUE_OPT_SINGLE is set or all the key/value
+            # one for each key/value pair if LINE_OPT_VALUE_ONELINE is set or all the key/value
             # pairs are concatenated to create the value.
-            if ( $line_opt & LINE_VALUE_OPT_SINGLE ) {
+            if ( $line_opt & LINE_OPT_VALUE_ONELINE ) {
                 foreach my $k (sort keys %hash_values) {
                     my $v = $hash_values{$k};
                     # Value is made by joining key and value as a string

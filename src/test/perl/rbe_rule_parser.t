@@ -349,22 +349,22 @@ my %rules_with_neg_conds = (
 );
 
 my %rules_with_sep_equal = (
-        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SEP_EQUAL,
+        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_OPT_SEP_EQUAL,
         "DiskFlags" =>"DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_sep_equal_spaces = (
-        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".(LINE_VALUE_OPT_SEP_EQUAL|LINE_VALUE_OPT_SEP_SPACE_AROUND),
+        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".(LINE_OPT_SEP_EQUAL|LINE_OPT_SEP_SPACE_AROUND),
         "DiskFlags" =>"DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_sep_colon = (
-        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SEP_COLON,
+        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_OPT_SEP_COLON,
         "DiskFlags" =>"DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
 my %rules_with_sep_colon_spaces = (
-        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".(LINE_VALUE_OPT_SEP_COLON|LINE_VALUE_OPT_SEP_SPACE_AROUND),
+        "NSFlags" =>"DiskFlags:dpm->NSFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".(LINE_OPT_SEP_COLON|LINE_OPT_SEP_SPACE_AROUND),
         "DiskFlags" =>"DiskFlags:dpns->DiskFlags:dav;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
 );
 
@@ -374,9 +374,9 @@ my %rules_no_rule = (
 
 my %rules_multi_cond_sets = (
         "DPNS TRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY,
-        "DPNS WTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_UNIQUE,
-        "DPNS RTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SORTED,
-        "DPNS FTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_VALUE_OPT_SINGLE,
+        "DPNS WTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_OPT_VALUE_UNIQUE,
+        "DPNS RTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_OPT_VALUE_SORTED,
+        "DPNS FTRUST" => "dpm->hostlist:dpns,srmv1;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_ARRAY.":".LINE_OPT_VALUE_ONELINE,
 );
 
 my %rules_always = (
@@ -392,10 +392,10 @@ my %rules_xrootd_1 = (
         'dpm.nohv1' => "vomsfun:security/gsi->;".LINE_FORMAT_KW_VAL,
 );
 
-# Same as $rules_xrootd_1 with (LINE_KEY_OPT_PREFIX_DASH | LINE_VALUE_OPT_SEP_COLON) value option
+# Same as $rules_xrootd_1 with (LINE_OPT_KEY_PREFIX_DASH | LINE_OPT_SEP_COLON) value option
 my %rules_xrootd_2 = (
-        'sec.protocol /usr/${xrdlibdir} unix' => "security/unix->unix:security;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_HASH.':'.(LINE_KEY_OPT_PREFIX_DASH | LINE_OPT_HASH_SEP_COLON),
-        'sec.protocol /usr/${xrdlibdir} gsi' => "security/gsi->gsi:security;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_HASH.':'.(LINE_KEY_OPT_PREFIX_DASH | LINE_OPT_HASH_SEP_COLON),
+        'sec.protocol /usr/${xrdlibdir} unix' => "security/unix->unix:security;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_HASH.':'.(LINE_OPT_KEY_PREFIX_DASH | LINE_OPT_HASH_SEP_COLON),
+        'sec.protocol /usr/${xrdlibdir} gsi' => "security/gsi->gsi:security;".LINE_FORMAT_KW_VAL.";".LINE_VALUE_HASH.':'.(LINE_OPT_KEY_PREFIX_DASH | LINE_OPT_HASH_SEP_COLON),
         # Condition but empty value
         'dpm.listvoms' => "vomsat:security/gsi->;".LINE_FORMAT_KW_VAL,
         'dpm.nohv1' => "vomsfun:security/gsi->;".LINE_FORMAT_KW_VAL,

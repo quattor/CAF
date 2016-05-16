@@ -151,21 +151,21 @@ is($formatted_value, $FORMATTED_ARRAY, "Array values correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
                                                   LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_ARRAY,
-                                                  LINE_VALUE_OPT_SORTED,
+                                                  LINE_OPT_VALUE_SORTED,
                                                  );
 is($formatted_value, $FORMATTED_ARRAY_SORTED, "Array values (sorted) correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
                                                   LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_ARRAY,
-                                                  LINE_VALUE_OPT_UNIQUE,
+                                                  LINE_OPT_VALUE_UNIQUE,
                                                  );
 is($formatted_value, $FORMATTED_ARRAY_UNIQUE, "Array values (unique) correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
                                                   LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_ARRAY,
-                                                  LINE_VALUE_OPT_SINGLE,
+                                                  LINE_OPT_VALUE_ONELINE,
                                                  );
-# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() should return undef 
+# When LINE_OPT_VALUE_ONELINE is set, formatAttributeValue() should return undef 
 # if the value cannot be interpolated as a string
 ok(!$formatted_value, "An array passed as value cannot be interpolated as a string");
 
@@ -194,15 +194,15 @@ is($formatted_value, $FORMATTED_STRING_HASH, "String hash correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
                                                   LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_HASH,
-                                                  LINE_KEY_OPT_PREFIX_DASH,
+                                                  LINE_OPT_KEY_PREFIX_DASH,
                                                  );
 is($formatted_value, $FORMATTED_STRING_HASH_2, "String hash correctly formatted (key prefixed with ')");
 $formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
                                                   LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_HASH,
-                                                  LINE_VALUE_OPT_SINGLE,
+                                                  LINE_OPT_VALUE_ONELINE,
                                                  );
-# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() should return undef 
+# When LINE_OPT_VALUE_ONELINE is set, formatAttributeValue() should return undef 
 # if the value cannot be interpolated as a string
 ok(!$formatted_value, "A hash passed as value cannot be interpolated as a string");
 
