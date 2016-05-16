@@ -10,7 +10,7 @@ use lib "$Bin/modules";
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
-use Test::More tests => 9;
+use Test::More tests => 11;
 use Test::NoWarnings;
 use Test::Quattor;
 use Test::Quattor::Object;
@@ -33,16 +33,25 @@ my $obj = Test::Quattor::Object->new();
 
 $SIG{__DIE__} = \&confess;
 
+my $escaped_pattern;
 
 my $fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($fh), $FILENAME." was opened");
 
+# First test the function used to escape special characters in patterns
+Readonly my $PATTERN_NO_SPECIAL_CHARS => 'abcdef12389';
+Readonly my $PATTERN_WITH_SPECIAL_CHARS => '-+?.*  []()^	${}';
+Readonly my $EXPECTED_WITH_SPECIAL_CHARS => '\-\+\?\.\*\s+\[\]\(\)\^\s+\$\{\}';
+$escaped_pattern = $fh->_escape_regexp_string($PATTERN_NO_SPECIAL_CHARS);
+is($escaped_pattern, $PATTERN_NO_SPECIAL_CHARS, "Pattern without special characters ok");
+$escaped_pattern = $fh->_escape_regexp_string($PATTERN_WITH_SPECIAL_CHARS);
+is($escaped_pattern, $EXPECTED_WITH_SPECIAL_CHARS, "Pattern with special characters ok");
 
 # Build a line pattern without a parameter value
 Readonly my $KEYWORD => 'DPNS_HOST';
 Readonly my $LINE_PATTERN_ENV_VAR => '#?\s*export\s+DPNS_HOST=';
 Readonly my $LINE_PATTERN_KW_VALUE => '#?\s*DPNS_HOST';
-my $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
+$escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                              LINE_FORMAT_ENV_VAR);
 is($escaped_pattern, $LINE_PATTERN_ENV_VAR, "Environment variable pattern ok");
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,

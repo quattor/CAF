@@ -140,7 +140,7 @@ Readonly my @TEST_ARRAY => ('confFile', 'logFile', 'unused', 'logKeep', 'logFile
 Readonly my $FORMATTED_ARRAY => 'confFile logFile unused logKeep logFile';
 Readonly my $FORMATTED_ARRAY_SORTED => 'confFile logFile logFile logKeep unused';
 Readonly my $FORMATTED_ARRAY_UNIQUE => 'confFile logFile logKeep unused';
-# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() does nothihng and returns the array
+# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() does nothing and returns the array
 Readonly my $FORMATTED_ARRAY_SINGLE => 'ARRAY\(0x[a-f\d]+\)';
 $rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($rbe_fh), $FILENAME." was opened");

@@ -386,6 +386,23 @@ my $xrootd_options = {security => {gsi => {crl => 3,
 my $all_options = {%$dpm_options, %$dmlite_options};
 
 
+#########################################
+# Function actually executing the tests #
+#########################################
+
+sub test_rule_parsing {
+    my ($obj, $fn, $initial_data, $args, $expected, $test_info) = @_;
+    
+    set_file_contents($fn, $initial_data);
+    my $fh = CAF::RuleBasedEditor->open($fn, log => $obj);
+    ok(defined($fh), "$fn was opened $test_info");
+    $fh->updateFile(@$args);
+    is("$fh", $expected, "$fn has expected contents $test_info");
+    my $changes = $fh->close();
+    
+    return $changes;    
+}
+
 #############
 # Main code #
 #############
@@ -398,172 +415,49 @@ my $obj = Test::Quattor::Object->new();
 $SIG{__DIE__} = \&confess;
 
 
-my $changes;
-my $fh;
-
-set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-
-
 # Test  simple variable substitution
-set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-$fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
-ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%dpm_config_rules_1,
-                           $dpm_options);
-is("$fh", $DPM_EXPECTED_CONF_1, $DPM_CONF_FILE." has expected contents (config 1)");
-$fh->close();
-
+test_rule_parsing($obj, $DPM_CONF_FILE, $DPM_INITIAL_CONF_1, [\%dpm_config_rules_1, $dpm_options], $DPM_EXPECTED_CONF_1, "(config 1)");
 
 # Test potentially ambiguous config (duplicated lines, similar keywords)
-set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_2);
-$fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
-ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%dpm_config_rules_1,
-                           $dpm_options);
-is("$fh", $DPM_EXPECTED_CONF_2, $DPM_CONF_FILE." has expected contents (config 2)");
-$fh->close();
-
+test_rule_parsing($obj, $DPM_CONF_FILE, $DPM_INITIAL_CONF_2, [\%dpm_config_rules_1, $dpm_options], $DPM_EXPECTED_CONF_2, "(config 2)");
 
 # Test array displayed as list
-set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_3);
-$fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
-ok(defined($fh), $DPM_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%dpm_config_rules_2,
-                           $dpm_options);
-is("$fh", $DPM_EXPECTED_CONF_3, $DPM_CONF_FILE." has expected contents (config 3)");
-$fh->close();
-
+test_rule_parsing($obj, $DPM_CONF_FILE, $DPM_INITIAL_CONF_3, [\%dpm_config_rules_2, $dpm_options], $DPM_EXPECTED_CONF_3, "(config 3)");
 
 # Test 'keyword value" format (a la Apache)
-set_file_contents($DMLITE_CONF_FILE,$DMLITE_INITIAL_CONF_1);
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%dav_config_rules,
-                           $dmlite_options);
-is("$fh", $DMLITE_EXPECTED_CONF_1, $DMLITE_CONF_FILE." has expected contents");
-$fh->close();
-
+test_rule_parsing($obj, $DMLITE_CONF_FILE, $DMLITE_INITIAL_CONF_1, [\%dav_config_rules, $dmlite_options], $DMLITE_EXPECTED_CONF_1, "");
 
 # Test rule conditions
-
-set_file_contents($DMLITE_CONF_FILE,'');
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_with_conditions,
-                           $all_options);
-is("$fh", $COND_TEST_EXPECTED_1, $DMLITE_CONF_FILE." has expected contents (rules with conditions)");
-$fh->close();
-
-set_file_contents($DMLITE_CONF_FILE,'');
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_with_neg_conds,
-                           $all_options);
-is("$fh", $NEG_COND_TEST_EXPECTED_1, $DMLITE_CONF_FILE." has expected contents (rules with negative conditions)");
-$fh->close();
-
-set_file_contents($DMLITE_CONF_FILE,$COND_TEST_INITIAL);
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_with_conditions,
-                           $all_options);
-is("$fh", $COND_TEST_INITIAL, $DMLITE_CONF_FILE." has expected contents (initial contents, rules conditions with non existent attribute)");
-$fh->close();
-
-set_file_contents($DMLITE_CONF_FILE,$COND_TEST_INITIAL);
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_with_conditions_2,
-                           $all_options);
-is("$fh", $COND_TEST_INITIAL, $DMLITE_CONF_FILE." has expected contents (initial contents, rules conditions with non existent option set)");
-$fh->close();
+test_rule_parsing($obj, $DMLITE_CONF_FILE, '', [\%rules_with_conditions, $all_options], $COND_TEST_EXPECTED_1, "(rules with conditions)");
+test_rule_parsing($obj, $DMLITE_CONF_FILE, '', [\%rules_with_neg_conds, $all_options], $NEG_COND_TEST_EXPECTED_1, "(rules with negative conditions)");
+test_rule_parsing($obj, $DMLITE_CONF_FILE, $COND_TEST_INITIAL, [\%rules_with_conditions, $all_options], $COND_TEST_INITIAL,
+                                                                    "(initial contents, rules conditions with non existent attribute)");
+test_rule_parsing($obj, $DMLITE_CONF_FILE, $COND_TEST_INITIAL, [\%rules_with_conditions_2, $all_options], $COND_TEST_INITIAL,
+                                                                    "(initial contents, rules conditions with non existent option set)");
 
 my %parser_options;
 $parser_options{remove_if_undef} = 1;
-set_file_contents($DMLITE_CONF_FILE,$COND_TEST_INITIAL);
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_with_conditions,
-                           $all_options,
-                           \%parser_options);
-is("$fh", $COND_TEST_EXPECTED_2, $DMLITE_CONF_FILE." has expected contents (initial contents, rules conditions, parser options)");
-$fh->close();
+test_rule_parsing($obj, $DMLITE_CONF_FILE, $COND_TEST_INITIAL, [\%rules_with_conditions, $all_options, \%parser_options], $COND_TEST_EXPECTED_2,
+                                                                    "(initial contents, rules conditions, parser options)");
+test_rule_parsing($obj, $DMLITE_CONF_FILE, $COND_TEST_INITIAL, [\%rules_with_neg_conds, $all_options, \%parser_options], $NEG_COND_TEST_EXPECTED_2,
+                                                                    "(initial contents, rules with negative conditions, parser options)");
 
-set_file_contents($DMLITE_CONF_FILE,$COND_TEST_INITIAL);
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_with_neg_conds,
-                           $all_options,
-                           \%parser_options);
-is("$fh", $NEG_COND_TEST_EXPECTED_2, $DMLITE_CONF_FILE." has expected contents (initial contents, rules with negative conditions, parser options)");
-$fh->close();
-
-set_file_contents($DMLITE_CONF_FILE,'');
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_always,
-                           $dmlite_options);
-is("$fh", $COND_TEST_EXPECTED_3, $DMLITE_CONF_FILE." has expected contents (always_rules_only not set)");
-$fh->close();
-
+test_rule_parsing($obj, $DMLITE_CONF_FILE, '', [\%rules_always, $dmlite_options], $COND_TEST_EXPECTED_3, "(always_rules_only not set)");
 $parser_options{always_rules_only} = 1;
-set_file_contents($DMLITE_CONF_FILE,'');
-$fh = CAF::RuleBasedEditor->open($DMLITE_CONF_FILE, log => $obj);
-ok(defined($fh), $DMLITE_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_always,
-                           $dmlite_options,
-                           \%parser_options);
-is("$fh", $COND_TEST_EXPECTED_1, $DMLITE_CONF_FILE." has expected contents (always_rules_only set)");
-$fh->close();
-
+test_rule_parsing($obj, $DMLITE_CONF_FILE, '', [\%rules_always, $dmlite_options, \%parser_options], $COND_TEST_EXPECTED_1, "(always_rules_only set)");
 
 # Rule with only a keyword
-set_file_contents($DPM_SHIFT_CONF_FILE,'');
-$fh = CAF::RuleBasedEditor->open($DPM_SHIFT_CONF_FILE, log => $obj);
-ok(defined($fh), $DPM_SHIFT_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_no_rule,
-                           $dpm_options);
-is("$fh", $NO_RULE_EXPECTED, $DPM_SHIFT_CONF_FILE." has expected contents (keyword only)");
-$fh->close();
-
+test_rule_parsing($obj, $DPM_SHIFT_CONF_FILE, '', [\%rules_no_rule, $dpm_options], $NO_RULE_EXPECTED, "(keyword only)");
 
 # Rule with multiple condition sets and multiple-word keyword
-set_file_contents($DPM_SHIFT_CONF_FILE,'');
-$fh = CAF::RuleBasedEditor->open($DPM_SHIFT_CONF_FILE, log => $obj);
-ok(defined($fh), $DPM_SHIFT_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_multi_cond_sets,
-                           $dpm_options);
-is("$fh", $MULTI_COND_SETS_EXPECTED, $DPM_SHIFT_CONF_FILE." has expected contents (multiple condition sets)");
-$fh->close();
-
+test_rule_parsing($obj, $DPM_SHIFT_CONF_FILE, '', [\%rules_multi_cond_sets, $dpm_options], $MULTI_COND_SETS_EXPECTED, "(multiple condition sets)");
 
 # Rules with hashes
 $parser_options{remove_if_undef} = 1;
 $parser_options{always_rules_only} = 0;
-set_file_contents($XROOTD_CONF_FILE,'');
-$fh = CAF::RuleBasedEditor->open($XROOTD_CONF_FILE, log => $obj);
-ok(defined($fh), $XROOTD_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_xrootd_1,
-                           $xrootd_options,
-                           \%parser_options);
-is("$fh", $XROOTD_EXPECTED_0, $XROOTD_CONF_FILE." has expected contents");
-$fh->close();
-set_file_contents($XROOTD_CONF_FILE,$XROOTD_INITIAL_1);
-$fh = CAF::RuleBasedEditor->open($XROOTD_CONF_FILE, log => $obj);
-ok(defined($fh), $XROOTD_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_xrootd_1,
-                           $xrootd_options,
-                           \%parser_options);
-is("$fh", $XROOTD_EXPECTED_1, $XROOTD_CONF_FILE." (with initial contents) has expected contents");
-$fh->close();
-set_file_contents($XROOTD_CONF_FILE,$XROOTD_INITIAL_2);
-$fh = CAF::RuleBasedEditor->open($XROOTD_CONF_FILE, log => $obj);
-ok(defined($fh), $XROOTD_CONF_FILE." was opened");
-$changes = $fh->updateFile(\%rules_xrootd_2,
-                           $xrootd_options,
-                           \%parser_options);
-is("$fh", $XROOTD_EXPECTED_2, $XROOTD_CONF_FILE." (with initial contents 2) has expected contents");
-$fh->close();
+test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rules_xrootd_1, $xrootd_options, \%parser_options], $XROOTD_EXPECTED_0, "");
+test_rule_parsing($obj, $XROOTD_CONF_FILE, $XROOTD_INITIAL_1, [\%rules_xrootd_1, $xrootd_options, \%parser_options], $XROOTD_EXPECTED_1, "(with initial contents)");
+test_rule_parsing($obj, $XROOTD_CONF_FILE, $XROOTD_INITIAL_2, [\%rules_xrootd_2, $xrootd_options, \%parser_options], $XROOTD_EXPECTED_2, "(with initial contents 2)");
 
 
 Test::NoWarnings::had_no_warnings();
