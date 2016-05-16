@@ -482,7 +482,13 @@ sub _formatAttributeValue
     } elsif ( ($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_HASH) || ($value_fmt == LINE_VALUE_ARRAY) ) {
         # In addition to LINE_VALUE_AS_IS, do nothing when either LINE_VALUE_HASH or LINE_VALUE_ARRAY and 
         # LINE_VALUE_OPT_SINGLE (if it is not set, this is processed before so no need to test it again). 
-        $formatted_value = $attr_value;
+        # Just ensure that the value can be interpolated as a string (it is a scalar).
+        if ( ref(\$attr_value) eq 'SCALAR' ) {
+            $formatted_value = $attr_value;
+        } else {
+            $self->error("$function_name: value '$attr_value' cannot be interpolated as a string");
+            return;
+        }
 
     } else {
         $self->error("$function_name: invalid value format ($value_fmt) (internal error)");

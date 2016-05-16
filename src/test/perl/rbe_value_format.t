@@ -10,7 +10,7 @@ use lib "$Bin/modules";
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
-use Test::More tests => 23;
+use Test::More tests => 24;
 use Test::NoWarnings;
 use Test::Quattor;
 use Test::Quattor::Object;
@@ -140,8 +140,6 @@ Readonly my @TEST_ARRAY => ('confFile', 'logFile', 'unused', 'logKeep', 'logFile
 Readonly my $FORMATTED_ARRAY => 'confFile logFile unused logKeep logFile';
 Readonly my $FORMATTED_ARRAY_SORTED => 'confFile logFile logFile logKeep unused';
 Readonly my $FORMATTED_ARRAY_UNIQUE => 'confFile logFile logKeep unused';
-# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() does nothing and returns the array
-Readonly my $FORMATTED_ARRAY_SINGLE => 'ARRAY\(0x[a-f\d]+\)';
 $rbe_fh = CAF::RuleBasedEditor->open($FILENAME, log => $obj);
 ok(defined($rbe_fh), $FILENAME." was opened");
 $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
@@ -167,7 +165,9 @@ $formatted_value = $rbe_fh->_formatAttributeValue(\@TEST_ARRAY,
                                                   LINE_VALUE_ARRAY,
                                                   LINE_VALUE_OPT_SINGLE,
                                                  );
-like($formatted_value, qr/$FORMATTED_ARRAY_SINGLE/, "Array values (single) correctly formatted");
+# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() should return undef 
+# if the value cannot be interpolated as a string
+ok(!$formatted_value, "An array passed as value cannot be interpolated as a string");
 
 
 # LINE_VALUE_HASH_KEYS
@@ -184,8 +184,7 @@ Readonly my %STRING_HASH => ('abc' => 'cde',
                              '-crl' => 3,
                             );
 Readonly my $FORMATTED_STRING_HASH => '-crl 3 abc cde';
-# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() does nothihng and returns the hash
-Readonly my $FORMATTED_STRING_HASH_SINGLE => 'HASH\(0x[a-f\d]+\)';
+Readonly my $FORMATTED_STRING_HASH_2 => '--crl 3 -abc cde';
 $formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
                                                   LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_HASH,
@@ -195,9 +194,17 @@ is($formatted_value, $FORMATTED_STRING_HASH, "String hash correctly formatted");
 $formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
                                                   LINE_FORMAT_KW_VAL,
                                                   LINE_VALUE_HASH,
+                                                  LINE_KEY_OPT_PREFIX_DASH,
+                                                 );
+is($formatted_value, $FORMATTED_STRING_HASH_2, "String hash correctly formatted (key prefixed with ')");
+$formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
+                                                  LINE_FORMAT_KW_VAL,
+                                                  LINE_VALUE_HASH,
                                                   LINE_VALUE_OPT_SINGLE,
                                                  );
-like($formatted_value, qr/$FORMATTED_STRING_HASH_SINGLE/, "String hash (1 key/val per line) correctly formatted");
+# When LINE_VALUE_OPT_SINGLE is set, formatAttributeValue() should return undef 
+# if the value cannot be interpolated as a string
+ok(!$formatted_value, "A hash passed as value cannot be interpolated as a string");
 
 
 Test::NoWarnings::had_no_warnings();
