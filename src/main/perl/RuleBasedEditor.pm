@@ -1137,7 +1137,9 @@ sub _apply_rules
             $self->debug(2, "$function_name: 'remove_if_undef' option set for the current rule");
         }
 
-        # Split different elements of the rule
+        # Split different elements of the rule (the rule itself, line format, value format
+        # and line option). All elements are optional (can be undef) as long as the ';' separator
+        # is specified.
         ($rule, my $line_fmt, my $value_fmt) = split /;/, $rule;
         unless ($line_fmt) {
             $line_fmt = $LINE_FORMAT_DEFAULT;
@@ -1145,7 +1147,9 @@ sub _apply_rules
         my $line_opt;
         if ($value_fmt) {
             ($value_fmt, $line_opt) = split /:/, $value_fmt;
-        } else {
+        }
+        # value format can be ommitted but line option be specified
+        unless ( $value_fmt ) {
             $value_fmt = LINE_VALUE_AS_IS;
         }
         unless (defined($line_opt)) {
