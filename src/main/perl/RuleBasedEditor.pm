@@ -41,13 +41,17 @@ matching line will be removed/commented out if the option is undefined.
 
 =item condition
 
-An option or an option set (see below) that must exist for the rule to be applied
+An option or an option set/subset (see below) that must exist for the rule to be applied
 or the keyword C<ALWAYS>.
 Both C<option_set> and C<option_name:option_set> are accepted. option and option set
 in the condition are normally different from the C<option_name> and C<option_set>
 parameters in the rule as this is the default behaviour to apply the rule only if
-they exist.
-One option set only is allowed and only its existence (not its value) is tested.
+they exist. One option set only is allowed and only its existence (not its value) is tested.
+
+C<option_set> can be either an actual option set as defined below or a subset of an option set
+(a subhash of the option set hash). To specify a subset, use C</> as a level separator, 
+e.g. C<xroot/securityProtocol/gsi> (C<gsi> subet of C<securityProtocol> subset of C<xroot> option set).
+
 It is possible to negate the condition (option or option_set must not exist)
 by prepending it with '!'.
 
@@ -137,38 +141,47 @@ There is a different group of constants for each part of the rule.
 
 =item *
 
-LINE_FORMAT_SH_VAR:         key=val (e.g. SH shell family). A comment is added at the
+LINE_FORMAT_KW_VAL:        keyword value (e.g. Xrootd, Apache)
+
+keywork/value separator can be customized with C<LINE_VALUE_OPT_SEP_xxx>. No coment is added
+to the line.
+
+This is the default line format.
+
+=item *
+
+LINE_FORMAT_KW_VAL_SET:    set keyword value
+
+Same remarks as for LINE_FORMAT_KW_VAL.
+
+=item *
+
+LINE_FORMAT_KW_VAL_SETENV:    setenv keyword value
+
+Same remarks as for LINE_FORMAT_KW_VAL.
+
+=item *
+
+LINE_FORMAT_ENV_VAR:        export keyword=value (e.g. SH shell family). A comment is added at the
 end of the line if it is modified by L<CAF::RuleBasedEditor>.
 
 =item *
 
-LINE_FORMAT_ENV_VAR:        export key=val (e.g. SH shell family). A comment is added at the
+LINE_FORMAT_SH_VAR:         keyword=value (e.g. SH shell family). A comment is added at the
 end of the line if it is modified by L<CAF::RuleBasedEditor>.
-
-
-=item *
-
-LINE_FORMAT_KEY_VAL:        key val (e.g. Xrootd, Apache)
-
-=item *
-LINE_FORMAT_KEY_VAL_SETENV: setenv key=val  (used by Xrootd in particular)
-
-=item *
-
-LINE_FORMAT_KEY_VAL_SET:    set key=val  (CSH shell variable)
 
 =back
 
-Inline comments are not supported for the LINE_FORMAT_KEY_VAL_xxx formats.
+Inline comments are not supported for the LINE_FORMAT_KW_VAL_xxx formats.
 
 =cut
 
 use enum qw(
     LINE_FORMAT_SH_VAR=1
     LINE_FORMAT_ENV_VAR
-    LINE_FORMAT_KEY_VAL
-    LINE_FORMAT_KEY_VAL_SETENV
-    LINE_FORMAT_KEY_VAL_SET
+    LINE_FORMAT_KW_VAL
+    LINE_FORMAT_KW_VAL_SETENV
+    LINE_FORMAT_KW_VAL_SET
     );
 
 =pod
@@ -181,23 +194,26 @@ LINE_VALUE_xxx: how to interpret the configuration value
 
 =item
 
-LINE_VALUE_AS_IS: take the value as it is, do not attempt any conversion
+LINE_VALUE_AS_IS: take the value as it is, do not attempt any conversion.
+
+This is the default value type.
 
 =item
 
-LINE_VALUE_BOOLEAN: interpret the value as a boolean rendered as C<yes> or C<no>
+LINE_VALUE_BOOLEAN: interpret the value as a boolean rendered as C<yes> or C<no>.
 
 =item
 
-LINE_VALUE_ARRAY: the value is an array. Rendering controlled by LINE_VALUE_OPT_xxx constants.
+LINE_VALUE_ARRAY: the value is an array. Rendering controlled by LINE_OPT_xxx constants.
 
 =item
 
-LINE_VALUE_HASH_KEYS: the value is hash whose keys are the value. Rendering similar to arrays.
+LINE_VALUE_HASH: the value is a hash of strings. Rendering controlled by LINE_OPT_xxx constants.
 
 =item
 
-LINE_VALUE_STRING_HASH: the value is a hash of string. Rendering controlled by LINE_VALUE_OPT_xxx constants.
+LINE_VALUE_HASH_KEYS: the value is a hash whose keys are the value. Rendering similar to arrays with 
+C<LINE_VALUE_ARRAY> (the key list is treated as an array).
 
 =item
 
@@ -211,14 +227,14 @@ use enum qw(
     LINE_VALUE_AS_IS
     LINE_VALUE_BOOLEAN
     LINE_VALUE_ARRAY
+    LINE_VALUE_HASH
     LINE_VALUE_HASH_KEYS
-    LINE_VALUE_STRING_HASH
     LINE_VALUE_INSTANCE_PARAMS
     );
 
 =pod
 
-=head3 LINE_VALUE_OPT_xxx: options for rendering the value
+=head3 LINE_OPT_xxx: options for rendering the config line
 
 These options mainly apply to lists and hashes and are interpreted as a bitmask.
 
@@ -226,28 +242,55 @@ These options mainly apply to lists and hashes and are interpreted as a bitmask.
 
 =item
 
-LINE_VALUE_OPT_SINGLE: each value must be a separate instance of the keyword (multiple lines)
+LINE_OPT_KEY_PREFIX_DASH: if set, add a C<-> before the keyword when writing it in the configuration file.
 
 =item
 
-LINE_VALUE_OPT_UNIQUE: each values are concatenated as a space-separated string
+LINE_OPT_VALUE_ONELINE: each value in an array or keyword/value pair in a hash must be on a separate line. This results in
+several instances of the same keyword (multiple lines) in the configuration file.
 
 =item
 
-LINE_VALUE_OPT_SORTED: values are sorted
+LINE_OPT_VALUE_UNIQUE: each values are concatenated as a space-separated string
+
+=item
+
+LINE_OPT_VALUE_SORTED: values are sorted
+
+=item
+
+LINE_OPT_HASH_SEP_COLON: when LINE_VALUE_HASH, use a colon between each hash key and value.
+
+=item
+
+LINE_OPT_SEP_COLON: use a colon between keyword and value.
+
+=item
+
+LINE_OPT_SEP_EQUAL: use an equal sign between keyword and value.
+
+=item
+
+LINE_VALUE_OPT_SPACE_AROUND_SEP: when updating the value, put a space around the 
+keyword/value separator.
 
 =back
 
 =cut
 
-use enum qw(
-    BITMASK: LINE_VALUE_OPT_SINGLE
-    LINE_VALUE_OPT_UNIQUE
-    LINE_VALUE_OPT_SORTED
+use enum qw(BITMASK: 
+    LINE_OPT_KEY_PREFIX_DASH
+    LINE_OPT_VALUE_ONELINE
+    LINE_OPT_VALUE_UNIQUE
+    LINE_OPT_VALUE_SORTED
+    LINE_OPT_HASH_SEP_COLON
+    LINE_OPT_SEP_COLON
+    LINE_OPT_SEP_EQUAL
+    LINE_OPT_SEP_SPACE_AROUND
     );
 
 # Internal constants
-Readonly my $LINE_FORMAT_DEFAULT            => LINE_FORMAT_SH_VAR;
+Readonly my $LINE_FORMAT_DEFAULT            => LINE_FORMAT_KW_VAL;
 Readonly my $LINE_QUATTOR_COMMENT           => "\t\t# Line generated by Quattor";
 Readonly my $LINE_OPT_DEF_REMOVE_IF_UNDEF   => 0;
 Readonly my $LINE_OPT_DEF_ALWAYS_RULES_ONLY => 0;
@@ -260,18 +303,23 @@ Readonly my $RULE_OPTION_SET_GLOBAL         => 'GLOBAL';
 Readonly my @RULE_CONSTANTS => qw(
     LINE_FORMAT_SH_VAR
     LINE_FORMAT_ENV_VAR
-    LINE_FORMAT_KEY_VAL
-    LINE_FORMAT_KEY_VAL_SETENV
-    LINE_FORMAT_KEY_VAL_SET
+    LINE_FORMAT_KW_VAL
+    LINE_FORMAT_KW_VAL_SETENV
+    LINE_FORMAT_KW_VAL_SET
     LINE_VALUE_AS_IS
     LINE_VALUE_BOOLEAN
     LINE_VALUE_INSTANCE_PARAMS
     LINE_VALUE_ARRAY
+    LINE_VALUE_HASH
     LINE_VALUE_HASH_KEYS
-    LINE_VALUE_STRING_HASH
-    LINE_VALUE_OPT_SINGLE
-    LINE_VALUE_OPT_UNIQUE
-    LINE_VALUE_OPT_SORTED
+    LINE_OPT_KEY_PREFIX_DASH
+    LINE_OPT_VALUE_ONELINE
+    LINE_OPT_VALUE_UNIQUE
+    LINE_OPT_VALUE_SORTED
+    LINE_OPT_SEP_COLON
+    LINE_OPT_HASH_SEP_COLON
+    LINE_OPT_SEP_EQUAL
+    LINE_OPT_SEP_SPACE_AROUND
     );
 
 
@@ -314,6 +362,7 @@ Supported entries for options hash:
 
 Return value
     sucess: 1
+    error processing of one or more rules: 0
     argument error or error duing rule processing: undef
 
 =cut
@@ -363,7 +412,7 @@ sub updateFile
 
 =over
 
-=item formatAttrValue
+=item formatAttributeValue
 
 This function formats an attribute value based on the value format specified.
 
@@ -371,7 +420,7 @@ Arguments:
     attr_value : attribute value (type interpreted based on C<value_fmt>)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
     value_fmt : value format (see LINE_VALUE_xxx constants)
-    value_opt : value interpretation/formatting options (bitmask, see LINE_VALUE_OPT_xxx constants)
+    line_opt: line rendering options
 
 Return value:
     A string corresponding to the value formatted according to the format specified by arguments
@@ -382,7 +431,7 @@ Return value:
 sub _formatAttributeValue
 {
     my $function_name = "_formatAttributeValue";
-    my ($self, $attr_value, $line_fmt, $value_fmt, $value_opt) = @_;
+    my ($self, $attr_value, $line_fmt, $value_fmt, $line_opt) = @_;
 
     unless (defined($attr_value)) {
         $self->error("$function_name: 'attr_value' argument missing (internal error)");
@@ -396,13 +445,13 @@ sub _formatAttributeValue
         $self->error("$function_name: 'value_fmt' argument missing (internal error)");
         return;
     }
-    unless (defined($value_opt)) {
-        $self->error("$function_name: 'value_opt' argument missing (internal error)");
+    unless (defined($line_opt)) {
+        $self->error("$function_name: 'line_opt' argument missing (internal error)");
         return;
     }
 
     $self->debug(2,
-                         "$function_name: formatting attribute value >>>$attr_value<<< (line fmt=$line_fmt, value fmt=$value_fmt, value_opt=$value_opt)"
+                         "$function_name: formatting attribute value >>>$attr_value<<< (line fmt=$line_fmt, value fmt=$value_fmt, line_opt=$line_opt)"
                         );
 
     #FIXME: replace this if..elsif.. block by a dispatch table that would be easier to extend,
@@ -421,27 +470,55 @@ sub _formatAttributeValue
         $formatted_value .= " -c $attr_value->{configFile}" if $attr_value->{configFile};
         $formatted_value .= " -k $attr_value->{logKeep}"    if $attr_value->{logKeep};
 
-    } elsif ($value_fmt == LINE_VALUE_ARRAY) {
+    } elsif ( ($value_fmt == LINE_VALUE_ARRAY) && !($line_opt & LINE_OPT_VALUE_ONELINE) ) {
         # An array can contain several occurences of the same value. By default they are all kept
-        # in the index order. Some LINE_VALUE_OPT_xxx options allow to change this default behaviour.
+        # in the index order. Some LINE_OPT_xxx options allow to change this default behaviour.
         $self->debug(2, "$function_name: array values received: ", join(",", @$attr_value));
-        if ($value_opt & LINE_VALUE_OPT_UNIQUE) {
+        if ($line_opt & LINE_OPT_VALUE_UNIQUE) {
             my %values = map(($_ => 1), @$attr_value);
             $attr_value = [keys(%values)];
             $self->debug(2, "$function_name: array values made unique: ", join(",", @$attr_value));
         }
-        # LINE_VALUE_OPT_UNIQUE implies LINE_VALUE_OPT_SORTED
-        if ($value_opt & (LINE_VALUE_OPT_UNIQUE | LINE_VALUE_OPT_SORTED)) {
+        # LINE_OPT_VALUE_UNIQUE implies LINE_OPT_VALUE_SORTED
+        if ($line_opt & (LINE_OPT_VALUE_UNIQUE | LINE_OPT_VALUE_SORTED)) {
             $attr_value = [sort(@$attr_value)];
             $self->debug(2, "$function_name: array values sorted: ", join(",", @$attr_value));
         }
         $formatted_value = join " ", @$attr_value;
 
+    } elsif ( $value_fmt == LINE_VALUE_HASH && !($line_opt & LINE_OPT_VALUE_ONELINE) ) {
+        $self->debug(2, "$function_name: hash received with keys: ", join(",",(sort keys %$attr_value)));
+        # Key/value separator (D: space)
+        my $key_val_separator = ' ';
+        $key_val_separator = ':' if ($line_opt & LINE_OPT_HASH_SEP_COLON);
+        # Prefix to add before key (D: none)
+        my $key_prefix = '';
+        $key_prefix = '-' if ($line_opt & LINE_OPT_KEY_PREFIX_DASH);
+        $self->debug(2, "$function_name: key prefix: >>>$key_prefix<<<; key/value separator: $key_val_separator");
+        my @tmp_values;
+        foreach my $k (sort keys %$attr_value) {
+            my $v = $attr_value->{$k};
+            # Keys may be escaped if they contain characters like '/': unescaping a non-escaped
+            # string is generally harmless.
+            my $tmp = $key_prefix.unescape($k).$key_val_separator.$v;
+            $self->debug(2, "$function_name: hash key/value string: '$tmp'");
+            push @tmp_values, $tmp;
+        }
+        $formatted_value = join " ", @tmp_values;
+
     } elsif ($value_fmt == LINE_VALUE_HASH_KEYS) {
         $formatted_value = join " ", sort keys %$attr_value;
 
-    } elsif (($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_STRING_HASH)) {
-        $formatted_value = $attr_value;
+    } elsif ( ($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_HASH) || ($value_fmt == LINE_VALUE_ARRAY) ) {
+        # In addition to LINE_VALUE_AS_IS, do nothing when either LINE_VALUE_HASH or LINE_VALUE_ARRAY and 
+        # LINE_OPT_VALUE_ONELINE (if it is not set, this is processed before so no need to test it again). 
+        # Just ensure that the value can be interpolated as a string (it is a scalar).
+        if ( ref($attr_value) eq '' ) {
+            $formatted_value = $attr_value;
+        } else {
+            $self->error("$function_name: value '$attr_value' cannot be interpolated as a string (value_fmt=$value_fmt)");
+            return;
+        }
 
     } else {
         $self->error("$function_name: invalid value format ($value_fmt) (internal error)");
@@ -462,7 +539,7 @@ sub _formatAttributeValue
         }
     }
 
-    $self->debug(2, "$function_name: formatted value >>>$formatted_value<<<");
+    $self->debug(1, "$function_name: formatted value >>>$formatted_value<<<");
     return $formatted_value;
 }
 
@@ -473,12 +550,13 @@ sub _formatAttributeValue
 
 This function formats a configuration line using keyword and value,
 according to the line format requested. Values containing spaces are
-quoted if the line format is not LINE_FORMAT_KEY_VAL.
+quoted if the line format is not LINE_FORMAT_KW_VAL.
 
 Arguments :
     keyword : line keyword
     value : keyword value (can be an empty string)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
+    line_opt: line rendering options
 
 Return value:
     A string corresponding to the line formatted according to line_fmt
@@ -489,7 +567,7 @@ Return value:
 sub _formatConfigLine
 {
     my $function_name = "_formatConfigLine";
-    my ($self, $keyword, $value, $line_fmt) = @_;
+    my ($self, $keyword, $value, $line_fmt, $line_opt) = @_;
 
     unless ($keyword) {
         $self->error("$function_name: 'keyword' argument missing (internal error)");
@@ -503,20 +581,39 @@ sub _formatConfigLine
         $self->error("$function_name: 'line_fmt' argument missing (internal error)");
         return;
     }
+    unless (defined($line_opt)) {
+        $self->error("$function_name: 'line_opt' argument missing (internal error)");
+        return;
+    }
 
     my $config_line = "";
 
+    # Set the separator to use for LINE_FORMAT_KW_VAL_xxx formats.
+    # Default separator is a space.
+    # When a non default separator is used, LINE_OPT_SEP_SPACE_AROUND means that 
+    # a space must be added before and after the separator.
+    my $kw_val_sep = ' ';
+    if ( $line_opt & LINE_OPT_SEP_EQUAL ) {
+        $kw_val_sep = '=';
+    } elsif ( $line_opt & LINE_OPT_SEP_COLON ) {
+        $kw_val_sep = ':';
+    }
+    if ( ($kw_val_sep ne ' ') && ($line_opt & LINE_OPT_SEP_SPACE_AROUND) ) {
+        $kw_val_sep = " $kw_val_sep ";
+    }
+
+    # Set the line contents according to the line format    
     if ($line_fmt == LINE_FORMAT_SH_VAR) {
         $config_line = "$keyword=$value";
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
         $config_line = "export $keyword=$value";
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SETENV) {
-        $config_line = "setenv $keyword = $value";
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SET) {
-        $config_line = "set $keyword = $value";
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL) {
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
+        $config_line = "setenv $keyword$kw_val_sep$value";
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
+        $config_line = "set $keyword$kw_val_sep$value";
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL) {
         $config_line = $keyword;
-        $config_line .= " $value" if defined($value);
+        $config_line .= "$kw_val_sep$value" if defined($value);
         # In this format, ensure that there is only one blank between
         # tokens and no trailing spaces as it is important in some use cases.
         $config_line =~ s/\s+/ /g;
@@ -532,18 +629,44 @@ sub _formatConfigLine
 
 =pod
 
+=item _escape_regexp_string
+
+Help method to escape all characters with a special interpretation in the context
+of a regexp.
+
+Arguments:
+    regexp_str: initial regexp string (characters not escaped)
+
+Return value:
+    string: regexp with all specail characters escaped
+
+=cut
+
+sub _escape_regexp_string
+{
+    my ($self, $regexp_str) = @_;
+
+    $regexp_str =~ s/\\/\\\\/g;
+    $regexp_str =~ s/([\-\+\?\.\*\[\]()\^\$\{\}])/\\$1/g;
+    $regexp_str =~ s/\s+/\\s+/g;
+
+    return $regexp_str;
+}
+
+
 =item _buildLinePattern
 
 This function builds a pattern that will match an existing configuration line for
 the configuration parameter specified. The pattern built takes into account the line format.
 Every whitespace in the pattern (configuration parameter) are replaced by \s+.
-If the line format is LINE_FORMAT_KEY_VAL, no whitespace is
+If the line format is LINE_FORMAT_KW_VAL, no whitespace is
 imposed at the end of the pattern, as this format can be used to write a configuration
 directive as a keyword with no value.
 
 Arguments :
     config_param: parameter to update
     line_fmt: line format (see LINE_FORMAT_xxx constants)
+    line_opt: line rendering options
     config_value: when defined, make it part of the pattern (used when multiple lines
                   with the same keyword are allowed)
 
@@ -556,7 +679,7 @@ Return value:
 sub _buildLinePattern
 {
     my $function_name = "_buildLinePattern";
-    my ($self, $config_param, $line_fmt, $config_value) = @_;
+    my ($self, $config_param, $line_fmt, $line_opt, $config_value) = @_;
 
     unless ($config_param) {
         $self->error("$function_name: 'config_param' argument missing (internal error)");
@@ -566,11 +689,14 @@ sub _buildLinePattern
         $self->error("$function_name: 'line_fmt' argument missing (internal error)");
         return;
     }
+    unless (defined($line_opt)) {
+        $self->error("$function_name: 'line_opt' argument missing (internal error)");
+        return;
+    }
     if (defined($config_value)) {
         $self->debug(2, "$function_name: configuration value '$config_value' will be added to the pattern");
-        $config_value =~ s/\\/\\\\/g;
-        $config_value =~ s/([\-\+\?\.\*\[\]()\^\$])/\\$1/g;
-        $config_value =~ s/\s+/\\s+/g;
+        # config_value: scape characters with a specific meaning in the regexp
+        $config_value = $self->_escape_regexp_string($config_value);
     } else {
         $config_value = "";
     }
@@ -579,23 +705,31 @@ sub _buildLinePattern
     # A special case is when config_param (the rule keyword) is used to match a line
     # without specifying a rule: in this case it may contain whitespaces. Remove strict
     # matching of them (match any type/number of whitespaces at the same position).
-    # Look at %trust_config_rules in ncm-dpmlfc Perl module for an example.
-    $config_param =~ s/\s+/\\s+/g;
+    # Also escape characters with a specific meaning in the context of a regexp,
+    # as they are allowed in the keyword part of the rules.
+    $config_param = $self->_escape_regexp_string($config_param);
 
+    my $kw_val_sep = '\\s';      # Default keyword/value separator for LINE_FORMAT_KW_xxx
+    if ( $line_opt & LINE_OPT_SEP_EQUAL ) {
+        $kw_val_sep = '\=';
+    } elsif ( $line_opt & LINE_OPT_SEP_COLON ) {
+        $kw_val_sep = ':';
+    }
+    
     my $config_param_pattern;
     if ($line_fmt == LINE_FORMAT_SH_VAR) {
         $config_param_pattern = "#?\\s*$config_param=" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
         $config_param_pattern = "#?\\s*export\\s+$config_param=" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SETENV) {
-        $config_param_pattern = "#?\\s*setenv\\s+$config_param\\s*=\\s*" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL_SET) {
-        $config_param_pattern = "#?\\s*set\\s+$config_param\\s*=\\s*" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KEY_VAL) {
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
+        $config_param_pattern = "#?\\s*setenv\\s+$config_param\\s*$kw_val_sep\\s*" . $config_value;
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
+        $config_param_pattern = "#?\\s*set\\s+$config_param\\s*$kw_val_sep\\s*" . $config_value;
+    } elsif ($line_fmt == LINE_FORMAT_KW_VAL) {
         $config_param_pattern = "#?\\s*$config_param";
-        # Avoid adding a whitespace requirement if there is no config_value
+        # Do not add a separator requirement if there is no config_value
         if ($config_value ne "") {
-            $config_param_pattern .= "\\s+" . $config_value;
+            $config_param_pattern .= "\\s*$kw_val_sep\\s*" . $config_value;
         }
     } else {
         $self->error("$function_name: invalid line format ($line_fmt). Internal inconsistency.");
@@ -616,32 +750,39 @@ Match operation takes into account the line format.
 Arguments :
     config_param: parameter to update
     line_fmt : line format (see LINE_FORMAT_xxx constants)
+    line_opt: line rendering options
 
 Return value:
-    undef or 1 in case of an internal error (missing argument)
+    success: 1
+    error during processing: 0
+    internal error (missing argument): undef
 
 =cut
 
 sub _commentConfigLine
 {
     my $function_name = "_commentConfigLine";
-    my ($self, $config_param, $line_fmt) = @_;
+    my ($self, $config_param, $line_fmt, $line_opt) = @_;
 
     unless ($config_param) {
         $self->error("$function_name: 'config_param' argument missing (internal error)");
-        return 1;
+        return;
     }
     unless (defined($line_fmt)) {
         $self->error("$function_name: 'line_fmt' argument missing (internal error)");
-        return 1;
+        return;
+    }
+    unless (defined($line_opt)) {
+        $self->error("$function_name: 'line_opt' argument missing (internal error)");
+        return;
     }
 
     # Build a pattern to look for.
-    my $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt);
+    my $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt, $line_opt);
     unless ( defined($config_param_pattern) ) {
         $self->error("$function_name: _buildLinePattern() encountered an internal error. ",
                      "Cannot comment out lines matching $config_param");
-        return;
+        return 0;
     }
 
     $self->debug(1, "$function_name: commenting out lines matching pattern >>>", $config_param_pattern, "<<<");
@@ -669,6 +810,7 @@ sub _commentConfigLine
     }
     $self->set_contents(join("", @lns));
 
+    return 1;
 }
 
 
@@ -681,9 +823,10 @@ line formatting based on the line format.
 
 Arguments :
     config_param: parameter to update
-    config_value : parameter value (can be an empty string)
-    line_fmt : line format (see LINE_FORMAT_xxx constants)
-    multiple : if true, multiple lines with the same keyword can exist (D: false)
+    config_value: parameter value (can be an empty string)
+    line_fmt: line format (see LINE_FORMAT_xxx constants)
+    line_opt: line rendering options
+    multiple: if true, multiple lines with the same keyword can exist (D: false)
 
 Return value:
     undef or 1 in case of an internal error (missing argument)
@@ -693,7 +836,7 @@ Return value:
 sub _updateConfigLine
 {
     my $function_name = "_updateConfigLine";
-    my ($self, $config_param, $config_value, $line_fmt, $multiple) = @_;
+    my ($self, $config_param, $config_value, $line_fmt, $line_opt, $multiple) = @_;
 
     unless ($config_param) {
         $self->error("$function_name: 'config_param' argument missing (internal error)");
@@ -707,12 +850,16 @@ sub _updateConfigLine
         $self->error("$function_name: 'line_fmt' argument missing (internal error)");
         return 1;
     }
+    unless (defined($line_opt)) {
+        $self->error("$function_name: 'line_opt' argument missing (internal error)");
+        return 1;
+    }
     unless (defined($multiple)) {
         $multiple = 0;
     }
 
     my $config_param_pattern;
-    my $new_line = $self->_formatConfigLine($config_param, $config_value, $line_fmt);
+    my $new_line = $self->_formatConfigLine($config_param, $config_value, $line_fmt, $line_opt);
     unless ( defined($new_line) ) {
         $self->error("$function_name: _formatConfigLine() encountered an internal error. ",
                      "Cannot update lines matching $config_param");
@@ -723,20 +870,20 @@ sub _updateConfigLine
     # When multiple lines for the same keyword can exist, update only those matching the specific value.
     if ($multiple) {
         $self->debug(2, "$function_name: 'multiple' flag enabled");
-        $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt, $config_value);
+        $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt, $line_opt, $config_value);
         unless ( defined($config_param_pattern) ) {
             $self->error("$function_name: _buildLinePattern() encountered an internal error. ",
                          "Cannot update lines matching $config_param");
             return;
         }
     } else {
-        $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt);
+        $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt, $line_opt);
         unless ( defined($config_param_pattern) ) {
           $self->error("$function_name: _buildLinePattern() encountered an internal error. ",
                        "Cannot update lines matching $config_param");
           return;
         }
-        if (($line_fmt == LINE_FORMAT_KEY_VAL) && defined($config_value)) {
+        if (($line_fmt == LINE_FORMAT_KW_VAL) && defined($config_value)) {
             # For this format, if the value is defined impose a whitespace at the end to prevent matching a keyword starting
             # with the same letters.
             $config_param_pattern .= "\\s+";
@@ -817,7 +964,9 @@ sub _parse_rule
     }
 
     my ($condition, $tmp) = split /->/, $rule;
-    if ($tmp) {
+    # rule can be an empty string: in this case the value will remain undefined but
+    # the condition will be checked in the usual way.
+    if ( defined($tmp) ) {
         $rule = $tmp;
     } else {
         $condition = "";
@@ -838,7 +987,10 @@ sub _parse_rule
         $condition = '';
     }
 
-    # Check if rule condition is met if one is defined
+    # Check if rule condition is met if one is defined.
+    # A condition consists on the existence of a given option set (called condition set) and optionally
+    # an entry in the option set, in the format condition_option:condition_set. The condition set
+    # can be an option subset, expressed as set/subset/subsubset...
     if ($condition ne "") {
         $self->debug(1, "$function_name: checking condition >>>$condition<<<");
 
@@ -857,22 +1009,25 @@ sub _parse_rule
         $self->debug(2, "$function_name: condition option set = '$cond_option_set', ",
                      "condition attribute = '$cond_attribute', negate=$negate");
         my $cond_satisfied = 1;    # Assume condition is satisfied
+        my $cond_true = 1;
+        my $tmp_options = $config_options;
+        foreach my $set (split(/\//, $cond_option_set)) {
+            if ( $tmp_options->{$set} ) {
+                $tmp_options = $tmp_options->{$set};
+            } else {
+                $cond_true = 0;
+                last;
+            }
+        }
         if ($cond_attribute) {
             # Due to Perl autovivification, testing directly exists($config_options->{$cond_option_set}->{$cond_attribute}) will spring
             # $config_options->{$cond_option_set} into existence if it doesn't exist.
-            my $cond_true = $config_options->{$cond_option_set}
-                            && exists($config_options->{$cond_option_set}->{$cond_attribute});
-            if ($negate) {
-                $cond_satisfied = 0 if $cond_true;
-            } else {
-                $cond_satisfied = 0 unless $cond_true;
-            }
-        } elsif ($cond_option_set) {
-            if ($negate) {
-                $cond_satisfied = 0 if exists($config_options->{$cond_option_set});
-            } else {
-                $cond_satisfied = 0 unless exists($config_options->{$cond_option_set});
-            }
+            $cond_true = $cond_true && exists($tmp_options->{$cond_attribute});          
+        }
+        if ( $negate ) {
+            $cond_satisfied = 0 if $cond_true;
+        } else {          
+            $cond_satisfied = 0 unless $cond_true;
         }
         if (!$cond_satisfied) {
             # When the condition is not satisfied and option remove_if_undef is set,
@@ -914,6 +1069,7 @@ Supported entries for options hash:
 
 Return value:
     success: 1
+    error processing one or more rules: 0
     undef in case of an internal error (missing argument)
 
 =cut
@@ -942,6 +1098,8 @@ sub _apply_rules
         $parser_options->{remove_if_undef} = $LINE_OPT_DEF_REMOVE_IF_UNDEF;
     }
 
+    # Initialize global status to success
+    my $ruleset_status = 1;
 
     # Loop over all config rule entries, sorted by keyword alphabetical order.
     # Config rules are stored in a hash whose key is the variable to write
@@ -982,29 +1140,32 @@ sub _apply_rules
             $self->debug(2, "$function_name: 'remove_if_undef' option set for the current rule");
         }
 
-        # Split different elements of the rule
+        # Split different elements of the rule (the rule itself, line format, value format
+        # and line option). All elements are optional (can be undef) as long as the ';' separator
+        # is specified.
         ($rule, my $line_fmt, my $value_fmt) = split /;/, $rule;
         unless ($line_fmt) {
             $line_fmt = $LINE_FORMAT_DEFAULT;
         }
-        my $value_opt;
+        my $line_opt;
         if ($value_fmt) {
-            ($value_fmt, $value_opt) = split /:/, $value_fmt;
-        } else {
+            ($value_fmt, $line_opt) = split /:/, $value_fmt;
+        }
+        # value format can be ommitted but line option be specified
+        unless ( $value_fmt ) {
             $value_fmt = LINE_VALUE_AS_IS;
         }
-        unless (defined($value_opt)) {
-            # $value_opt is a bitmask. Set to 0 if not specified.
-            $value_opt = 0;
+        unless (defined($line_opt)) {
+            # $line_opt is a bitmask. Set to 0 if not specified.
+            $line_opt = 0;
         }
 
 
         # If the keyword was "negated", remove (comment out) configuration line if present and enabled
         if ($comment_line) {
             $self->debug(1, "$function_name: keyword '$keyword' negated, removing/commenting configuration line");
-            unless ( $self->_commentConfigLine($keyword, $line_fmt) ) {
-                $self->error("$function_name: _commentConfigLine() encountered an internal error, ",
-                             "lines matching '$keyword' not removed");
+            unless ( $self->_commentConfigLine($keyword, $line_fmt, $line_opt) ) {
+                $ruleset_status = 0;
             }
             next;
         }
@@ -1013,7 +1174,7 @@ sub _apply_rules
         # Parse rule if it is non empty
         my $rule_info;
         if ($rule ne '') {
-            $self->debug(1, "$function_name: processing rule $rule_id (variable=>>>$keyword<<<, rule=>>>$rule<<<, fmt=$line_fmt)");
+            $self->debug(1, "$function_name: processing rule $rule_id (variable=>>>$keyword<<<, rule=>>>$rule<<<, fmt=$line_fmt, line_opt=$line_opt)");
             $rule_info = $self->_parse_rule($rule, $config_options, $rule_parsing_options);
             next unless $rule_info;
             $self->debug(2, "$function_name: information returned by rule parser: " . join(" ", sort(keys(%$rule_info))));
@@ -1024,13 +1185,13 @@ sub _apply_rules
                 # potential dependency failure)
                 $self->error("Error parsing rule >>>$rule<<<: " . $rule_info->{error_msg});
                 # An invalid rule is just ignored
+                $ruleset_status = 0;
                 next;
             } elsif ($rule_info->{remove_matching_lines}) {
                 if ($rule_parsing_options->{remove_if_undef}) {
                     $self->debug(1, "$function_name: removing/commenting configuration lines for keyword '$keyword'");
-                    unless ( $self->_commentConfigLine($keyword, $line_fmt) ) {
-                        $self->error("$function_name: _commentConfigLine() encountered an internal error, ",
-                                     "lines matching '$keyword' not removed");
+                    unless ( $self->_commentConfigLine($keyword, $line_fmt, $line_opt) ) {
+                        $ruleset_status = 0;
                     }
                 } else {
                     $self->debug(1, "$function_name: remove_if_undef not set, ignoring line to remove");
@@ -1046,6 +1207,7 @@ sub _apply_rules
         my $attribute_present = 1;
         my $config_updated    = 0;
         my @array_values;
+        my %hash_values;
         if ($rule_info->{attribute}) {
             foreach my $option_set (@{$rule_info->{option_sets}}) {
                 my $attr_value;
@@ -1074,12 +1236,14 @@ sub _apply_rules
                 # remove_if_undef to be set.
                 # Note that this will never match instance parameters and will not remove entries
                 # no longer part of the configuration in a still existing LINE_VALUE_ARRAY or
-                # LINE_VALUE_STRING_HASH.
+                # LINE_VALUE_HASH.
                 unless ($attribute_present) {
                     if ($rule_parsing_options->{remove_if_undef}) {
                         $self->debug(1, "$function_name: attribute '$rule_info->{attribute}' undefined, ",
                                      "removing configuration line");
-                        $self->_commentConfigLine($keyword, $line_fmt);
+                        unless ( $self->_commentConfigLine($keyword, $line_fmt, $line_opt) ) {
+                            $ruleset_status = 0;
+                        }
                     }
                     next;
                 }
@@ -1095,40 +1259,30 @@ sub _apply_rules
                         $config_value = $self->_formatAttributeValue($params,
                                                                      $line_fmt,
                                                                      $value_fmt,
-                                                                     $value_opt,
+                                                                     $line_opt,
                                                                     );
+                        unless ( defined($config_value) ) {
+                            $self->error("$function_name: _formatAttributeValue() encountered an internal error, ",
+                                         "rule $rule_id ignored.");
+                            $ruleset_status = 0;
+                            next;
+                        }
                         my $config_param = $keyword;
                         my $instance_uc  = uc($instance);
                         $config_param =~ s/%%INSTANCE%%/$instance_uc/;
                         $self->debug(2, "New variable name generated: >>>$config_param<<<");
-                        $self->_updateConfigLine($config_param, $config_value, $line_fmt);
+                        $self->_updateConfigLine($config_param, $config_value, $line_fmt, $line_opt);
                     }
                     $config_updated = 1;
-                } elsif ($value_fmt == LINE_VALUE_STRING_HASH) {
-                    # With this value format, several lines with the same keyword are generated,
-                    # one for each keyword/value pair.
-                    foreach my $k (sort keys %$attr_value) {
-                        my $v = $attr_value->{$k};
-                        # Value is made by joining key and value as a string.
-                        # Keys may be escaped if they contain characters like '/'. Generally harmless if
-                        # they are not, except if the unescaped key as a sequence '_' + 2 hex digits.
-                        # Unlikely in this context: to prevent problems use camel case for keys.
-                        my $tmp = unescape($k) . " $v";
-                        $self->debug(1, "$function_name: formatting (string hash) ",
-                                     "attribute '$rule_info->{attribute}' value ($tmp, value_fmt=$value_fmt)");
-                        $config_value =
-                          $self->_formatAttributeValue(
-                                                       $tmp,
-                                                       $line_fmt,
-                                                       $value_fmt,
-                                                       $value_opt,
-                                                      );
-                        $self->_updateConfigLine($keyword, $config_value, $line_fmt, 1);
-                    }
-                    $config_updated = 1;
+          
+                } elsif ( $value_fmt == LINE_VALUE_HASH ) {
+                    # Hashes are not processed immediately. First, all the values from all the options sets
+                    # are collected into one hash that will be processed later according to LINE_OPT_xxx 
+                    # options specified (if any).
+                    %hash_values = (%hash_values, %$attr_value)
                 } elsif ($value_fmt == LINE_VALUE_ARRAY) {
                     # Arrays are not processed immediately. First, all the values from all the options sets
-                    # are collected into one array that will be processed later according to LINE_VALUE_OPT_xxx
+                    # are collected into one array that will be processed later according to LINE_OPT_xxx
                     # options specified (if any).
                     @array_values = (@array_values, @$attr_value);
                 } else {
@@ -1139,7 +1293,7 @@ sub _apply_rules
                                                                   $attr_value,
                                                                   $line_fmt,
                                                                   $value_fmt,
-                                                                  $value_opt,
+                                                                  $line_opt,
                                                                  );
                     $self->debug(2, "$function_name: adding attribute '$rule_info->{attribute}' from ",
                                  "option set '$option_set' to value (config_value=$config_value)");
@@ -1150,42 +1304,91 @@ sub _apply_rules
             $self->debug(1, "$function_name: no attribute specified in rule '$rule'");
         }
 
-        # There is a delayed formatting of arrays after collecting all the values from all
+        # There is a delayed formatting of arrays and hashes after collecting all the values from all
         # the option sets in the rule. Formatting is done taking into account the relevant
-        # LINE_VALUE_OPT_xxx specified (bitmask).
+        # LINE_OPT_xxx specified (bitmask).
         if ($value_fmt == LINE_VALUE_ARRAY) {
-            if ($value_opt & LINE_VALUE_OPT_SINGLE) {
+            if ($line_opt & LINE_OPT_VALUE_ONELINE) {
                 # With this value format, several lines with the same keyword are generated,
-                # one for each array value (if value_opt is not LINE_VALUE_OPT_SINGLE, all
+                # one for each array value (if line_opt is not LINE_OPT_VALUE_ONELINE, all
                 # the values are concatenated on one line).
                 $self->debug(1, "$function_name: formatting (array) attribute '",
-                             $rule_info->{attribute}, "' as LINE_VALUE_OPT_SINGLE");
+                             $rule_info->{attribute}, "' as LINE_OPT_VALUE_ONELINE");
                 foreach my $val (@array_values) {
                     $config_value = $self->_formatAttributeValue(
                                                                  $val,
                                                                  $line_fmt,
-                                                                 LINE_VALUE_AS_IS,
-                                                                 $value_opt,
+                                                                 $value_fmt,
+                                                                 $line_opt,
                                                                 );
-                    $self->_updateConfigLine($keyword, $config_value, $line_fmt, 1);
+                     unless ( defined($config_value) ) {
+                         $self->error("$function_name: _formatAttributeValue() encountered an internal error, ",
+                                      "rule $rule_id ignored.");
+                         $ruleset_status = 0;
+                         next;
+                     }
+                    $self->_updateConfigLine($keyword, $config_value, $line_fmt, $line_opt, 1);
                 }
                 $config_updated = 1;
             } else {
-                $config_value = $self->_formatAttributeValue(
-                                                             \@array_values,
+                $config_value = $self->_formatAttributeValue(\@array_values,
                                                              $line_fmt,
                                                              $value_fmt,
-                                                             $value_opt,
+                                                             $line_opt,
+                                                            );
+            }
+        
+        } elsif ( $value_fmt == LINE_VALUE_HASH ) {
+            # With this value format, either several lines with the same keyword are generated,
+            # one for each key/value pair if LINE_OPT_VALUE_ONELINE is set or all the key/value
+            # pairs are concatenated to create the value.
+            if ( $line_opt & LINE_OPT_VALUE_ONELINE ) {
+                foreach my $k (sort keys %hash_values) {
+                    my $v = $hash_values{$k};
+                    # Value is made by joining key and value as a string
+                    # Keys may be escaped if they contain characters like '/': unescaping a non-escaped
+                    # string is generally harmless.
+                    my $tmp = unescape($k)." $v";
+                    $self->debug(1,"$function_name: formatting (string hash) attribute '".$rule_info->{attribute}."' value ($tmp, value_fmt=$value_fmt)");
+                    $config_value = $self->_formatAttributeValue($tmp,
+                                                                 $line_fmt,
+                                                                 $value_fmt,
+                                                                 $line_opt,
+                                                                );
+                     unless ( defined($config_value) ) {
+                         $self->error("$function_name: _formatAttributeValue() encountered an internal error, ",
+                                      "rule $rule_id ignored.");
+                         $ruleset_status = 0;
+                         next;
+                    }
+                    $self->_updateConfigLine($keyword, $config_value, $line_fmt, $line_opt, 1);
+                }
+                $config_updated = 1;
+
+            } else {
+                $config_value = $self->_formatAttributeValue(\%hash_values,
+                                                             $line_fmt,
+                                                             $value_fmt,
+                                                             $line_opt,
                                                             );
             }
         }
 
         # Instance parameters, string hashes have already been written
         if (!$config_updated && $attribute_present) {
-            $self->_updateConfigLine($keyword, $config_value, $line_fmt);
+            # First check that _formatAttributeValue() encountered no error
+            unless ( defined($config_value) ) {
+                $self->error("$function_name: _formatAttributeValue() encountered an internal error, ",
+                             "rule $rule_id ignored.");
+                $ruleset_status = 0;
+                next;
+            }
+            $self->_updateConfigLine($keyword, $config_value, $line_fmt, $line_opt);
         }
 
     }
+
+    return $ruleset_status;
 
 }
 
