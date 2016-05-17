@@ -10,7 +10,7 @@ use lib "$Bin/modules";
 use CAF::RuleBasedEditor qw(:rule_constants);
 use Readonly;
 use CAF::Object;
-use Test::More tests => 50;
+use Test::More tests => 54;
 use Test::NoWarnings;
 use Test::Quattor;
 use Test::Quattor::Object;
@@ -287,10 +287,16 @@ sec.protocol /usr/${xrdlibdir} gsi -crl:3 -key:/etc/grid-security/dpmmgr/dpmkey.
 ';
 
 
-Readonly my $XROOTD_EXPECTED_NO_VAL_FMT => $QUATTOR_HEADER . 'setenv DPM_HOST dpm.example.com
+Readonly my $EXPECTED_DEFAULT_FORMATS => $QUATTOR_HEADER . 'DPM_HOST dpm.example.com
 ';
 
-Readonly my $XROOTD_EXPECTED_VAL_OPT_ONLY => $QUATTOR_HEADER . 'setenv DPM_HOST=dpm.example.com
+Readonly my $EXPECTED_DEFAULT_LINEFMT => $QUATTOR_HEADER . 'DPNS TRUST node1.example.com node2.example.com node4.example.com node3.example.com node1.example.com
+';
+
+Readonly my $EXPECTED_DEFAULT_VALUEFMT => $QUATTOR_HEADER . 'setenv DPM_HOST dpm.example.com
+';
+
+Readonly my $EXPECTED_VAL_OPT_ONLY => $QUATTOR_HEADER . 'setenv DPM_HOST=dpm.example.com
 ';
 
 
@@ -350,11 +356,19 @@ my %rules_no_rule = (
         "RFIO DAEMONV3_WRMT 1" => ";".LINE_FORMAT_KW_VAL,
 );
 
-my %rule_no_val_fmt = (
+my %rules_default_formats = (
+        "DPM_HOST"        => "dpmHost:dpm;"
+);
+
+my %rules_default_linefmt = (
+        "DPNS TRUST" => "dpm->hostlist:dpns,srmv1;;".LINE_VALUE_ARRAY,
+);
+
+my %rules_default_valuefmt = (
         "DPM_HOST"        => "dpmHost:dpm;" . LINE_FORMAT_KW_VAL_SETENV
 );
 
-my %rule_val_opt_only = (
+my %rules_val_opt_only = (
         "DPM_HOST"        => "dpmHost:dpm;" . LINE_FORMAT_KW_VAL_SETENV . ';:' . (LINE_OPT_SEP_EQUAL),
 );
 
@@ -494,10 +508,14 @@ test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rules_xrootd_1, $xrootd_option
 test_rule_parsing($obj, $XROOTD_CONF_FILE, $XROOTD_INITIAL_1, [\%rules_xrootd_1, $xrootd_options, \%parser_options], $XROOTD_EXPECTED_1, "(with initial contents)");
 test_rule_parsing($obj, $XROOTD_CONF_FILE, $XROOTD_INITIAL_2, [\%rules_xrootd_2, $xrootd_options, \%parser_options], $XROOTD_EXPECTED_2, "(with initial contents 2)");
 
+# Rules with default line/value formats
+test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rules_default_formats, $xrootd_options_2], $EXPECTED_DEFAULT_FORMATS, "rule with default line and value format");
+test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rules_default_linefmt, $dpm_options], $EXPECTED_DEFAULT_LINEFMT, "rule with default line and explicit value format");
+
 # Rules without a value format
-test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rule_no_val_fmt, $xrootd_options_2], $XROOTD_EXPECTED_NO_VAL_FMT, "rule without a value format and a line option");
-test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rule_val_opt_only, $xrootd_options_2], $XROOTD_EXPECTED_VAL_OPT_ONLY, "rule with a line option but no value format");
-test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rule_val_opt_only, $xrootd_options_buggy], $QUATTOR_HEADER, "no value format, incorrect options");
+test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rules_default_valuefmt, $xrootd_options_2], $EXPECTED_DEFAULT_VALUEFMT, "rule without a value format and a line option");
+test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rules_val_opt_only, $xrootd_options_2], $EXPECTED_VAL_OPT_ONLY, "rule with a line option but no value format");
+test_rule_parsing($obj, $XROOTD_CONF_FILE, '', [\%rules_val_opt_only, $xrootd_options_buggy], $QUATTOR_HEADER, "no value format, incorrect options");
 
 
 Test::NoWarnings::had_no_warnings();
