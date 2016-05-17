@@ -163,12 +163,14 @@ Same remarks as for LINE_FORMAT_KW_VAL.
 =item *
 
 LINE_FORMAT_ENV_VAR:        export keyword=value (e.g. SH shell family). A comment is added at the
-end of the line if it is modified by L<CAF::RuleBasedEditor>.
+end of the line if it is modified by L<CAF::RuleBasedEditor>. If the value contains whitespaces, it
+is quoted.
 
 =item *
 
 LINE_FORMAT_SH_VAR:         keyword=value (e.g. SH shell family). A comment is added at the
-end of the line if it is modified by L<CAF::RuleBasedEditor>.
+end of the line if it is modified by L<CAF::RuleBasedEditor>. If the value contains whitespaces, it
+is quoted.
 
 =back
 
