@@ -513,10 +513,10 @@ sub _formatAttributeValue
         # In addition to LINE_VALUE_AS_IS, do nothing when either LINE_VALUE_HASH or LINE_VALUE_ARRAY and 
         # LINE_OPT_VALUE_ONELINE (if it is not set, this is processed before so no need to test it again). 
         # Just ensure that the value can be interpolated as a string (it is a scalar).
-        if ( ref(\$attr_value) eq 'SCALAR' ) {
+        if ( ref($attr_value) eq '' ) {
             $formatted_value = $attr_value;
         } else {
-            $self->error("$function_name: value '$attr_value' cannot be interpolated as a string");
+            $self->error("$function_name: value '$attr_value' cannot be interpolated as a string (value_fmt=$value_fmt)");
             return;
         }
 

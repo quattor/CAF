@@ -204,7 +204,7 @@ $formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
                                                  );
 # When LINE_OPT_VALUE_ONELINE is set, formatAttributeValue() should return undef 
 # if the value cannot be interpolated as a string
-ok(!$formatted_value, "A hash passed as value cannot be interpolated as a string");
+ok(! defined($formatted_value), "A hash passed as value cannot be interpolated as a string");
 
 
 Test::NoWarnings::had_no_warnings();
