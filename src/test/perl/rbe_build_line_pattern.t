@@ -75,15 +75,15 @@ Readonly my $KEYWORD_SPECIAL => 'DPM$H{OS}T';
 Readonly my $KEYWORD_SPECIAL_VALUE => 'value';
 Readonly my $EXPECTED_PATTERN_5 => '#?\s*export\s+DPM\$H\{OS\}T=value';
 Readonly my $EXPECTED_PATTERN_SH_VAR => '#?\s*DPNS_HOST=dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_KV => '#?\s*DPNS_HOST\s*\s\s*dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_KV_COLON => '#?\s*DPNS_HOST\s*:\s*dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_KV_EQUAL => '#?\s*DPNS_HOST\s*\=\s*dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_SET => '#?\s*set\s+DPNS_HOST\s*\s\s*dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_SET_COLON => '#?\s*set\s+DPNS_HOST\s*:\s*dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_SET_EQUAL => '#?\s*set\s+DPNS_HOST\s*\=\s*dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_SETENV => '#?\s*setenv\s+DPNS_HOST\s*\s\s*dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_SETENV_COLON => '#?\s*setenv\s+DPNS_HOST\s*:\s*dpns\.example\.com';
-Readonly my $EXPECTED_PATTERN_SETENV_EQUAL => '#?\s*setenv\s+DPNS_HOST\s*\=\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_KV => '#?\s*DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_KV_COLON => '#?\s*DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_KV_EQUAL => '#?\s*DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_SET => '#?\s*set\s+DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_SET_COLON => '#?\s*set\s+DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_SET_EQUAL => '#?\s*set\s+DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_SETENV => '#?\s*setenv\s+DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_SETENV_COLON => '#?\s*setenv\s+DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
+Readonly my $EXPECTED_PATTERN_SETENV_EQUAL => '#?\s*setenv\s+DPNS_HOST\s*(?:\s|=|:)\s*dpns\.example\.com';
 $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                           LINE_FORMAT_ENV_VAR,
                                           0,
