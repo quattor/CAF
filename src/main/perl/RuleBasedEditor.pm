@@ -163,12 +163,14 @@ Same remarks as for LINE_FORMAT_KW_VAL.
 =item *
 
 LINE_FORMAT_ENV_VAR:        export keyword=value (e.g. SH shell family). A comment is added at the
-end of the line if it is modified by L<CAF::RuleBasedEditor>.
+end of the line if it is modified by L<CAF::RuleBasedEditor>. If the value contains whitespaces, it
+is quoted.
 
 =item *
 
 LINE_FORMAT_SH_VAR:         keyword=value (e.g. SH shell family). A comment is added at the
-end of the line if it is modified by L<CAF::RuleBasedEditor>.
+end of the line if it is modified by L<CAF::RuleBasedEditor>. If the value contains whitespaces, it
+is quoted.
 
 =back
 
@@ -607,12 +609,15 @@ sub _formatConfigLine
         $config_line = "$keyword=$value";
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
         $config_line = "export $keyword=$value";
-    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
-        $config_line = "setenv $keyword$kw_val_sep$value";
-    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
-        $config_line = "set $keyword$kw_val_sep$value";
-    } elsif ($line_fmt == LINE_FORMAT_KW_VAL) {
-        $config_line = $keyword;
+    } elsif ( ($line_fmt == LINE_FORMAT_KW_VAL) ||
+              ($line_fmt == LINE_FORMAT_KW_VAL_SET) ||
+              ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) ) {
+        if ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
+            $config_line = "setenv ";
+        } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
+            $config_line = "set ";
+        };
+        $config_line .= $keyword;
         $config_line .= "$kw_val_sep$value" if defined($value);
         # In this format, ensure that there is only one blank between
         # tokens and no trailing spaces as it is important in some use cases.
@@ -709,24 +714,27 @@ sub _buildLinePattern
     # as they are allowed in the keyword part of the rules.
     $config_param = $self->_escape_regexp_string($config_param);
 
-    my $kw_val_sep = '\\s';      # Default keyword/value separator for LINE_FORMAT_KW_xxx
-    if ( $line_opt & LINE_OPT_SEP_EQUAL ) {
-        $kw_val_sep = '\=';
-    } elsif ( $line_opt & LINE_OPT_SEP_COLON ) {
-        $kw_val_sep = ':';
-    }
+    # Consider all the separator to be equivalent in term of matching
+    # This allows to update the separator used on a given line
+    my $kw_val_sep = '(?:\\s|=|:)';
     
+    # Build config line pattern according to the selected format
     my $config_param_pattern;
     if ($line_fmt == LINE_FORMAT_SH_VAR) {
         $config_param_pattern = "#?\\s*$config_param=" . $config_value;
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
         $config_param_pattern = "#?\\s*export\\s+$config_param=" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
-        $config_param_pattern = "#?\\s*setenv\\s+$config_param\\s*$kw_val_sep\\s*" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
-        $config_param_pattern = "#?\\s*set\\s+$config_param\\s*$kw_val_sep\\s*" . $config_value;
-    } elsif ($line_fmt == LINE_FORMAT_KW_VAL) {
-        $config_param_pattern = "#?\\s*$config_param";
+    } elsif ( ($line_fmt == LINE_FORMAT_KW_VAL) ||
+              ($line_fmt == LINE_FORMAT_KW_VAL_SET) ||
+              ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) ) {
+        if ($line_fmt == LINE_FORMAT_KW_VAL_SETENV) {
+            $config_param_pattern = "#?\\s*setenv\\s+";
+        } elsif ($line_fmt == LINE_FORMAT_KW_VAL_SET) {
+            $config_param_pattern = "#?\\s*set\\s+";
+        } else {
+            $config_param_pattern = "#?\\s*";
+        };
+        $config_param_pattern .= "$config_param";
         # Do not add a separator requirement if there is no config_value
         if ($config_value ne "") {
             $config_param_pattern .= "\\s*$kw_val_sep\\s*" . $config_value;
@@ -868,6 +876,11 @@ sub _updateConfigLine
 
     # Build a pattern to look for.
     # When multiple lines for the same keyword can exist, update only those matching the specific value.
+    # Multiple lines are not allowed it the line has no value (keyword only).
+    if ( $multiple && ! $config_value ) {
+        $self->warn("$function_name: multiple fag set but no value specified for keyword $config_param, ignoring it");
+        $multiple = 0;
+    };
     if ($multiple) {
         $self->debug(2, "$function_name: 'multiple' flag enabled");
         $config_param_pattern = $self->_buildLinePattern($config_param, $line_fmt, $line_opt, $config_value);
@@ -883,10 +896,10 @@ sub _updateConfigLine
                        "Cannot update lines matching $config_param");
           return;
         }
-        if (($line_fmt == LINE_FORMAT_KW_VAL) && defined($config_value)) {
-            # For this format, if the value is defined impose a whitespace at the end to prevent matching a keyword starting
-            # with the same letters.
-            $config_param_pattern .= "\\s+";
+        if (($line_fmt == LINE_FORMAT_KW_VAL) && $config_value) {
+            # For this format, if the value is defined impose one of the possible separators at the end to prevent matching a 
+            # keyword starting with the same letters.
+            $config_param_pattern .= "\\s*(?:\\s|=|:)";
         }
     }
 
