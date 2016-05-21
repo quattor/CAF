@@ -1,11 +1,5 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} CAF::Lock${PMpost}
 
-package CAF::Lock;
-
-use strict;
 use CAF::Object;
 use CAF::Reporter;
 
@@ -53,18 +47,6 @@ CAF::Lock - Class for handling application instance locking
 
 The B<CAF::Lock> class provides methods for handling application locking.
 
-=over
-
-=cut
-
-#------------------------------------------------------------
-#                      Public Methods/Functions
-#------------------------------------------------------------
-
-=pod
-
-=back
-
 =head1 PUBLIC METHODS
 
 =over 4
@@ -85,7 +67,8 @@ into account.
 
 =cut
 
-sub set_lock {
+sub set_lock
+{
     my ($self, $retries, $timeout, $force) = @_;
 
     $retries = 0 unless (defined $retries);
@@ -107,11 +90,9 @@ sub set_lock {
         return SUCCESS if $self->_try_lock($force);
     } while ($tries < $retries && $timeout);
 
-    $self->error("cannot acquire lock: $self->{LOCK_FILE}");
+    $self->error("cannot acquire lock after $tries tries: $self->{LOCK_FILE}");
     return;
 }
-
-=pod
 
 =item unlock()
 
@@ -122,17 +103,18 @@ is returned.
 
 =cut
 
-sub unlock {
+sub unlock
+{
     my $self = shift;
     if ($self->{LOCK_SET}) {
         # if we forced the lock LOCK_FH can be undef
         if ($self->{LOCK_FH}) {
             unless (flock($self->{LOCK_FH}, LOCK_UN)) {
-            $self->error("cannot release lock: $self->{LOCK_FILE}");
-            return;
-        }
-        $self->error("cannot close lock file: $self->{LOCK_FILE}")
-            unless $self->{LOCK_FH}->close();
+                $self->error("cannot release lock: $self->{LOCK_FILE}");
+                return;
+            }
+            $self->error("cannot close lock file: $self->{LOCK_FILE}")
+                unless $self->{LOCK_FH}->close();
         }
         $self->{LOCK_SET} = undef;
         $self->{LOCK_FH} = undef;
@@ -144,21 +126,17 @@ sub unlock {
 }
 
 
-=pod
-
 =item is_set()
 
 Returns B<SUCCESS> if lock is set by application instance, B<undef> otherwise.
 
 =cut
 
-sub is_set {
-    my $self=shift;
-    return SUCCESS if ($self->{LOCK_SET});
-    return;
+sub is_set
+{
+    my $self = shift;
+    return $self->{LOCK_SET} ? SUCCESS : ();
 }
-
-=pod
 
 =back
 
@@ -172,8 +150,9 @@ Initialize the object.  Called by new(I<lockfilename>).
 
 =cut
 
-sub _initialize {
-    my ($self,$lockfilename) = @_;
+sub _initialize
+{
+    my ($self, $lockfilename) = @_;
 
     $self->{LOCK_SET} = undef;
     $self->{LOCK_FILE} = $lockfilename;
@@ -181,7 +160,6 @@ sub _initialize {
     return SUCCESS;
 }
 
-=pod
 
 =item _try_lock(I<force>)
 
@@ -193,16 +171,18 @@ even if flock() was unsuccessful.
 
 =cut
 
-sub _try_lock {
+sub _try_lock
+{
     my ($self, $force) = @_;
-    my $lf = FileHandle->new("> " . $self->{LOCK_FILE});
+
+    my $lf = FileHandle->new("> $self->{LOCK_FILE}");
     unless ($lf) {
-        $self->error("cannot create lock file: " . $self->{LOCK_FILE});
+        $self->error("cannot create lock file: $self->{LOCK_FILE}");
         return;
     }
     unless (flock($lf, LOCK_EX|LOCK_NB)) {
         # Could not get the lock
-        return unless $force == FORCE_ALWAYS;
+        return unless (defined($force) && $force == FORCE_ALWAYS);
 
         # In force mode, continue but don't save the filehandle
         $lf->close();
@@ -211,6 +191,7 @@ sub _try_lock {
 
     $self->{LOCK_FH} = $lf;
     $self->{LOCK_SET} = 1;
+
     return SUCCESS;
 }
 
