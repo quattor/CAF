@@ -75,9 +75,8 @@ sub set_lock
     $timeout = 0 unless (defined $retries);
 
     if ($self->{LOCK_SET}) {
-        # oops.
-        $self->error("lock already set by this application instance: $self->{LOCK_FILE}");
-        return;
+        $self->warn("lock already set by this application instance: $self->{LOCK_FILE}");
+        return SUCCESS;
     }
 
     my $tries = 0;
@@ -119,8 +118,7 @@ sub unlock
         $self->{LOCK_SET} = undef;
         $self->{LOCK_FH} = undef;
     } else {
-        $self->error("lock not held by this application instance: $self->{LOCK_FILE}, not unlocking");
-        return;
+        $self->warn("lock not held by this application instance: $self->{LOCK_FILE}, nothing to unlock");
     }
     return SUCCESS;
 }
