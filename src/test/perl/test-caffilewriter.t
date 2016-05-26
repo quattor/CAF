@@ -78,7 +78,7 @@ is ($opts{mode}, 0600, "The file is created with the correct permissions");
 ok (!*$fh->{save},  "File marked not to be saved after closing");
 is ($path, FILENAME, "The correct file is opened");
 
-my @methods = qw(info verbose report debug warn error event);
+my @methods = qw(info verbose report debug warn error event is_verbose);
 foreach my $method (@methods) {
     ok($fh->can($method), "FileWriter instance has $method method");
     ok(! defined($fh->$method("abc")), "conditional logger without log defined returns undef");
