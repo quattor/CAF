@@ -175,9 +175,7 @@ sub close
     my ($str, $ret, $cmd, $diff);
 
     # We have to do this because Text::Diff is not present in SL5. :(
-    if (*$self->{LOG}
-        && *$self->{LOG}->can('is_verbose') && *$self->{LOG}->is_verbose()
-        && -e *$self->{filename} && *$self->{buf}) {
+    if ($self->is_verbose() && -e *$self->{filename} && *$self->{buf}) {
         $cmd = CAF::Process->new (["diff", "-u", *$self->{filename}, "-"],
                                   stdin => "$self", stdout => \$diff,
                                   keeps_state => 1);
@@ -286,6 +284,41 @@ foreach my $i (qw(error warn info verbose debug report OK)) {
     }
 }
 use strict 'refs';
+
+=item is_verbose
+
+Determine if the reporter level is verbose.
+If it can't be determined from the reporter instance,
+use the global C<CAF::Reporter> state.
+
+=cut
+
+sub is_verbose
+{
+    my $self = shift;
+
+    my $res;
+    if (*$self->{LOG}) {
+        my $log = *$self->{LOG};
+
+        if (defined($log->{LOGGER})) {
+            # ComponentProxy as reporter
+            $log = $log->{LOGGER};
+        } elsif (defined($log->{log})) {
+            # CAF::Object as reporter
+            $log = $log->{log};
+        };
+
+        if($log->can('is_verbose')) {
+            $res = $log->is_verbose();
+        } else {
+            # Fallback to CAF::Reporter
+            $res = $CAF::Reporter::_REP_SETUP->{VERBOSE};
+        };
+    }
+    return $res;
+};
+
 
 =item event
 
