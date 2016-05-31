@@ -7,16 +7,20 @@ use LC::Exception qw (throw_error);
 use Readonly;
 
 use File::Path qw(rmtree);
-use File::Copy qw(move);
 use File::Temp qw(tempdir);
 use File::Basename qw(dirname);
+
+# do not use qw(move) or
+# remove the qw() (move is in @EXPORT),
+# as we define a move method below
+use File::Copy qw();
 
 use Scalar::Util qw(dualvar);
 
 Readonly my $KEEPS_STATE => 'keeps_state';
 
 Readonly::Hash my %CLEANUP_DISPATCH => {
-    move => \&move,
+    move => \&File::Copy::move,
     rmtree => \&rmtree,
     unlink => sub { return unlink(shift); },
 };
@@ -134,11 +138,13 @@ Reset previous exceptions and/or fail attribute.
 
 sub _reset_exception_fail
 {
-    my ($self) = shift;
+    my ($self, $msg) = @_;
+
+    $msg = defined($msg) ? " ($msg)" : "";
 
     # Reset the fail attribute
     if ($self->{fail}) {
-        $self->debug(1, "Ignoring/resetting previous existing fail: ",
+        $self->debug(1, "Ignoring/resetting previous existing fail$msg: ",
                        $self->{fail});
         $self->{fail} = undef;
     }
@@ -147,7 +153,7 @@ sub _reset_exception_fail
     if ($EC->error()) {
         # LC::Exception supports formatted stringification
         my $errmsg = ''.$EC->error();
-        $self->debug(1, "Ignoring/resetting previous existing error: $errmsg");
+        $self->debug(1, "Ignoring/resetting previous existing error$msg: $errmsg");
         $EC->ignore_error();
     };
 
@@ -168,7 +174,7 @@ sub _function_catch
 {
     my ($self, $funcref, $args, $opts) = @_;
 
-    $self->_reset_exception_fail();
+    $self->_reset_exception_fail('_function_catch');
 
     my $res = $funcref->(@$args, %$opts);
 
@@ -199,7 +205,7 @@ sub _safe_eval
 {
     my ($self, $funcref, $argsref, $optsref, $failmsg, $msg) = @_;
 
-    $self->_reset_exception_fail();
+    $self->_reset_exception_fail('_safe_eval');
 
     my ($res, @args, %opts);
     @args = @$argsref if $argsref;
@@ -210,7 +216,7 @@ sub _safe_eval
         $res = $funcref->(@args, %opts);
     };
 
-    if($@) {
+    if ($@) {
         chomp($@);
         return $self->fail("$failmsg: $@");
     } else {
@@ -325,6 +331,14 @@ Any previous backup is C<cleanup>ed (without backup).
 (Aside from the C<backup> attribute, this is the same as C<LC::Check::_unlink>
 (and thus also C<CAF::File*>)).
 
+Additional options
+
+=over
+
+=item keeps_state: boolean passed to C<_get_noaction>.
+
+=back
+
 =cut
 
 # TODO: is the $self->{backup} a good idea?
@@ -333,7 +347,7 @@ sub cleanup
 {
     my ($self, $dest, $backup, %opts) = @_;
 
-    $self->_reset_exception_fail();
+    $self->_reset_exception_fail('cleanup');
 
     return SUCCESS if (! $self->any_exists($dest));
 
@@ -346,39 +360,36 @@ sub cleanup
     $old = $dest.$backup if (defined($backup) and $backup ne '');
 
     # cleanup previous backup, no backup of previous backup!
-    my $method;
-    my @args = ($dest);
     if ($old) {
-        if (! $self->cleanup($old, '', %opts)) {
-            return $self->fail("cleanup of previous backup $old failed");
+        # Cleanup by move
+        # No backup, this is passed to cleanup
+        if (! $self->move($dest, $old, '', %opts)) {
+            return $self->fail("cleanup: move to backup failed: $self->{fail}");
         };
-
-        # simply rename/move dest to backup
-        # works for files and directories
-        $method = 'move';
-        push(@args, $old);
     } else {
+        my $method;
+        my @args = ($dest);
+
         if($self->directory_exists($dest)) {
             $method = 'rmtree';
         } else {
             $method = 'unlink';
         }
-    }
-
-    if($self->_get_noaction($opts{$KEEPS_STATE}, "cleanup: ")) {
-        $self->verbose("NoAction set, not going to $method with args ", join(',', @args));
-    } else {
-        my $res = $self->_safe_eval(
-            $CLEANUP_DISPATCH{$method}, \@args, undef,
-            "Cleanup $method failed to remove $dest",
-            "Cleanup $method removed $dest",
-            );
-        # move and unlink return 0 on failure, set $!
-        # rmtree dies on failure
-        if ($method eq 'rmtree') {
-            return if defined($self->{fail});
+        if($self->_get_noaction($opts{$KEEPS_STATE}, "cleanup: ")) {
+            $self->verbose("cleanup: NoAction set, not going to $method with args ", join(',', @args));
         } else {
-            return $self->fail("Cleanup $method failed to remove $dest: $!") if ! $res;
+            my $res = $self->_safe_eval(
+                $CLEANUP_DISPATCH{$method}, \@args, undef,
+                "Cleanup $method failed to remove $dest",
+                "Cleanup $method removed $dest",
+                );
+            # move and unlink return 0 on failure, set $!
+            # rmtree dies on failure
+            if ($method eq 'rmtree') {
+                return if defined($self->{fail});
+            } else {
+                return $self->fail("Cleanup $method failed to remove $dest: $!") if ! $res;
+            };
         };
     };
 
@@ -420,6 +431,8 @@ The C<CLEANUP> option is also set (an removal
 attempt (incl. any files and/or subdirectries)
 will be made at the end of the program).
 
+=item keeps_state: boolean passed to C<_get_noaction>.
+
 =back
 
 =cut
@@ -441,7 +454,7 @@ sub directory
     # assume we will create a new directory
     my $newdir = 1;
 
-    $self->_reset_exception_fail();
+    $self->_reset_exception_fail('directory');
 
     if (delete $opts{temp}) {
         # pad to at least X by adding 4
@@ -453,7 +466,7 @@ sub directory
             my $base = dirname($directory);
             if (! $self->directory_exists($base)) {
                 if (! $self->directory($base, %opts)) {
-                    return $self->fail("Failed to create basedir for temporary directory $directory");
+                    return $self->fail("Failed to create basedir for temporary directory $directory: $self->{fail}");
                 };
             }
 
@@ -464,8 +477,10 @@ sub directory
                 );
             return if defined($self->{fail});
         }
+        $self->debug(1, "Created temp directory $directory");
     } elsif ($self->directory_exists($directory)) {
         $newdir = 0;
+        $self->debug(1, "Directory $directory already exists");
     } else {
         # Directory does not exist
         # LC_Check directory returns false only if there was a problem
@@ -475,6 +490,7 @@ sub directory
             delete $dopts->{$invalid_opt};
         }
         return if ! $self->LC_Check('directory', [$directory], $dopts);
+        $self->debug(1, "Created directory $directory");
     };
 
     # Always run status, but track newly created directories
@@ -498,6 +514,14 @@ and executed with C<LC_Check>.
 Returns CHANGED if a change was made, SUCCESS if no changes were made
 and undef in case of failure (and the C<fail> attribute is set).
 
+Additional options
+
+=over
+
+=item keeps_state: boolean passed to C<_get_noaction>.
+
+=back
+
 =cut
 
 # Satus on missing files returns undef (and file is not created).
@@ -513,6 +537,71 @@ sub status
     } else {
         return $status ? CHANGED : SUCCESS;
     }
+}
+
+=item move
+
+Move/rename C<src> to C<dest>.
+
+The final goal is to make sure C<src> does not exist anymore,
+not that C<dest> exists after move (in particular, if C<src>
+does not exist to start with, success is immediately returned,
+and no backup of C<dest> is created).
+
+The <backup> is a suffix for the cleanup of C<dest>
+(and passed to C<cleanup> method).
+
+(The basedir of C<dest> is created using C<directory> method.)
+
+Additional options
+
+=over
+
+=item keeps_state: boolean passed to C<_get_noaction>.
+
+=back
+
+=cut
+
+# TODO: support owner/group/... options
+#    passed to directory when basedir of dest is missing
+#    set them on dest file?
+
+sub move
+{
+    my ($self, $src, $dest, $backup, %opts) = @_;
+
+    $self->_reset_exception_fail('move');
+
+    return SUCCESS if (! $self->any_exists($src));
+
+    # Cleanup dest, use backup
+    if (! $self->cleanup($dest, $backup, %opts)) {
+        return $self->fail("move: cleanup of dest $dest failed: $self->{fail}");
+    };
+
+    if($self->_get_noaction($opts{$KEEPS_STATE}, "move: ")) {
+        $self->verbose("move: NoAction set, not going to move $src to $dest");
+    } else {
+        my $base = dirname($dest);
+        if (! $self->directory_exists($base)) {
+            if (! $self->directory($base, %opts)) {
+                return $self->fail("Failed to create basedir for dest $dest: $self->{fail}");
+            };
+        }
+
+        # Move src to dest
+        my $res = $self->_safe_eval(
+            $CLEANUP_DISPATCH{move}, [$src, $dest], undef,
+            "Failed to move $src to $dest",
+            "Moved $src to $dest",
+            );
+        # move returns 0 on failure, set $!
+        return $self->fail("Failed to move $src to $dest: $!") if ! $res;
+    };
+
+    $self->debug(1, "Moved src $src to dest $dest");
+    return CHANGED;
 }
 
 =pod
