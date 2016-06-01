@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use Test::More;
-use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
+use CAF::Lock qw(FORCE_ALWAYS);
 
 use constant LOCK_TEST_DIR => "target/tests";
 use constant LOCK_TEST => LOCK_TEST_DIR . "/lock-caf";
@@ -10,41 +10,32 @@ use constant LOCK_TEST => LOCK_TEST_DIR . "/lock-caf";
 mkdir(LOCK_TEST_DIR);
 unlink(LOCK_TEST);
 
-my $lock=CAF::Lock->new(LOCK_TEST);
+my $lock1 = CAF::Lock->new(LOCK_TEST);
+my $lock2 = CAF::Lock->new(LOCK_TEST);
 
-ok(!$lock->is_locked(), "Unlocked at start");
-my $lockpid=$lock->get_lock_pid();
+ok(!$lock1->is_set(), "lock1 unlocked at start");
+ok(!$lock2->is_set(), "lock2 unlocked at start");
 
-is($lockpid, undef, "Lock PID undefined on unaquired lock");
+ok($lock2->unlock(), "lock2 lock released (while lock2 unlocked)");
+ok(!$lock2->is_set(), "lock2 still unlocked after unlock while unlocked");
 
-ok($lock->set_lock(), "Lock set");
-ok($lock->is_locked(), "Locked on request");
+ok($lock1->set_lock(), "lock1 lock set");
+ok($lock1->is_set(), "lock1 locked on request");
+ok(!$lock2->is_set(), "lock2 unlocked when lock1 locked");
 
-is($lock->get_lock_pid(), $$, "Lock PID correctly set on locked object");
+ok($lock1->set_lock(), "lock1 set on when lock1 already taken");
 
-ok(!$lock->is_stale(), "Lock is NOT stale");
+ok(!$lock2->set_lock(), "lock2 not set when lock1 locked");
+ok(!$lock2->is_set(), "lock2 failed set still unlocked when lock1 locked");
 
-ok($lock->unlock(), "Lock released");
+ok($lock1->unlock(), "lock1 lock released");
+ok(!$lock1->is_set(), "lock1 unlocked when lock1 unlocked");
+ok(!$lock2->is_set(), "lock2 unlocked when lock1 unlocked");
 
-open(my $fh, ">", LOCK_TEST);
-if (!kill(0, $$+1)) {
-    print $fh $$+1;
-    close($fh);
-    ok($lock->is_stale(), "Lock by non-existing process is stale");
-}
+ok($lock1->unlock(), "lock1 lock released while lock1 already released");
 
-ok(!$lock->set_lock(), "Non-forced lock on stalled lock not acuired");
-ok($lock->set_lock(0, 0, FORCE_IF_STALE), "Forced lock on stalled resource aquired");
-$lock->unlock();
-
-open($fh, ">", LOCK_TEST);
-close($fh);
-
-ok($lock->is_stale(), "Lock on empty lock file is stale");
-ok($lock->set_lock(0, 0, FORCE_IF_STALE), "Forced lock on empty lock file aquired");
-
-# How does it handle when an empty lock file is there?
-
-
+ok($lock2->set_lock(), "lock2 set when lock1 unlocked");
+ok($lock2->is_set(), "lock2 locked on request");
+ok(!$lock1->is_set(), "lock1 unlocked when lock2 unlocked");
 
 done_testing();
