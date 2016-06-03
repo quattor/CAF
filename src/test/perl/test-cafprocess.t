@@ -94,21 +94,21 @@ like ($str, qr/Running the command: ls a random command/,
       "run logged");
 $p->output ();
 is ($output, 2, "output with options correctly run");
-like ($str, qr/Getting output of.*ls a random command/,
+like ($str, qr/Getting output of command: ls a random command/,
       "output used the correct options and was correctly logged");
 $str = "";
 open ($fh, ">", \$str);
 $this_app->set_report_logfile ($fh);
 $p->trun (10);
 is ($trun, 2, "Logged trun correctly run");
-like ($str, qr/Running command.*ls a random command.*with 10 seconds/,
+like ($str, qr/Running the command: ls a random command.* with 10 seconds/,
       "trun logged");
 $str = "";
 open ($fh, ">", \$str);
 $this_app->set_report_logfile ($fh);
 $p->toutput (10);
 is ($toutput, 2, "Logged toutput correctly run");
-like ($str, qr/Returning the output.*ls a random command.*with 10 seconds/,
+like ($str, qr/Getting output of command: ls a random command.* with 10 seconds/,
       "toutput logged");
 init_test();
 # Let's test the rest of the commands
