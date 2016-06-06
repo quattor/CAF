@@ -233,7 +233,7 @@ is_deeply($noaction_args, [30], "keeps_state option passed to _get_noaction");
 is_deeply($func_catch_args, [
               \&LC::Check::directory, # coderef to from the dispatch table
               [qw(a b c)],
-              {optX => 'x', 'noaction' => 20} # keeps_state is removed; noaction overridden with value from _get_noaction
+              {optX => 'x', 'noaction' => 20, silent => 0} # keeps_state is removed; noaction overridden with value from _get_noaction; silent=0 with noaction
           ], "_func_args called with expected args");
 
 verify_exception("LC_Check mocked directory dispatch");

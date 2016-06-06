@@ -27,6 +27,8 @@ Readonly::Hash my %LC_CHECK_DISPATCH => {
     status => \&LC::Check::status,
 };
 
+Readonly::Array my @LC_CHECK_SILENT_FUNCTIONS => qw(directory status file link symlink hardlink absence);
+
 our $EC = LC::Exception::Context->new->will_store_all;
 
 =pod
@@ -242,6 +244,15 @@ sub LC_Check
 
     # Override noaction passed via opts
     $opts->{noaction} = $noaction;
+
+    # make sure LC::Check::$function is silent unless in noaction mode
+    # (or when explicitly set via silent option)
+    if (! defined($opts->{silent}) &&
+        grep {$_ eq $function} @LC_CHECK_SILENT_FUNCTIONS
+        ) {
+        $opts->{silent} = $noaction ? 0 : 1
+    };
+
 
     my $funcref = $LC_CHECK_DISPATCH{$function};
     if (defined($funcref)) {
