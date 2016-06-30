@@ -548,18 +548,14 @@ chmod(0000, $basetempdir);
 init_exception("temp directory creation failure NoAction=0 permission");
 
 ok(!defined($mc->directory($tempdir, temp => 1)),
-   "temp directory on broken symlink parent returns undef on failure tempdir");
+   "temp directory on parent without permissions returns undef on failure tempdir");
 
 # called 2 times: init and _safe_eval
 verify_exception("temp directory creation failure NoAction=0 permission",
                  '^Failed to create temporary directory target/test/check/sub/exist-XXXXX: Error in tempdir\(\) using target/test/check/sub/exist-XXXXX: Could not create directory target/test/check/sub/exist-\w{5}: Permission denied at', 2);
 
-ok(! $mc->directory_exists("$brokenlink/exist"), "temp directory brokenlink/exist not created 3");
-ok(! $mc->directory_exists($brokenlink), "temp brokenlink still not a directory 3");
-
 # reset write bits for removal
 chmod(0700, $basetempdir);
-
 
 # reenable NoAction
 $CAF::Object::NoAction = 1;
