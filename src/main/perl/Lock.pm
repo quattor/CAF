@@ -5,6 +5,7 @@ use CAF::Reporter;
 
 use LC::Exception qw(SUCCESS throw_error);
 use FileHandle;
+use File::stat; # overrides builtin stat
 use Fcntl qw(:flock);
 
 use Exporter;
@@ -17,9 +18,9 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 
 use constant FORCE_NONE     => 0;
 use constant FORCE_ALWAYS   => 1;
-use constant FORCE_IF_STALE => 2;  # for backwards compatibility only
-                                   # has no effect now
-
+# for backwards compatibility only
+# has no effect on newly created locks
+use constant FORCE_IF_STALE => 2;
 
 =pod
 
@@ -107,16 +108,21 @@ sub unlock
     my $self = shift;
     if ($self->{LOCK_SET}) {
         # if we forced the lock LOCK_FH can be undef
+
         if ($self->{LOCK_FH}) {
             unless (flock($self->{LOCK_FH}, LOCK_UN)) {
                 $self->error("cannot release lock: $self->{LOCK_FILE}");
                 return;
             }
-            $self->error("cannot close lock file: $self->{LOCK_FILE}")
-                unless $self->{LOCK_FH}->close();
+            # close the filehandle, clearing any previous content
+            unless ($self->{LOCK_FH}->close()) {
+                $self->error("cannot close lock file: $self->{LOCK_FILE}");
+            }
         }
+
         $self->{LOCK_SET} = undef;
         $self->{LOCK_FH} = undef;
+
     } else {
         $self->warn("lock not held by this application instance: $self->{LOCK_FILE}, nothing to unlock");
     }
@@ -173,24 +179,101 @@ sub _try_lock
 {
     my ($self, $force) = @_;
 
-    my $lf = FileHandle->new("> $self->{LOCK_FILE}");
-    unless ($lf) {
-        $self->error("cannot create lock file: $self->{LOCK_FILE}");
-        return;
-    }
-    unless (flock($lf, LOCK_EX|LOCK_NB)) {
-        # Could not get the lock
-        return unless (defined($force) && $force == FORCE_ALWAYS);
+    $force = FORCE_NONE if ! defined($force);
 
+    my $lf;
+
+    # has_lock: does the current instance have the lock?
+    my $has_lock = 1;
+
+    if ($self->_is_locked_oldstyle($force)) {
+        # Do not bother try to take the lock
+        $self->warn("Old style lock found $self->{LOCK_FILE}");
+        $has_lock = 0;
+    } else {
+        $lf = FileHandle->new("> $self->{LOCK_FILE}");
+        unless ($lf) {
+            $self->error("cannot create lock file: $self->{LOCK_FILE}");
+            return;
+        }
+        $has_lock = flock($lf, LOCK_EX|LOCK_NB);
+        $self->debug(3, "flock on $self->{LOCK_FILE} gave has_lock $has_lock");
+    }
+
+    unless ($has_lock) {
+        # Could not get the lock
         # In force mode, continue but don't save the filehandle
-        $lf->close();
-        $lf = undef;
+
+        # So always close the $fh if defined
+        if(defined($lf)) {
+            $lf->close();
+            $lf = undef;
+        }
+
+        return unless ($force == FORCE_ALWAYS);
     }
 
     $self->{LOCK_FH} = $lf;
     $self->{LOCK_SET} = 1;
 
     return SUCCESS;
+}
+
+
+# Before CAF PR#132, CAF::Lock used the presence of the lock file as
+# condition to determine if the lock was taken or not.
+# The file would hold the PID of the process that had the lock
+# (and unlock simply removed the file).
+# This method provides support for the existence of an old-style lockfile
+# held by another process using old-style locking code.
+# It does not modify/cleanup the old-style file (even if it is stale).
+# Returns boolean true if the lock has been taken by another process
+# (i.e. if it is locked by another old-style instance).
+sub _is_locked_oldstyle
+{
+    my ($self, $force) = @_;
+
+    my $other_has_lock = 0;
+
+    my $st = stat($self->{LOCK_FILE});
+
+    if (! $st) {
+        # No file -> no lock
+        $self->debug(3, "No lockfile $self->{LOCK_FILE} found: no lock");
+    } elsif ($st->size == 0) {
+        # Empty file -> no old-style lock due to missing PID in file
+        # New-style lockfiles are empty files
+        $self->debug(3, "Empty lockfile $self->{LOCK_FILE} found: no old-style lock");
+    } else {
+        # A non-empty file was found, could be an old-style lock
+        $force = FORCE_NONE if ! defined($force);
+
+        if ($force == FORCE_ALWAYS) {
+            # No lock, do not even check
+            # Will trigger an new-style lock
+            $self->debug(3, "_is_locked_oldstyle with FORCE_ALWAYS: pretend there is no lock");
+        } elsif ($force == FORCE_IF_STALE) {
+            # This is more or less the old get_lock_pid / if_stale method code
+            my $fh = FileHandle->new("< " . $self->{'LOCK_FILE'});
+            if ($fh) {
+                my $pid = $fh->getline();
+                $pid = '' if ! defined($pid);
+
+                $fh->close();
+                if ($pid =~ m/^(\d+)$/) {
+                    # If pid can be signalled, there is a lock by another process
+                    $self->debug(3, "_is_locked_oldstyle checking possibly stale PID $1");
+                    $other_has_lock = kill(0, $1);
+                }
+            }
+            $self->debug(3, "_is_locked_oldstyle with FORCE_IF_STALE: there is ".($other_has_lock ? 'a': 'no')." lock");
+        } else {
+            $self->debug(3, "_is_locked_oldstyle file found and force not set: there is a lock");
+            $other_has_lock = 1;
+        }
+    }
+
+    return $other_has_lock;
 }
 
 =pod
