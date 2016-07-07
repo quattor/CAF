@@ -1,19 +1,17 @@
 #${PMpre} CAF::Lock${PMpost}
 
-use CAF::Object;
-use CAF::Reporter;
-
-use LC::Exception qw(SUCCESS throw_error);
+use CAF::Object qw(SUCCESS);
 use FileHandle;
 use File::stat; # overrides builtin stat
 use Fcntl qw(:flock);
 
-use Exporter;
 use vars qw(@ISA @EXPORT @EXPORT_OK);
 
-@ISA = qw(CAF::Reporter CAF::Object Exporter);
+# Only required to support legacy CAF::Reporter inheritance
+our @ISA;
+use parent qw(CAF::Object Exporter);
 
-@EXPORT_OK = qw(FORCE_NONE FORCE_ALWAYS FORCE_IF_STALE);
+our @EXPORT_OK = qw(FORCE_NONE FORCE_ALWAYS FORCE_IF_STALE);
 
 
 use constant FORCE_NONE     => 0;
@@ -32,7 +30,7 @@ CAF::Lock - Class for handling application instance locking
 
     use CAF::Lock;
 
-    $lock = CAF::Lock->new('/var/lock/quattor/spma');
+    $lock = CAF::Lock->new('/var/lock/quattor/spma', log => $reporter);
 
     unless ($lock->set_lock()) {...}
     unless ($lock->set_lock(10, 2) {...}
@@ -42,7 +40,7 @@ CAF::Lock - Class for handling application instance locking
 
 =head1 INHERITANCE
 
-    CAF::Reporter
+    CAF::Object
 
 =head1 DESCRIPTION
 
@@ -152,14 +150,33 @@ sub is_set
 
 Initialize the object.  Called by new(I<lockfilename>).
 
+Optional arguments
+
+=over
+
+=item C<log>
+
+A C<CAF::Reporter> object to log to.
+
+=back
+
 =cut
 
 sub _initialize
 {
-    my ($self, $lockfilename) = @_;
+    my ($self, $lockfilename, %opts) = @_;
 
     $self->{LOCK_SET} = undef;
     $self->{LOCK_FILE} = $lockfilename;
+
+    # This is intended to move away from some legacy code
+    # Do not copy this ever somewhere else
+    # Use: $self->{log} = $opts{log} if $opts{log};
+    if ($opts{log}) {
+        $self->{log} = $opts{log};
+    } else {
+        unshift(@ISA, 'CAF::Reporter');
+    }
 
     return SUCCESS;
 }
