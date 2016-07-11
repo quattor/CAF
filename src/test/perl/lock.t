@@ -1,6 +1,14 @@
 # -*- mode: cperl -*-
 use strict;
 use warnings;
+
+my $sleep = 0;
+my $slept = 0;
+
+BEGIN {
+  *CORE::GLOBAL::sleep = sub {$sleep+= shift; $slept++;};
+}
+
 use Test::More;
 use Test::Quattor::Object;
 use Test::MockModule;
@@ -33,7 +41,18 @@ ok(!$lock2->is_set(), "lock2 unlocked when lock1 locked");
 
 ok($lock1->set_lock(), "lock1 set on when lock1 already taken");
 
+$sleep = 0;
+$slept = 0;
 ok(!$lock2->set_lock(), "lock2 not set when lock1 locked");
+is($slept, 0, "lock2 not set no retries");
+is($sleep, 0, "lock2 not set no retries/sleep)");
+
+$sleep = 0;
+$slept = 0;
+ok(!$lock2->set_lock(3, 5), "lock2 not set when lock1 locked (3 retries with 5 seconds)");
+is($slept, 3, "lock2 not set took 3 retries");
+is($sleep, 15, "lock2 not set took 15 seconds of sleep (3 retries with 5 seconds)");
+
 ok(!$lock2->is_set(), "lock2 failed set still unlocked when lock1 locked");
 
 ok($lock1->unlock(), "lock1 lock released");
