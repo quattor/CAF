@@ -144,7 +144,7 @@ to use an absolute rather than a conditional logger).
 =cut
 
 no strict 'refs';
-foreach my $i (qw(error warn info verbose debug report OK event)) {
+foreach my $i (qw(error warn info verbose debug report log OK event)) {
     *{$i} = sub {
         my ($self, @args) = @_;
         if ($self->{log}) {
