@@ -81,14 +81,14 @@ sub set_lock
     my $tries = 0;
     do {
         if ($tries > 0) {
-            $self->verbose("lock file is already held, try $tries out of $retries");
+            $self->verbose("lock file is already held, try $tries out of $retries (timeout $timeout)");
             sleep($timeout);
         }
         $tries++;
         return SUCCESS if $self->_try_lock($force);
-    } while ($tries < $retries && $timeout);
+    } while ($tries <= $retries && $timeout);
 
-    $self->error("cannot acquire lock after $tries tries: $self->{LOCK_FILE}");
+    $self->error("cannot acquire lock after $tries tries (timeout $timeout): $self->{LOCK_FILE}");
     return;
 }
 
