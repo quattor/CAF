@@ -87,7 +87,7 @@ is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$QUIET}, 1, "Quiet enabled");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
 is($CAF::Reporter::_REP_SETUP->{$FACILITY}, 'facility', "Facility set");
-is($CAF::Reporter::_REP_SETUP, $myrep->_rep_setup(), "_ret_setyp returns ref to _REP_SETUP for Reporter");
+is($CAF::Reporter::_REP_SETUP, $myrep->_rep_setup(), "_rep_setup returns ref to _REP_SETUP for Reporter");
 
 is($myrep->get_debuglevel(), 0, "Returned debug level 0");
 ok($myrep->is_quiet(), "is quiet");
@@ -140,7 +140,22 @@ $myrep->setup_reporter();
 is_deeply($CAF::Reporter::_REP_SETUP, $current,
    "passing undefs to setup_reporter preserves the settings");
 
-=pod
+=item _make_message_string
+
+=cut
+
+use utf8;
+is(CAF::Reporter::_make_message_string("begin", undef, "testutf8_☺_", "test_binary_\0_\0\0", "\nnext\t ","end"),
+   "begin<undef>testutf8_☺_test_binary_?_??\nnext\t end",
+   "_make_message_string handles undef, utf8 and non-utf8 code (in proper encoding)");
+no utf8;
+
+# U+263A (the smiley) is now used in non-utf8 encoding, so it's binary garbage
+# the smiley is 3 bytes (0xE2 0x98 0xBA)
+is(CAF::Reporter::_make_message_string("testutf8_☺_"),
+   "testutf8_???_",
+   "_make_message_string via :print: charclass is encoding aware");
+
 
 =item log and syslog
 
