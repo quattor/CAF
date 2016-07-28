@@ -45,6 +45,27 @@ sub _rep_setup
     return $_REP_SETUP;
 }
 
+# Join all arguments into a single string
+# Handles undefined arguments and non-printable garbage
+sub _make_message_string
+{
+    # Ensure that there is no undefined arg: replace by <undef> if any, force stringification otherwise.
+    my @args = map {defined($_) ? "$_" : '<undef>'} @_;
+
+    # Make single string
+    my $string = join('', @args);
+
+    # Replace any non-printable character with a ?
+    # print charclass only includes whitespace that is not a control charater
+    #    (so also add the space charclass (for e.g. newline))
+    # TODO: also exclude the cntrl charclass?
+    # TODO: this will remove non-ascii characters, incl. unicode;
+    #       unless 'use utf8' (and similar) is used. :print: means printable in current encoding
+    $string =~ s/[^[:print:][:space:]]/?/g;
+
+    return $string;
+}
+
 =pod
 
 =head1 NAME
@@ -278,10 +299,8 @@ sub _print
 sub report
 {
     my $self = shift;
-    # Ensure that there is no undefined arg: replace by <undef> if any.
-    my @args = map {defined($_) ? $_ : '<undef>'} @_;
-    my $string = join('', @args)."\n";
-    _print($string) unless ($self->_rep_setup()->{$QUIET});
+
+    _print(_make_message_string(@_)."\n") unless ($self->_rep_setup()->{$QUIET});
     $self->log(@_);
     return SUCCESS;
 }
@@ -430,8 +449,8 @@ to the log file, if one is setup (via C<set_report_logfile>).
 sub log
 {
     my $self = shift;
-    my $string = join('', @_)."\n";
-    $self->_rep_setup()->{$LOGFILE}->print($string) if ($self->_rep_setup()->{$LOGFILE});
+
+    $self->_rep_setup()->{$LOGFILE}->print(_make_message_string(@_)."\n") if ($self->_rep_setup()->{$LOGFILE});
     return SUCCESS;
 }
 
@@ -464,7 +483,7 @@ sub syslog
         openlog ($self->_rep_setup()->{$LOGFILE}->{$SYSLOG},
                  "pid",
                  $self->_rep_setup()->{$FACILITY});
-        Sys::Syslog::syslog ($priority, join ('', @msg));
+        Sys::Syslog::syslog ($priority, _make_message_string(@msg));
         closelog();
     };
 
