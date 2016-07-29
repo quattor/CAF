@@ -128,6 +128,7 @@ verify_exception("test _reset_exception_fail", 0, 0);
 # Continue with mocking _reset_exception_fail
 $mock->mock('_reset_exception_fail', sub {
     $exception_reset += 1;
+    diag "mocked _reset_exception_fail $exception_reset times ".(scalar @_ == 2 ? $_[1] : '');
     my $init = $mock->original("_reset_exception_fail");
     return &$init(@_);
 });
@@ -653,5 +654,175 @@ is($mc->status($statusfile, mode => 0400), SUCCESS,
 # reenable NoAction
 $CAF::Object::NoAction = 1;
 
+=head2 move
+
+=cut
+
+# disable NoAction
+$CAF::Object::NoAction = 0;
+
+# make dest with content
+# make dest backup with content
+# move src to dest
+# test with dir and file, without backup
+my $movedir1 = "$basetest/move1";
+my $movedir2 = "$basetest/move2";
+my $movesrc1 = "$movedir1/src";
+my $movedest1 = "$movedir2/dst";
+my $movedest1b = "$movedest1.old";
+
+rmtree($movedir1) if -d $movedir1;
+rmtree($movedir2) if -d $movedir2;
+makefile($movesrc1, 'source');
+makefile($movedest1, 'dest');
+makefile($movedest1b, 'dest backup');
+ok($mc->file_exists($movesrc1), "move src file exists");
+ok($mc->file_exists($movedest1), "move dest file exists");
+ok($mc->file_exists($movedest1b), "move dest backup file exists");
+ok($mc->directory_exists($movedir1), "move testdir exists");
+my $nrfiles = scalar grep {-f $_} glob("$movedir2/*");
+is($nrfiles, 2, "$nrfiles files in dest dir before move");
+
+init_exception("move NoAction=0");
+is($mc->move($movesrc1, $movedest1, '.old'), CHANGED, "move src $movesrc1 to dest $movedest1 with backup '.old'");
+# 7 calls,
+#   once from move,
+#     once from cleanup w backup
+#       move without backup -> cleanup without backup -> safe_eval unlink
+#       move to backup -> safe_eval FPmove
+#     safe_eval FPmove
+verify_exception("move NoAction=0", undef, 7);
+
+ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved");
+ok($mc->file_exists($movedest1), "move dest file exists after move");
+is(readfile($movedest1), 'source', 'dest file has source content');
+ok($mc->file_exists($movedest1b), "move dest backup file exists after move");
+is(readfile($movedest1b), 'dest', 'dest backup file has (original) dest content after move');
+# test that e.g. no .old.old exists/is created
+$nrfiles = scalar grep {-f $_} glob("$movedir2/*");
+is($nrfiles, 2, "$nrfiles files in dest dir after move");
+
+# same, but w/o backup
+
+rmtree($movedir1) if -d $movedir1;
+rmtree($movedir2) if -d $movedir2;
+makefile($movesrc1, 'source');
+makefile($movedest1, 'dest');
+makefile($movedest1b, 'dest backup');
+ok($mc->file_exists($movesrc1), "move src file exists w/o backup");
+ok($mc->file_exists($movedest1), "move dest file exists w/o backup");
+ok($mc->file_exists($movedest1b), "move dest backup file exists w/o backup");
+ok($mc->directory_exists($movedir1), "move testdir exists w/o backup");
+$nrfiles = scalar grep {-f $_} glob("$movedir2/*");
+is($nrfiles, 2, "$nrfiles files in dest dir before move w/o backup");
+
+init_exception("move w/o backup NoAction=0");
+is($mc->move($movesrc1, $movedest1, ''), CHANGED, "move src $movesrc1 to dest $movedest1 w/o backup");
+verify_exception("move w/o backup NoAction=0", undef, 4); # move, cleanup w/o backup + safe eval unlink, safe eval FPmove
+ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved w/o backup");
+ok($mc->file_exists($movedest1), "move dest file exists after move w/o backup");
+is(readfile($movedest1), 'source', 'dest file has source content w/o backup');
+ok($mc->file_exists($movedest1b), "move dest backup file exists after move w/o backup");
+is(readfile($movedest1b), 'dest backup', 'dest backup file has (original) dest backup content after move w/o backup');
+# test that e.g. no .old.old exists/is created
+$nrfiles = scalar grep {-f $_} glob("$movedir2/*");
+is($nrfiles, 2, "$nrfiles files in dest dir after move w/o backup");
+
+# same, but w/o backup, and destdir does not exists
+rmtree($movedir1) if -d $movedir1;
+rmtree($movedir2) if -d $movedir2;
+makefile($movesrc1, 'source');
+ok($mc->file_exists($movesrc1), "move src file exists w/o backup w/o destdir");
+ok(!$mc->file_exists($movedest1), "move dest file does not exist w/o backup w/o destdir");
+ok(!$mc->file_exists($movedest1b), "move dest backup file does not exists w/o backup w/o destdir");
+ok($mc->directory_exists($movedir1), "move testdir exists w/o backup w/o destdir");
+ok(!$mc->directory_exists($movedir2), "move dest testdir does not exists w/o backup w/o destdir");
+
+init_exception("move w/o backup  w/o destdir NoAction=0");
+is($mc->move($movesrc1, $movedest1, ''), CHANGED, "move src $movesrc1 to dest $movedest1 w/o backup w/o destdir");
+# move,
+#  cleanup w/o backup
+#  directory + func_catch + status/LC_Chekc/func_catch
+#  safe eval FPmove
+verify_exception("move w/o backup w/o destdir NoAction=0", undef, 6);
+ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved w/o backup w/o destdir");
+ok($mc->directory_exists($movedir2), "move dest testdir does exists after move w/o backup w/o destdir");
+ok($mc->file_exists($movedest1), "move dest file exists after move w/o backup w/o destdir");
+is(readfile($movedest1), 'source', 'dest file has source content w/o backup w/o destdir');
+ok(!$mc->file_exists($movedest1b), "move dest backup file does not exists after move w/o backup w/o destdir");
+# test that e.g. no .old.old exists/is created
+$nrfiles = scalar grep {-f $_} glob("$movedir2/*");
+is($nrfiles, 1, "$nrfiles files in dest dir after move w/o backup w/o destdir");
+
+# move failures
+# trigger failure
+#   subbir on broken symlink, cannot make parent dir of dest
+rmtree($movedir1) if -d $movedir1;
+makefile($movesrc1, 'source');
+
+my $movedest2 = "$brokenlink/sub/dst";
+ok(symlink("really_really_missing", $brokenlink), "broken symlink created 1");
+
+# no backup, there's no dest to backup anyway
+init_exception("move failure to create destdir");
+ok(! defined($mc->move($movesrc1, $movedest2, '')),
+   "move src $movesrc1 to dest $movedest1 w/o backup failed no permission to create destdir");
+verify_exception("move failure to create destdir",
+                 '^Failed to create basedir for dest target/test/check/broken_symlink/sub/dst: \*\*\* mkdir\(target/test/check/broken_symlink, 0755\): File exists', 4);
+
+# make destdir and remove all permissions
+mkpath $movedir2;
+chmod(0000, $movedir2);
+# no backup, there's no dest to backup anyway
+init_exception("move failure to move source");
+ok(! defined($mc->move($movesrc1, $movedest1, '')),
+   "move src $movesrc1 to dest $movedest1 w/o backup failed no permission to move src to dest (destdor exists)");
+verify_exception("move failure to move source",
+                 '^Failed to move target/test/check/move1/src to target/test/check/move2/dst: Permission denied', 3);
+
+chmod(0700, $movedir2);
+makefile($movedest1, 'dest');
+
+# do not set 0000, or else Path cannot detect that dest exists
+# and thus no backup is taken, and we get different failure
+chmod(0500, $movedir2);
+init_exception("move failure to cleanup dest with backup");
+ok(! defined($mc->move($movesrc1, $movedest1, '.old')),
+   "move src $movesrc1 to dest $movedest1 with backup '.old' failed no permission to make backup of dest");
+verify_exception("move failure to cleanup dest with backup",
+                 '^move: cleanup of dest target/test/check/move2/dst failed: cleanup: move to backup failed: Failed to move target/test/check/move2/dst to target/test/check/move2/dst.old: Permission denied', 5);
+
+# Restore sufficient permissions
+chmod(0700, $movedir2);
+
+# NoAction, same test
+
+# enable NoAction
+$CAF::Object::NoAction = 1;
+
+rmtree($movedir1) if -d $movedir1;
+rmtree($movedir2) if -d $movedir2;
+makefile($movesrc1, 'source');
+makefile($movedest1, 'dest');
+makefile($movedest1b, 'dest backup');
+ok($mc->file_exists($movesrc1), "move src file exists NoAction=1");
+ok($mc->file_exists($movedest1), "move dest file exists NoAction=1");
+ok($mc->file_exists($movedest1b), "move dest backup file exists NoAction=1");
+ok($mc->directory_exists($movedir1), "move testdir exists NoAction=1");
+$nrfiles = scalar grep {-f $_} glob("$movedir2/*");
+is($nrfiles, 2, "$nrfiles files in dest dir before move NoAction=1");
+
+is($mc->move($movesrc1, $movedest1, '.old'), CHANGED, "move src $movesrc1 to dest $movedest1 with backup '.old' NoAction=1");
+ok($mc->file_exists($movesrc1), "move src file still exists after move NoAction=1");
+is(readfile($movesrc1), 'source', 'src file has source content NoAction=1');
+ok($mc->file_exists($movedest1), "move dest file still exists after move NoAction=1");
+is(readfile($movedest1), 'dest', 'dest file has dest content NoAction=1');
+ok($mc->file_exists($movedest1b), "move dest backup file exists after move NoAction=1");
+is(readfile($movedest1b), 'dest backup', 'dest backup file has dest backup content after move NoAction=1');
+$nrfiles = scalar grep {-f $_} glob("$movedir2/*");
+is($nrfiles, 2, "$nrfiles files in dest dir after move NoAction=1");
+
+# reenable NoAction
+$CAF::Object::NoAction = 1;
 
 done_testing();
