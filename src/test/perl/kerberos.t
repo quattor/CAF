@@ -191,6 +191,8 @@ my ($manual_name_instance, $manual_name_instance2);
 my $status = GSSAPI::Name->import($manual_name_instance, 'server@realm', GSSAPI::OID::gss_nt_krb5_name);
 isa_ok($manual_name_instance, 'GSSAPI::Name', 'manual_name_instance is a GSSAPI::Name instance');
 
+is($krb->get_hrname($manual_name_instance), 'server@realm', 'name instance created with expected hrname');
+
 $krb->{fail} = '';
 isa_ok($status, 'GSSAPI::Status', 'status is a GSSAPI::Status instance');
 ok($status, "manual_name_instance status is ok"); # GSSAPI::Status has overloaded bool
@@ -228,6 +230,7 @@ my $gssapi_wrappers = \%CAF::Kerberos::GSSAPI_INTERFACE_WRAPPER;
 is_deeply($gssapi_wrappers, {
     Context => [qw(accept init valid_time_left wrap unwrap)],
     Name => [qw(display import)],
+    Cred => [qw(acquire_cred inquire_cred)],
     }, 'GSSAPI_INTERFACE_WRAPPER');
 
 # The somewhat strange GSSAPI::Name->import
@@ -237,11 +240,6 @@ $krb->{fail} = '';
 ok($krb->_gssapi_import($name_instance, 'server@realm', GSSAPI::OID::gss_nt_krb5_name),
    '_gssapi_import is used to create a GSSAPI::Name instance and returns success');
 isa_ok($name_instance, 'GSSAPI::Name', 'is a GSSAPI::Name instance');
-
-my $instances = {
-    Context => GSSAPI::Context->new(),
-    Name => $name_instance,
-};
 
 my @fnames;
 foreach my $class (sort keys %$gssapi_wrappers) {
@@ -275,7 +273,8 @@ foreach my $class (sort keys %$gssapi_wrappers) {
         $krb->{fail} = '';
         $a = {};
         ok(! defined($krb->$fname($a, $b, $c)), "$fname returns undef in case of instance mismatch");
-        my $err_regexp = "^$fname expected a $fclass instance, got ref";
+        my $expected_class = $method eq 'acquire_cred' ? 'GSSAPI::Name' : $fclass;
+        my $err_regexp = "^$fname expected a $expected_class instance, got ref";
         like($krb->{fail}, qr{$err_regexp}, "$fname fails with instance mismatch");
     }
 }
