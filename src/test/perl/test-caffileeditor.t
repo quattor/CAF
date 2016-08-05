@@ -9,6 +9,7 @@ use Test::More;
 use Carp qw(confess);
 use File::Path;
 use File::Temp qw(tempfile);
+use CAF::Object;
 
 my $testdir = 'target/test/editor';
 mkpath($testdir);
@@ -25,8 +26,18 @@ EOF
 chomp($filename);
 our $text = TEXT;
 
-our %opts = ();
+# $path and %opts are set via the dummy LC/Check module
+# in resources/LC
 our $path;
+our %opts = ();
+
+sub init_test
+{
+    $path = "";
+    %opts = ();
+}
+
+
 my ($log, $str);
 my $this_app = testapp->new ($0, qw (--verbose));
 
@@ -37,64 +48,88 @@ $SIG{__DIE__} = \&confess;
     $self->{ERROR} = @_;
 };
 
+init_test();
 open ($log, ">", \$str);
-my $fh = CAF::FileEditor->new ($filename);
+my $fh = CAF::FileEditor->new ($filename,
+    backup => '.old',
+    owner => 100,
+    group => 200,
+    mode => 0123,
+    mtime => 1234567);
 isa_ok ($fh, "CAF::FileEditor", "Correct class after new method");
 isa_ok ($fh, "CAF::FileWriter", "Correct class inheritance after new method");
 is (${$fh->string_ref()}, TEXT, "File opened and correctly read");
 $fh->close();
+is_deeply(\%opts, {
+    backup => '.old',
+    owner => 100,
+    group => 200,
+    mode => 0123,
+    mtime => 1234567,
+    contents => TEXT,
+    noaction => 0,
+}, "options set in new(), derived noaction and current contents are passed to LC (via parent filewriter)");
 
 is(*$fh->{filename}, $filename, "The object stores its parent's attributes");
-
 is ($opts{contents}, TEXT, "Attempted to write the file with the correct contents");
-$fh = CAF::FileEditor->open ($filename);
+
+
+$CAF::Object::NoAction = 1;
+init_test();
+$fh = CAF::FileEditor->open ($filename, keeps_state => 1);
 $fh->head_print (HEADTEXT);
-is (${$fh->string_ref()}, HEADTEXT . TEXT,
-    "head_print method working properly");
+is (${$fh->string_ref()}, HEADTEXT . TEXT, "head_print method working properly");
 isa_ok ($fh, "CAF::FileEditor", "Correct class after open method");
 isa_ok ($fh, "CAF::FileWriter", "Correct class inheritance after open method");
 $fh->close();
+is($opts{noaction}, 0, "noaction=0 passed to LC with keeps_state true");
+
+
 $fh = CAF::FileEditor->open($filename);
 print $fh HEADTEXT;
-is(${$fh->string_ref()}, TEXT.HEADTEXT,
-   "print method working as expected");
+is(${$fh->string_ref()}, TEXT.HEADTEXT, "print method working as expected");
 
-$fh->replace_lines(qr(This line doesn't exist), qr(This.*exist),
-		   "This line does exist");
-unlike(${$fh->string_ref()}, qr(This line does exist),
-       "replace_lines doesn't do anything if no matches");
-$fh->replace_lines(HEADTEXT, ".*corredor",
-		   "no corredor");
-unlike(${$fh->string_ref()}, qr(no corredor),
-       "replace_lines doesn't do anything if the good regexp exists");
+$fh->replace_lines(qr(This line doesn't exist), qr(This.*exist), "This line does exist");
+unlike(${$fh->string_ref()}, qr(This line does exist), "replace_lines doesn't do anything if no matches");
+$fh->replace_lines(HEADTEXT, ".*corredor", "no corredor");
+unlike(${$fh->string_ref()}, qr(no corredor), "replace_lines doesn't do anything if the good regexp exists");
+
 my $re = "There was Eru, who in Arda is called Ilúvatar" . HEADTEXT;
 $fh->replace_lines(HEADTEXT, "There was Eru.*", $re);
-like(${$fh->string_ref()},  qr($re),
-     "replace lines actually replaces lines that match re but not goodre");
+like(${$fh->string_ref()},  qr($re), "replace lines actually replaces lines that match re but not goodre");
 $fh = CAF::FileEditor->new($filename);
 print $fh TEXT;
-$fh->add_or_replace_lines(qr(En un lugar de La Mancha), qr(En un lugar de La Mancha),
-		    "This is a new content", BEGINNING_OF_FILE);
+$fh->add_or_replace_lines(
+    qr(En un lugar de La Mancha),
+    qr(En un lugar de La Mancha),
+    "This is a new content",
+    BEGINNING_OF_FILE);
 unlike(${$fh->string_ref()}, qr(This is a new content),
        "add_or_replace doesn't add anything if there are matches");
-$fh->add_or_replace_lines("En un lugar de La Mancha", "There was Eru",
-			  "There was Eru En un lugar de La Mancha",
-			  ENDING_OF_FILE);
+$fh->add_or_replace_lines(
+    "En un lugar de La Mancha",
+    "There was Eru",
+    "There was Eru En un lugar de La Mancha",
+    ENDING_OF_FILE);
 like(${$fh->string_ref()},
      qr(There was Eru En un lugar de La Mancha),
      "add_or_replace replaces correctly");
 unlike(${$fh->string_ref()},
        qr(^En un lugar de La Mancha"),
        "add_or_replace actually has replaced and not added anything");
-$fh->add_or_replace_lines(qr(Arda), qr(Eru),
-			  qq(There was Eru, the One, who in Arda is called Ilúvatar\n),
-			  BEGINNING_OF_FILE);
+$fh->add_or_replace_lines(
+    qr(Arda),
+    qr(Eru),
+    qq(There was Eru, the One, who in Arda is called Ilúvatar\n),
+    BEGINNING_OF_FILE);
 like(${$fh->string_ref()},
      qr(^There was Eru, the One),
      "add_or_replace adds lines to the beginning if needed");
-$fh->add_or_replace_lines("Ainur", "Ones",
-			  "\nand he made first the Ainur, the Holy Ones",
-			 ENDING_OF_FILE);
+$fh->add_or_replace_lines(
+    "Ainur",
+    "Ones",
+    "\nand he made first the Ainur, the Holy Ones",
+    ENDING_OF_FILE);
 like(${$fh->string_ref()},
      qr(the Holy Ones$),
      "add_or_replace adds lines to the end, if needed");
@@ -124,8 +159,7 @@ close ($log);
 open ($log, ">", \$str);
 $this_app->set_report_logfile($log);
 $fh = CAF::FileEditor->new($filename, log => $this_app);
-$fh->add_or_replace_lines("ljhljh", "Ljhljhluih", "oiojhpih",
-			  BEGINNING_OF_FILE);
+$fh->add_or_replace_lines("ljhljh", "Ljhljhluih", "oiojhpih", BEGINNING_OF_FILE);
 ok($str, "Debug output invoked by add_or_replace_lines when there is a log object");
 close ($log);
 open ($log, ">", \$str);
