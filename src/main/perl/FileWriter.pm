@@ -109,6 +109,10 @@ File's GID.
 
 File's permissions.
 
+=item C<mtime>
+
+File's modification time.
+
 =item C<backup>
 
 Path for the backup file, if this one has to be re-written.
@@ -129,6 +133,7 @@ sub new
     *$self->{options}->{mode} = $opts{mode} if exists ($opts{mode});
     *$self->{options}->{owner} = $opts{owner} if exists ($opts{owner});
     *$self->{options}->{group} = $opts{group} if exists ($opts{group});
+    *$self->{options}->{mtime} = $opts{mtime} if exists ($opts{mtime});
     *$self->{options}->{backup} = $opts{backup} if exists ($opts{backup});
     *$self->{save} = 1;
     *$self->{options}->{noaction} = defined($CAF::Object::NoAction) ?
