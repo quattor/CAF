@@ -20,9 +20,13 @@ EOF
 
 use constant FILENAME => "/my/test";
 
-our %opts = ();
+# $path and %opts are set via the dummy LC/Check module
+# in resources/LC
+# file_changed is the value that is returned
 our $path;
+our %opts = ();
 our $file_changed = 1;
+
 my ($log, $str);
 
 our $report;
@@ -91,8 +95,12 @@ print $fh TEXT;
 $fh = "";
 is ($opts{contents}, TEXT, "The file is written when the object is destroyed");
 is ($opts{mode}, 0400, "The file gets the correct permissions when the object is destroyed");
+ok(! defined($CAF::Object::NoAction), "NoAction is not defined");
+is($opts{noaction}, 0, "NoAction=0 flag is passed to LC with NoAction undefined");
 is ($path, FILENAME, "Correct path opened on object destruction");
 
+
+$CAF::Object::NoAction = 0;
 
 init_test;
 $fh = CAF::FileWriter->new (FILENAME);
@@ -102,9 +110,13 @@ is (*$fh->{save}, 0, "File marked not to be saved");
 $fh->close;
 is ($path, "", "No file is opened when cancelling");
 ok (!exists ($opts{contents}), "Nothing is written after cancel");
+
 init_test;
-$fh = CAF::FileWriter->new (FILENAME, mode => 0600,
-			    log => $this_app);
+$fh = CAF::FileWriter->new (
+    FILENAME, 
+    mode => 0600,
+    log => $this_app,
+);
 print $fh TEXT;
 is ($str, "Opening file " . FILENAME,
     "Correct log message when creating the object");
@@ -119,13 +131,17 @@ $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
 $fh->cancel();
 like ($str, qr{Not saving file /}, "Cancel operation correctly logged");
 $fh->close();
+
 init_test;
-$fh = CAF::FileWriter->open (FILENAME, log => $this_app,
-			     backup => "foo",
-			     mode => 0400,
-			     owner => 100,
-			     group => 200,
-                 mtime => 1234567);
+$fh = CAF::FileWriter->open (
+    FILENAME, 
+    log => $this_app,
+    backup => "foo",
+    mode => 0400,
+    owner => 100,
+    group => 200,
+    mtime => 1234567,
+);
 print $fh TEXT;
 $fh->close();
 is ($opts{backup}, "foo", "Checking options: correct backup option passed");
@@ -134,29 +150,36 @@ is ($opts{owner}, 100, "Checking options: correct owner passed");
 is ($opts{group}, 200, "Checking options: correct group passed");
 is ($opts{mtime}, 1234567, "Checking options: correct mtime passed");
 
-
+is($CAF::Object::NoAction, 0, "NoAction is set to 0");
+is($opts{noaction}, 0, "NoAction=0 flag is passed to LC with NoAction set to 0");
 
 init_test;
 $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
 $file_changed = 0;
 $re = "File " . FILENAME . " was not modified";
 $fh->close();
-like($str, qr{$re},
-     "Unmodified file correctly reported");
+like($str, qr{$re}, "Unmodified file correctly reported");
 
 $CAF::Object::NoAction = 1;
 
 init_test;
-$fh = CAF::FileWriter->open (FILENAME, log => $this_app,
-			     backup => "foo",
-			     mode => 0400,
-			     owner => 100,
-			     group => 200);
+$fh = CAF::FileWriter->open (FILENAME, log => $this_app);
 print $fh TEXT;
 is ("$fh", TEXT, "Stringify works");
 like ($fh, qr(En un lugar), "Regexp also works");
 $fh->close();
-ok(exists ($opts{noaction}), "NoAction flag is passed to LC");
+is($CAF::Object::NoAction, 1, "NoAction is set to 1");
+is($opts{noaction}, 1, "NoAction=1 flag is passed to LC with NoAction 1");
+
+init_test;
+is($CAF::Object::NoAction, 1, "NoAction is set to 1 before keeps_state true");
+$fh = CAF::FileWriter->open (FILENAME, log => $this_app, keeps_state => 1);
+print $fh TEXT;
+is ("$fh", TEXT, "Stringify works");
+like ($fh, qr(En un lugar), "Regexp also works");
+$fh->close();
+is($CAF::Object::NoAction, 1, "NoAction is (still) set to 1 with keeps_state true");
+is($opts{noaction}, 0, "NoAction=0 flag is passed to LC with NoAction 1 and keeps_state true");
 
 # Check that the diff works
 close($log);
@@ -196,9 +219,9 @@ $execute_stdout = '';
 # Test events via CAF::History
 # and legacy add_files
 $app->mock('add_files', sub {
-           my ($self, @args) = @_;
-           $self->{FILES} = \@args;
-       });
+    my ($self, @args) = @_;
+    $self->{FILES} = \@args;
+});
 
 # no need to track time
 $mock_history->mock('_now', 0);
