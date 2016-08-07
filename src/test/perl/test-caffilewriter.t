@@ -124,13 +124,18 @@ $fh = CAF::FileWriter->open (FILENAME, log => $this_app,
 			     backup => "foo",
 			     mode => 0400,
 			     owner => 100,
-			     group => 200);
+			     group => 200,
+                 mtime => 1234567);
 print $fh TEXT;
 $fh->close();
 is ($opts{backup}, "foo", "Checking options: correct backup option passed");
 is ($opts{mode}, 0400, "Checking options: correct mode passed");
 is ($opts{owner}, 100, "Checking options: correct owner passed");
 is ($opts{group}, 200, "Checking options: correct group passed");
+is ($opts{mtime}, 1234567, "Checking options: correct mtime passed");
+
+
+
 init_test;
 $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
 $file_changed = 0;
