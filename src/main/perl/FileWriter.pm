@@ -117,6 +117,16 @@ File's modification time.
 
 Path for the backup file, if this one has to be re-written.
 
+=item keeps_state
+
+A boolean specifying whether a file change respects the current system
+state or not. A file with C<keeps_state> will be created/modified,
+regardless of any value for C<NoAction>.
+This is useful when creating temporary files that are required for a NoAction run.
+
+By default, file changes modify the state and thus C<keeps_state> is
+false.
+
 =back
 
 =cut
@@ -136,9 +146,16 @@ sub new
     *$self->{options}->{mtime} = $opts{mtime} if exists ($opts{mtime});
     *$self->{options}->{backup} = $opts{backup} if exists ($opts{backup});
     *$self->{save} = 1;
-    *$self->{options}->{noaction} = defined($CAF::Object::NoAction) ?
-	    $CAF::Object::NoAction : 0;
     bless ($self, $class);
+
+    my $noaction = defined($CAF::Object::NoAction) ? $CAF::Object::NoAction : 0;
+    if ($opts{keeps_state}) {
+        $self->verbose("keeps_state set for filename $path: forcing NoAction $noaction to 0.");
+        # Only set 0, do not set the value via keeps_state logic
+        # (in particular, you cannot use keeps_state to set noaction to 1)
+        $noaction = 0;
+    }
+    *$self->{options}->{noaction} = $noaction;
 
     # Tracking on new() when CAF::History is setup to track INSTANCES
     $self->event(init => 1);
