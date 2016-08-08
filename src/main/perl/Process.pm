@@ -1,21 +1,24 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} CAF::Process${PMpost}
 
-package CAF::Process;
+use parent qw(CAF::Object);
 
-use strict;
-use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 use LC::Process;
-use CAF::Object;
+
 use File::Which;
 use File::Basename;
 
 use overload ('""' => 'stringify_command');
+use Readonly;
 
-our @ISA = qw (CAF::Object);
+Readonly::Hash my %LC_PROCESS_DISPATCH => {
+    output => \&LC::Process::output,
+    toutput => \&LC::Process::toutput,
+    run => \&LC::Process::run,
+    trun => \&LC::Process::trun,
+    execute => \&LC::Process::execute,
+};
+
 
 =pod
 
@@ -40,7 +43,7 @@ All these methods return the return value of their LC::Process
 equivalent. This is different from the command's exit status, which is
 stored in $?.
 
-Please use these functions, and B<do not> use C<``> or
+Please use these functions, and B<do not> use C<``>, C<qx//> or
 C<system>. These functions won't spawn a subshell, and thus are more
 secure.
 
@@ -106,22 +109,18 @@ These options will only be used by the execute method.
 
 =back
 
-=back
-
 =cut
 
 sub _initialize
 {
     my ($self, $command, %opts) = @_;
 
-    if (exists $opts{log}) {
-        if ($opts{log}) {
-            $self->{log} = $opts{log};
-        }
-    }
+    $self->{log} = $opts{log} if defined($opts{log});
 
-
-    $self->{NoAction} = 0 if $opts{keeps_state};
+    if ($opts{keeps_state}) {
+        $self->debug(1, "keeps_state set");
+        $self->{NoAction} = 0
+    };
 
     $self->{COMMAND} = $command;
 
@@ -129,6 +128,41 @@ sub _initialize
 
     return SUCCESS;
 }
+
+=item _LC_Process
+
+Run C<LC::Process> C<function> with arrayref arguments C<args>.
+
+C<noaction_value> is is the value to return with C<NoAction>.
+
+C<msg> and C<postmsg> are used to construct log message
+C<<<msg> command: <COMMAND>[ <postmsg>]>>.
+
+=cut
+
+sub _LC_Process
+{
+    my ($self, $function, $args, $noaction_value, $msg, $postmsg) = @_;
+
+    $msg =~ s/^(\w)/Not \L$1/ if $self->noAction();
+    $self->verbose("$msg command: ", $self->stringify_command(), (defined($postmsg) ? " $postmsg" : ''));
+
+    if ($self->noAction()) {
+        $self->debug(1, "LC_Process in noaction mode for $function");
+        $? = 0;
+        return $noaction_value;
+    } else {
+        my $funcref = $LC_PROCESS_DISPATCH{$function};
+        if (defined($funcref)) {
+            return $funcref->(@$args);
+        } else {
+            $self->error("Unsupported LC::Process function $function");
+            return;
+        }
+    }
+}
+
+=back
 
 =head2 Public methods
 
@@ -151,23 +185,18 @@ sub execute
 {
     my $self = shift;
 
-    my $na = "E";
-    if ($self->noAction()) {
-        $na = "Not e";
+    my @opts = ();
+    foreach my $k (sort(keys (%{$self->{OPTIONS}}))) {
+        push (@opts, "$k=$self->{OPTIONS}->{$k}");
     }
-    if ($self->{log}) {
-        $self->{log}->verbose (join (" ",
-                    "${na}xecuting command:", @{$self->{COMMAND}}));
-        my @opts = ();
-        foreach my $k (sort(keys (%{$self->{OPTIONS}}))) {
-            push (@opts, "$k=$self->{OPTIONS}->{$k}");
-        }
-        $self->{log}->verbose (join (" ", "Command options:", @opts));
-    }
-    if ($self->noAction()) {
-        return 0;
-    }
-    return LC::Process::execute ($self->{COMMAND}, %{$self->{OPTIONS}});
+
+    return $self->_LC_Process(
+        'execute',
+        [$self->{COMMAND}, %{$self->{OPTIONS}}],
+        0,
+        "Executing",
+        join (" ", "with options:", @opts),
+        );
 }
 
 =over
@@ -185,15 +214,12 @@ sub output
 {
     my $self = shift;
 
-    $self->{log}->verbose (join(" ", "Getting output of command:",
-				@{$self->{COMMAND}}))
-	if $self->{log};
-
-    if ($self->noAction()) {
-	return "";
-    }
-
-    return LC::Process::output (@{$self->{COMMAND}});
+    return $self->_LC_Process(
+        'output',
+        [@{$self->{COMMAND}}],
+        '',
+        "Getting output of",
+        );
 }
 
 =over
@@ -212,38 +238,36 @@ sub toutput
 {
     my ($self, $timeout) = @_;
 
-    $self->{log}->verbose (join (" ", "Returning the output of command:|",
-				 @{$self->{COMMAND}},
-				 "|with $timeout seconds of timeout"))
-	if $self->{log};
-
-    if ($self->noAction()) {
-	return "";
-    }
-    return LC::Process::toutput ($timeout, @{$self->{COMMAND}});
+    return $self->_LC_Process(
+        'toutput',
+        [$timeout, @{$self->{COMMAND}}],
+        '',
+        "Getting output of",
+        "with $timeout seconds of timeout",
+        );
 }
 
 =over
 
 =item stream_output
 
-Execute the commands using C<execute>, but the C<stderr> is 
+Execute the commands using C<execute>, but the C<stderr> is
 redirected to C<stdout>, and C<stdout> is processed with C<process>
 function. The total output is aggregated and returned when finished.
 
-Extra option is the process C<mode>. By default (or value C<undef>), 
-the new output is passed to C<process>. With mode C<line>, C<process> 
-is called for each line of output (i.e. separated by newline), and 
+Extra option is the process C<mode>. By default (or value C<undef>),
+the new output is passed to C<process>. With mode C<line>, C<process>
+is called for each line of output (i.e. separated by newline), and
 the remainder of the output when the process is finished.
 
 Another option are the process C<arguments>. This is a reference to the
-array of arguments passed to the C<process> function. 
+array of arguments passed to the C<process> function.
 The arguments are passed before the output to the C<process>: e.g.
-if C<arguments =\> [qw(a b)]> is used, the C<process> function is 
-called like C<process(a,b,$newoutput)> (with C<$newoutput> the 
+if C<arguments =\> [qw(a b)]> is used, the C<process> function is
+called like C<process(a,b,$newoutput)> (with C<$newoutput> the
 new streamed output)
 
-Example usage: during a C<yum install>, you want to stop the yum process 
+Example usage: during a C<yum install>, you want to stop the yum process
 when an error message is detected.
 
     sub act {
@@ -269,11 +293,11 @@ sub stream_output
     my ($mode, @process_args);
     $mode = $opts{mode} if exists($opts{mode});
     @process_args = @{$opts{arguments}} if exists($opts{arguments});
-    
+
     my @total_out = ();
     my $last = 0;
     my $remainder = "";
-    
+
     # Define this sub here. Makes no sense to define it outside this sub
     # Use anonymous sub to avoid "Variable will not stay shared" warnings
     my $stdout_func = sub  {
@@ -300,7 +324,7 @@ sub stream_output
 
     $self->{OPTIONS}->{stderr} = 'stdout';
     $self->{OPTIONS}->{stdout} = $stdout_func;
-    
+
     my $execute_res = $self->execute();
 
     # not called with empty remainder
@@ -326,13 +350,12 @@ sub run
 {
     my $self = shift;
 
-    $self->{log}->verbose (join (" ", "Running the command:",
-				 @{$self->{COMMAND}}))
-	if $self->{log};
-    if ($self->noAction()) {
-	 return 0;
-    }
-    return LC::Process::run (@{$self->{COMMAND}});
+    return $self->_LC_Process(
+        'run',
+        [@{$self->{COMMAND}}],
+        0,
+        "Running the",
+        );
 }
 
 =over
@@ -349,16 +372,13 @@ sub trun
 {
     my ($self, $timeout) = @_;
 
-    $self->{log}->verbose (join (" ", "Running command:|",
-				 @{$self->{COMMAND}},
-				 "|with $timeout seconds of timeout"))
-	if $self->{log};
-
-    if ($self->noAction()) {
-	 return 0;
-    }
-
-    return LC::Process::trun ($timeout, @{$self->{COMMAND}});
+    return $self->_LC_Process(
+        'trun',
+        [$timeout, @{$self->{COMMAND}}],
+        0,
+        "Running the",
+        "with $timeout seconds of timeout",
+        );
 }
 
 =over
@@ -393,7 +413,7 @@ sub setopts
     my ($self, %opts) = @_;
 
     foreach my $i (qw(timeout stdin stderr stdout shell)) {
-	$self->{OPTIONS}->{$i} = $opts{$i} if exists($opts{$i});
+        $self->{OPTIONS}->{$i} = $opts{$i} if exists($opts{$i});
     }
 
     # Initialize stdout and stderr if they exist. Otherwise, NoAction
@@ -410,7 +430,7 @@ sub setopts
 
 =item stringify_command
 
-Return the command and its arguments as a space separated string. 
+Return the command and its arguments as a space separated string.
 
 =back
 
@@ -426,7 +446,7 @@ sub stringify_command
 
 =item get_command
 
-Return the reference to the array with the command and its arguments. 
+Return the reference to the array with the command and its arguments.
 
 =back
 
@@ -443,7 +463,7 @@ sub get_command
 
 =item get_executable
 
-Return the executable (i.e. the first element of the command). 
+Return the executable (i.e. the first element of the command).
 
 =back
 
@@ -458,9 +478,9 @@ sub get_executable
 }
 
 
-# Tests if a filename is executable. However, using -x 
-# makes this not mockable, and thus this test is separated 
-# from C<is_executable> in the C<_test_executable> private 
+# Tests if a filename is executable. However, using -x
+# makes this not mockable, and thus this test is separated
+# from C<is_executable> in the C<_test_executable> private
 # method for unittesting.
 sub _test_executable
 {
@@ -472,16 +492,16 @@ sub _test_executable
 
 =item is_executable
 
-Checks if the first element of the 
+Checks if the first element of the
 array with the command and its arguments, is executable.
 
-It returns the result of the C<-x> test on the filename 
+It returns the result of the C<-x> test on the filename
 (or C<undef> if filename can't be resolved).
 
-If the filename is equal to the C<basename>, then the 
-filename to test is resolved using the 
-C<File::Which::which> method.  
-(Use C<./script> if you want to check a script in the 
+If the filename is equal to the C<basename>, then the
+filename to test is resolved using the
+C<File::Which::which> method.
+(Use C<./script> if you want to check a script in the
 current working directory).
 
 =back
@@ -493,23 +513,20 @@ sub is_executable
     my ($self) = @_;
 
     my $executable = $self->get_executable();
-    
+
     if ($executable eq basename($executable)) {
         my $executable_path = which($executable);
         if (defined($executable_path)) {
-            $self->{log}->debug (1, "Executable $executable resolved via which to $executable_path") 
-                if $self->{log};
+            $self->debug (1, "Executable $executable resolved via which to $executable_path");
             $executable = $executable_path;
         } else {
-            $self->{log}->debug (1, "Executable $executable couldn't be resolved via which")
-                if $self->{log};
+            $self->debug (1, "Executable $executable couldn't be resolved via which");
             return;
         }
     }
 
     my $res = $self->_test_executable($executable);
-    $self->{log}->debug (1, "Executable $executable is ", $res ? "": "not " , "executable")
-        if $self->{log};
+    $self->debug (1, "Executable $executable is ", $res ? "": "not " , "executable");
     return $res;
 }
 
@@ -517,7 +534,7 @@ sub is_executable
 
 =item execute_if_exists
 
-Execute after verifying the executable (i.e. the first 
+Execute after verifying the executable (i.e. the first
 element of the command) exists and is executable.
 
 If this is not the case the method returns 1.
@@ -527,15 +544,14 @@ If this is not the case the method returns 1.
 =cut
 
 
-sub execute_if_exists 
+sub execute_if_exists
 {
     my ($self) = @_;
 
     if ($self->is_executable()) {
         return $self->execute();
     } else {
-        $self->{log}->verbose("Command ".$self->get_executable()." not found or not executable")
-            if $self->{log};
+        $self->verbose("Command ".$self->get_executable()." not found or not executable");
         return 1;
     }
 }
