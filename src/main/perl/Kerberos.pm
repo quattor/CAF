@@ -14,6 +14,7 @@ use GSSAPI;
 Readonly::Hash our %GSSAPI_INTERFACE_WRAPPER => {
     Context => [qw(accept init valid_time_left wrap unwrap)],
     Name => [qw(display import)],
+    Cred => [qw(acquire_cred inquire_cred)],
 };
 
 Readonly my $KRB5ENV_CCNAME => 'KRB5CCNAME';
@@ -154,19 +155,19 @@ sub update_ticket_options
         $self->{ticket}->{lifetime} = $opts{lifetime} ;
         $self->verbose("update_ticket_options lifetime $self->{ticket}->{lifetime}");
     }
-    if ($opts{keytab}) {
+    if (exists($opts{keytab})) {
         $self->{ticket}->{keytab} = $opts{keytab};
-        $self->verbose("update_ticket_options keytab $self->{ticket}->{keytab}");
+        $self->verbose("update_ticket_options keytab ", $self->{ticket}->{keytab});
     }
 
     # Set the keytab environment variables
-    if($self->{ticket}->{keytab}) {
+    if(exists($self->{ticket}->{keytab})) {
         # Set both client and server keytab
         $self->{ENV}->{$KRB5ENV_SERVER_KEYTAB} = $self->{ticket}->{keytab};
         $self->{ENV}->{$KRB5ENV_CLIENT_KEYTAB} = $self->{ticket}->{keytab};
         $self->verbose("set keytab ENV attributes ",
-                       "$KRB5ENV_SERVER_KEYTAB and $KRB5ENV_CLIENT_KEYTAB ",
-                       "to $self->{ticket}->{keytab}");
+                       "$KRB5ENV_SERVER_KEYTAB and $KRB5ENV_CLIENT_KEYTAB to ",
+                       $self->{ticket}->{keytab});
     }
 
     return SUCCESS;
@@ -296,6 +297,10 @@ Input flags/bits for the Context to create to support certain service options.
 
 Input token (C<q{}> is used if not defined).
 
+=item usecred
+
+Boolean, if true, (try to) get a credential before getting the context.
+
 =back
 
 Returns the output token in case of succes, undef in case of failure.
@@ -313,6 +318,18 @@ sub get_context
         # Logs an error already
         return if(! defined($name));
     }
+
+    my $cred;
+
+    if ($opts{usecred}) {
+        $self->verbose("Trying to get credential");
+        $cred = $self->get_cred(name => $name);
+        # Already reports error
+        return if ! $cred;
+    } else {
+        $self->verbose("Not checking for credential");
+        $cred = GSS_C_NO_CREDENTIAL;
+    };
 
     if(! defined($self->{ccdir})) {
         return if ! defined($self->create_credential_cache());
@@ -349,13 +366,11 @@ sub get_context
     #
     # (why couldn't someone have documented this ;)
 
-    my $creds = GSS_C_NO_CREDENTIAL;
-
     my $ctx = GSSAPI::Context->new();
 
     my $ttl;
     if($self->_gssapi_init(
-           $ctx, $creds, $name,
+           $ctx, $cred, $name,
            $imech, $iflags, $itime, $bindings, $itoken,
            $omech, $otoken, $oflags, $otime) &&
        $self->_gssapi_valid_time_left($ctx, $ttl)) {
@@ -369,6 +384,95 @@ sub get_context
     };
 
 }
+
+=item get_cred
+
+Acquire a C<GSSAPI::Cred> instance.
+
+Following options are supported
+
+=over
+
+=item name
+
+The C<GSSAPI::Name> instance to use. If undef,
+C<get_name> method will be used to create one.
+
+=item usage
+
+Specify the credential usage, one of C<GSSAPI> constants
+C<GSS_C_INITIATE>, C<GSS_C_ACCEPT> or (default) C<GSS_C_BOTH>.
+
+=back
+
+Returns the C<GSSAPI::Cred> instance in case of succes, undef in case of failure.
+
+=cut
+
+sub get_cred
+{
+    my ($self, %opts) = @_;
+
+    # Set name
+    my $name = $opts{name};
+    if(! defined($name)) {
+        $name = $self->get_name();
+        # Logs an error already
+        return if(! defined($name));
+    }
+
+    if(! defined($self->{ccdir})) {
+        return if ! defined($self->create_credential_cache());
+    }
+
+    my $usage = defined($opts{usage}) ? $opts{usage} : GSS_C_BOTH;
+    my $in_time = 120;
+    my ($in_mechs, $cred, $out_mechs, $out_time, $inq_name, $inq_lifetime, $inq_usage, $inq_mechs);
+
+    if ($self->_gssapi_acquire_cred($name, $in_time, $in_mechs, $usage, $cred, $out_mechs, $out_time) &&
+        $self->_gssapi_inquire_cred($cred, $inq_name, $inq_lifetime, $inq_usage, $inq_mechs)) {
+        my $inq_hrname = $self->get_hrname($inq_name);
+        if ($inq_hrname) {
+            $self->verbose("Created credential instance $cred with hrname $inq_hrname lifetime $inq_lifetime usage $inq_usage mechs $inq_mechs");
+            return $cred;
+        } else {
+            $self->error("failed to get inquired credential hrname: $self->{fail}");
+            return;
+        };
+    } else {
+        $self->error("failed to get credential: $self->{fail}");
+        return;
+    };
+};
+
+
+=item get_hrname
+
+Return human readablename from C<GSSAPI::Name> instance.
+Return undef on failure (and set C<fail> attribute with reason).
+
+=cut
+
+sub get_hrname
+{
+    my ($self, $name) = @_;
+
+    my $hr_name;
+
+    if ($self->_gssapi_display($name, $hr_name)) {
+        if ($hr_name) {
+            $self->verbose("hrname $hr_name for $name");
+            return $hr_name;
+        } else {
+            return $self->fail("_gssapi_display returns empty hrname from name $name: $self->{fail}.");
+        }
+    } else {
+        return $self->fail("_gssapi_display failed with name $name: $self->{fail}.");
+    }
+
+    return;
+};
+
 
 =item get_name
 
@@ -391,15 +495,10 @@ sub get_name
     };
 
     my ($name, $hr_name);
-    if($self->_gssapi_import($name, $p_str, GSSAPI::OID::gss_nt_krb5_name) &&
-       $self->_gssapi_display($name, $hr_name)) {
-        if ($hr_name) {
-            $self->verbose("Created name $hr_name from principal $p_str.");
-            return $name;
-        } else {
-            $self->error("_gssapi_display returns empty hrname from principal $p_str: $self->{fail}.");
-            return;
-        }
+    if ($self->_gssapi_import($name, $p_str, GSSAPI::OID::gss_nt_krb5_name) &&
+        ($hr_name = $self->get_hrname($name))) {
+        $self->verbose("Created name $hr_name from principal $p_str.");
+        return $name;
     } else {
         $self->error("Failed to created name from principal $p_str: $self->{fail}.");
         return;
@@ -665,20 +764,24 @@ foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
             local %ENV;
             $self->update_env(\%ENV);
 
-            my ($status, $msg, $isinstance);
+            my ($status);
             my $fclass = join('::', 'GSSAPI', $class);
             my $fmethod = join('::', $fclass, $method);
             my $ref = ref($_[0]);
-            if($ref) {
-                if(UNIVERSAL::can($_[0], 'can') &&
-                   $_[0]->isa($fclass)) {
+
+            my $msg = "$fmethod->()";
+            my $isinstance = 1;
+
+            if ($ref) {
+                my $expected_class = $method eq 'acquire_cred' ? 'GSSAPI::Name' : $fclass;
+                if (UNIVERSAL::can($_[0], 'can') &&
+                    $_[0]->isa($expected_class)) {
                     # Test for a blessed reference with UNIVERSAL::can
                     # UNIVERSAL::can also return true for scalars, so also test
                     # if it's a reference to start with
-                    $msg = "$fmethod->()";
-                    $isinstance = 1;
+                    $self->debug(2, "$full_method using $msg with first arg instance of class $expected_class.");
                 } else {
-                    return $self->fail("$full_method expected a $fclass instance, got ref $ref instead.");
+                    return $self->fail("$full_method expected a $expected_class instance, got ref $ref instead.");
                 };
             } else {
                 $msg = "$fclass->$method()";
