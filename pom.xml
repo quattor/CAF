@@ -3,7 +3,7 @@
   <groupId>org.quattor.client.libraries</groupId>
   <artifactId>perl-CAF</artifactId>
   <packaging>pom</packaging>
-  <version>16.8.0-rc1</version>
+  <version>16.8.0-rc2-SNAPSHOT</version>
   <name>Common Application Framework for Quattor</name>
   <parent>
     <groupId>org.quattor.maven</groupId>
