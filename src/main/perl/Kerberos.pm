@@ -796,17 +796,24 @@ foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
                 $status = $isinstance ? $fmethod->(@_) : $fclass->$method(@_);
             };
 
-            # Make sure eval $@ is trapped in case it is reset in e.g. debug
+            # Make sure eval $@ is trapped
             my $ec = "$@";
 
             # Stringification of the args seems safe after the GSSAPI call is made
             # Level 5 since security related token might get logged
-            $self->debug(5, "$full_method status $msg args ",
-                         join(', ', map {defined($_) ? $_ : '<undef>'} @_),
-                         " eval ec $ec");
+            # Run in eval to handle failures of stringification of the arguments
+            $@ = '';
+            eval {
+                $self->debug(5, "$full_method status $msg args ",
+                             join(', ', map {defined($_) ? $_ : '<undef>'} @_),
+                             " eval ec $ec");
+            };
+            if ($@) {
+                $self->debug(5, "failed reporting $full_method status $msg args eval ec $ec: failure $@");
+            }
 
             if ($ec) {
-                return $self->fail("$full_method $fmethod croaked: $@");
+                return $self->fail("$full_method $fmethod croaked: $ec");
             } else {
                 return $self->_gss_status($status, text => $fmethod);
             }
