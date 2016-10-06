@@ -9,7 +9,7 @@ use myreportermany;
 use Test::More;
 use Test::MockModule;
 use CAF::Log;
-use CAF::Reporter qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY $HISTORY $WHOAMI);
+use CAF::Reporter qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY $HISTORY $WHOAMI $VERBOSE_LOGFILE);
 use LC::Exception qw (SUCCESS);
 
 use Scalar::Util qw(refaddr);
@@ -61,6 +61,7 @@ is($SYSLOG, 'SYSLOG', 'expected value for readonly $SYSLOG');
 is($FACILITY, 'FACILITY', 'expected value for readonly $FACILITY');
 is($HISTORY, 'HISTORY', 'expected value for readonly $HISTORY');
 is($WHOAMI, 'WHOAMI', 'expected value for readonly $WHOAMI');
+is($VERBOSE_LOGFILE, 'VERBOSE_LOGFILE', 'expected value for readonly $VERBOSE_LOGFILE');
 
 my $init = {
     $VERBOSE => 0,
@@ -68,6 +69,7 @@ my $init = {
     $QUIET => 0,
     $LOGFILE => undef,
     $FACILITY => 'local1',
+    $VERBOSE_LOGFILE => 0,
 };
 
 is_deeply($CAF::Reporter::_REP_SETUP, $init, "_REP_SETUP initialsed");
@@ -81,12 +83,13 @@ $myrep->setup_reporter();
 is_deeply($CAF::Reporter::_REP_SETUP, $init,
           "_REP_SETUP not changed with dummy setup_reporter call");
 
-# debug level 0, enable quiet, verbose and set facility
-$myrep->setup_reporter(0, 1, 1, 'facility');
+# debug level 0, enable quiet, verbose, set facility and verbose_logfile
+$myrep->setup_reporter(0, 1, 1, 'facility', 1);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$QUIET}, 1, "Quiet enabled");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
 is($CAF::Reporter::_REP_SETUP->{$FACILITY}, 'facility', "Facility set");
+is($CAF::Reporter::_REP_SETUP->{$VERBOSE_LOGFILE}, 1, "verbose_logfile set");
 is($CAF::Reporter::_REP_SETUP, $myrep->_rep_setup(), "_rep_setup returns ref to _REP_SETUP for Reporter");
 
 is($myrep->get_debuglevel(), 0, "Returned debug level 0");
@@ -202,7 +205,7 @@ ok(! defined($myrep->syslog('myprio', 'syslog', 'not', 'set')), "syslog returned
 ok(! defined($openlogged), "openlog not called when SYSLOG attribute of LOGFILE is not set");
 
 # from now on, mock log and syslog
-$mock->mock('log', sub { shift; $logged = \@_;});
+$mock->mock('log', sub { shift; $logged = \@_; return SUCCESS});
 $mock->mock('syslog', sub { shift; $syslogged = \@_;});
 
 =pod
@@ -318,6 +321,17 @@ is_deeply($reported, ['[VERB] ', 'hello', 'verbose', 'enabled'],
           'verbose calls report with prefix and args with verbose enabled');
 is_deeply($syslogged, ['notice', 'hello', 'verbose', 'enabled'],
           'verbose calls syslogs with notice priority and args with verbose verbose enabled');
+
+$myrep->setup_reporter(0, 0, 0, 'whatever', 1);
+is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose disabled (verbose_logfile)");
+is($CAF::Reporter::_REP_SETUP->{$VERBOSE_LOGFILE}, 1, "Verbose logfile enabled");
+$reported = undef;
+$syslogged = undef;
+$logged = undef;
+is($myrep->verbose('hello', 'verbose_logfile', 'enabled'), SUCCESS, 'verbose returns success with verbose_logfile enabled');
+ok(! defined($reported), 'report not called with only verbose_logfile');
+ok(! defined($syslogged), 'syslog not called with only verbose_logfile');
+is_deeply($logged, ['[VERB] ', 'hello', 'verbose_logfile', 'enabled'], "verbose calls log with only verbose_logfile");
 
 =pod
 

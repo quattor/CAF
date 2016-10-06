@@ -18,10 +18,12 @@ Readonly our $LOGFILE => 'LOGFILE';
 Readonly our $FACILITY => 'FACILITY';
 Readonly our $HISTORY => 'HISTORY';
 Readonly our $WHOAMI => 'WHOAMI';
+Readonly our $VERBOSE_LOGFILE => 'VERBOSE_LOGFILE';
 
 our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET
     $LOGFILE $SYSLOG $FACILITY
     $HISTORY $WHOAMI
+    $VERBOSE_LOGFILE
 );
 
 
@@ -31,6 +33,7 @@ my $_reporter_default = {
     $QUIET    => 0,        # don't be quiet
     $LOGFILE  => undef,    # no log file
     $FACILITY => 'local1', # syslog facility
+    $VERBOSE_LOGFILE => 0,
 };
 
 # setup the initial/default _REP_SETUP
@@ -149,6 +152,8 @@ Reporter setup:
 
 =item C<$facility>: syslog facility the messages will be sent to
 
+=item C<$verbose_logfile>: reporting to logfiles will be verbose
+
 =back
 
 If any of these arguments is C<undef>, current application settings
@@ -161,7 +166,7 @@ will be preserved.
 
 sub setup_reporter
 {
-    my ($self, $debuglvl, $quiet, $verbose, $facility) = @_;
+    my ($self, $debuglvl, $quiet, $verbose, $facility, $verbose_logfile) = @_;
 
     $self->_rep_setup()->{$DEBUGLV} = ($debuglvl > 0 ? $debuglvl : 0)
         if defined($debuglvl);
@@ -171,6 +176,8 @@ sub setup_reporter
         if (defined ($verbose) || defined($debuglvl));
     $self->_rep_setup()->{$FACILITY} = $facility
         if defined($facility);
+    $self->_rep_setup()->{$VERBOSE_LOGFILE} = $verbose_logfile
+        if defined($verbose_logfile);
 
     return SUCCESS;
 }
@@ -397,6 +404,8 @@ sub verbose
     if ($self->_rep_setup()->{$VERBOSE}) {
         $self->syslog ('notice', @_);
         return $self->report('[VERB] ', @_);
+    } elsif ($self->_rep_setup()->{$VERBOSE_LOGFILE}) {
+        return $self->log('[VERB] ', @_);
     }
 
     return SUCCESS;
