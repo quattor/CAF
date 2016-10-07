@@ -152,7 +152,7 @@ Examples:
     CAF::Log->new('/foo/bar', 'w') : truncate logfile, no timestamp
 
 If the filename ends with C<.log>, the C<SYSLOG> attribute is set to
-basename of the file without suffix (relevant for L<CAF::Reporter::syslog>).
+basename of the file without suffix (relevant for B<CAF::Reporter::syslog>).
 
 =cut
 

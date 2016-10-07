@@ -188,7 +188,7 @@ sub setup_reporter
 
 If C<$loginstance> is defined, it will be used as log file. C<$loginstance> can be
 any type of class object reference, but the object must support a
-C<print(@array)> method. Typically, it should be an C<CAF::Log>
+C<< print(@array) >> method. Typically, it should be an C<CAF::Log>
 instance. If C<$loginstance> is undefined, no log file will be used.
 
 Returns SUCCESS on success, undef otherwise.
@@ -211,7 +211,7 @@ sub set_report_logfile
 
 =item C<init_logfile($filename, $options)>: bool
 
-Create a new L<CAF::Log> instance with C<$filename> and C<$options> and
+Create a new B<CAF::Log> instance with C<$filename> and C<$options> and
 set it using C<set_report_logfile>.
 Returns SUCCESS on success, undef otherwise.
 
@@ -523,7 +523,7 @@ sub set_report_history
 
 =item init_history
 
-Create a L<CAF::History> instance to track events.
+Create a B<CAF::History> instance to track events.
 Argument C<keepinstances> is passed to the C<CAF::History>
 initialization.
 

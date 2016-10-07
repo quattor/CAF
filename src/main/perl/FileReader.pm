@@ -15,15 +15,15 @@ use base qw(CAF::FileEditor);
 
 CAF::FileReader - Class for only reading files in CAF applications.
 
+=head1 DESCRIPTION
+
 Normal use:
 
-    use CAF::FileReader;
-    my $fh = CAF::FileReader->open ("my/path");
-    while (my $line = <$fh>) {
-       # Do something
-    }
-
-=head1 DESCRIPTION
+  use CAF::FileReader;
+  my $fh = CAF::FileReader->open ("my/path");
+  while (my $line = <$fh>) {
+     # Do something
+  }
 
 This class should be used whenever a file is to be opened for reading,
 and no modifications are expected.

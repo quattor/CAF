@@ -14,7 +14,7 @@ which allows more than one object instance each with its own reporting setup.
 =head1 DESCRIPTION
 
 C<CAF::ReporterMany> provides class methods for message reporting
-just like L<CAF::Reporter> does, with the main distinction that
+just like C<CAF::Reporter> does, with the main distinction that
 multiple instances do not share the reporter setup
 (e.g. they can each have their own debuglevel).
 
