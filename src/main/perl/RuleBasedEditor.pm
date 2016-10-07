@@ -15,9 +15,9 @@ the rule-based editor is called from a configuration module. Conditions can be d
 based on the contents of this configuration. Lines in the configuration file
 that don't match any rule are kept unmodified.
 
-This module is a subclass of the L<CAF::FileEditor>: it extends the base methods of
-the L<CAF::FileEditor>. It has only one public method (it uses the L<CAF::FileEditor> constructor).
-The methods provided in this module can be combined with L<CAF::FileEditor>
+This module is a subclass of the B<CAF::FileEditor>: it extends the base methods of
+the B<CAF::FileEditor>. It has only one public method (it uses the B<CAF::FileEditor> constructor).
+The methods provided in this module can be combined with B<CAF::FileEditor>
 methods to edit a file.
 
 Rules used to edit the file are defined in a hash: each entry (key/value pair) defines a rule.
@@ -98,7 +98,7 @@ An example of rule declaration is:
         "DISKFLAGS" =>"DiskFlags:dpm;".LINE_FORMAT_SH_VAR.";".LINE_VALUE_ARRAY,
        );
 
-For more comprehensive examples of rules, look at L<ncm-dpmlfc> or L<ncm-xrootd> source code in
+For more comprehensive examples of rules, look at B<ncm-dpmlfc> or B<ncm-xrootd> source code in
 configuration-modules-grid repository.
 
 =cut
@@ -163,13 +163,13 @@ Same remarks as for LINE_FORMAT_KW_VAL.
 =item *
 
 LINE_FORMAT_ENV_VAR:        export keyword=value (e.g. SH shell family). A comment is added at the
-end of the line if it is modified by L<CAF::RuleBasedEditor>. If the value contains whitespaces, it
+end of the line if it is modified by B<CAF::RuleBasedEditor>. If the value contains whitespaces, it
 is quoted.
 
 =item *
 
 LINE_FORMAT_SH_VAR:         keyword=value (e.g. SH shell family). A comment is added at the
-end of the line if it is modified by L<CAF::RuleBasedEditor>. If the value contains whitespaces, it
+end of the line if it is modified by B<CAF::RuleBasedEditor>. If the value contains whitespaces, it
 is quoted.
 
 =back
@@ -188,9 +188,7 @@ use enum qw(
 
 =pod
 
-=head3
-
-LINE_VALUE_xxx: how to interpret the configuration value
+=head3 LINE_VALUE_xxx: how to interpret the configuration value
 
 =over
 
@@ -219,7 +217,7 @@ C<LINE_VALUE_ARRAY> (the key list is treated as an array).
 
 =item
 
-LINE_VALUE_INSTANCE_PARAMS: specific to L<ncm-xrootd>
+LINE_VALUE_INSTANCE_PARAMS: specific to B<ncm-xrootd>
 
 =back
 

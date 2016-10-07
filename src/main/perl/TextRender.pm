@@ -153,7 +153,7 @@ Java properties format (using C<Config::Properties>),
 
 (Previously available module <general> was removed in 15.12.
 Component writers needing this functionality can use
-the L<CCM::TextRender> subclass instead).
+the B<CCM::TextRender> subclass instead).
 
 Or, for any other value, C<Template::Toolkit> is used, and the C<module> then indicates
 the relative path of the template to use.
@@ -170,7 +170,7 @@ It takes some extra optional arguments:
 
 =item C<log>, C<eol> and C<usecache>
 
-Handled by C<_initialize_textopts> from L<CAF::ObjectText>
+Handled by C<_initialize_textopts> from B<CAF::ObjectText>
 
 =item C<includepath>
 

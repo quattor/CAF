@@ -67,10 +67,6 @@ configuration file parsing, and general application methods.
 
 Applications can extend or overwrite the default methods.
 
-=over
-
-=back
-
 =head2 Public methods
 
 =over 4

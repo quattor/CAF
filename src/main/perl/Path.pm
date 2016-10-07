@@ -55,7 +55,7 @@ Simplify common file and directory related operations e.g.
 
 =back
 
-The class is based on L<LC::Check> with following major difference
+The class is based on B<LC::Check> with following major difference
 
 =over
 
@@ -432,7 +432,7 @@ Additional options
 =item temp
 
 A boolean if true will create a a temporary directory using
-L<File::Temp::tempdir>.
+B<File::Temp::tempdir>.
 
 The directory name is the template to use (any trailing
 C<X> characters will be replaced with random characters by C<tempdir>;
