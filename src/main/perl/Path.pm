@@ -497,7 +497,7 @@ sub directory
         # LC_Check directory returns false only if there was a problem
         # Only mode option is used
         my $dopts = {%opts}; # a copy
-        foreach my $invalid_opt (qw(user group mtime)) {
+        foreach my $invalid_opt (qw(owner group mtime)) {
             delete $dopts->{$invalid_opt};
         }
         return if ! $self->LC_Check('directory', [$directory], $dopts);
