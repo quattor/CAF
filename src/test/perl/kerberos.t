@@ -150,29 +150,20 @@ is_deeply($krb->{principal}, {
     realm => 'c2',
     }, 'principal updated via principal and primary (primary precedes principal string)');
 
-=item create_credential_cache
-
-=cut
-
-$tmppath = "target/cc_dir";
-ok($krb->create_credential_cache(), 'create_credential_cache returns success');
-is($krb->{ccdir}, $tmppath, 'expected credential cache directory');
-is($krb->{ENV}->{KRB5CCNAME}, "FILE:$tmppath/tkt",
-   'define credential cache FILE as tkt in directory KRB5CCNAME');
-
-
 # _process is tested in kerberos-process
 
 =item _kinit
 
 =cut
 
+command_history_reset();
 my $cmdline = '/usr/bin/kinit -l 10 -k -t /some/path p3/a2/b2@c2';
 ok($krb->_kinit(), '_kinit successful');
 my $proc = get_command($cmdline);
 isa_ok($proc->{object}, 'CAF::Process', 'kinit process called as expected');
 
 # fail
+command_history_reset();
 set_command_status($cmdline, 1);
 ok(! defined($krb->_kinit()), '_kinit fails and returns undef');
 $proc = get_command($cmdline);
@@ -181,6 +172,35 @@ isa_ok($proc->{object}, 'CAF::Process', 'kinit process called as expected (but f
 # destroy instance, hold $krb as log, will prevent DESTROY test at the end
 $proc->{object} = undef;
 $proc = undef;
+
+=item create_credential_cache
+
+=cut
+
+my $kinit;
+
+$tmppath = "target/cc_dir";
+$mock->mock('_kinit', sub {my $self = shift; $kinit = 1; return $self->fail("kinit failed");});
+$kinit = undef;
+ok(! defined($krb->create_credential_cache()), 'create_credential_cache returns undef on kinit failure');
+ok($kinit, "_kinit called");
+is($krb->{fail}, 'Failed to get TGT for credential cache target/cc_dir: kinit failed',
+   "create_credential_cache sets fail attribute on kinit failure");
+is($krb->{ccdir}, $tmppath, 'expected credential cache directory on kinit fialure');
+is($krb->{ENV}->{KRB5CCNAME}, "FILE:$tmppath/tkt",
+   'define credential cache FILE as tkt in directory KRB5CCNAME on kinit failure');
+
+
+# success
+$mock->mock('_kinit', sub {$kinit = 1; return 1;});
+$kinit = undef;
+ok($krb->create_credential_cache(), 'create_credential_cache returns success');
+ok($kinit, "_kinit called");
+is($krb->{ccdir}, $tmppath, 'expected credential cache directory');
+is($krb->{ENV}->{KRB5CCNAME}, "FILE:$tmppath/tkt",
+   'define credential cache FILE as tkt in directory KRB5CCNAME');
+
+
 
 =item _gss_status
 
