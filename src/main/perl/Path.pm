@@ -268,6 +268,26 @@ sub LC_Check
     };
 }
 
+=item _untaint_path
+
+Untaint the C<path> argument.
+
+Returns undef on failure and sets the fail attribute with C<msg>
+
+=cut
+
+sub _untaint_path
+{
+    my ($self, $path, $msg) = @_;
+
+    if ($path =~ m/^([^\0]+)$/) {
+        return $1;
+    } else {
+        return $self->fail("Failed to untaint $msg: path $path");
+    }
+}
+
+
 =item directory_exists
 
 Test if C<directory> exists and is a directory.
@@ -358,6 +378,8 @@ sub cleanup
 {
     my ($self, $dest, $backup, %opts) = @_;
 
+    $dest = $self->_untaint_path($dest, "cleanup dest") || return;
+
     $self->_reset_exception_fail('cleanup');
 
     return SUCCESS if (! $self->any_exists($dest));
@@ -368,7 +390,10 @@ sub cleanup
     # (empty string as backup is not allowed, but 0 is)
     # 'if ($old)' can safely be used to test if a backup is needed
     my $old;
-    $old = $dest.$backup if (defined($backup) and $backup ne '');
+    if (defined($backup) and $backup ne '') {
+        $backup = $self->_untaint_path($backup, "cleanup backup") || return;
+        $old = $dest.$backup
+    }
 
     # cleanup previous backup, no backup of previous backup!
     if ($old) {
@@ -462,6 +487,8 @@ sub directory
 {
     my ($self, $directory, %opts) = @_;
 
+    $directory = $self->_untaint_path($directory, "directory") || return;
+
     # assume we will create a new directory
     my $newdir = 1;
 
@@ -542,6 +569,9 @@ Additional options
 sub status
 {
     my ($self, $path, %opts) = @_;
+
+    $path = $self->_untaint_path($path, "status") || return;
+
     my $status = $self->LC_Check("status", [$path], \%opts);
     if(defined($self->{fail})) {
         return;
@@ -581,6 +611,9 @@ Additional options
 sub move
 {
     my ($self, $src, $dest, $backup, %opts) = @_;
+
+    $src = $self->_untaint_path($src, "move src") || return;
+    $dest = $self->_untaint_path($dest, "move dest") || return;
 
     $self->_reset_exception_fail('move');
 

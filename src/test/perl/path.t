@@ -258,6 +258,25 @@ ok($mc->_reset_exception_fail(), "_reset_exception_fail after unknown dispatch")
 $mock->unmock('_get_noaction');
 $mock->unmock('_function_catch');
 
+=head2 _untaint_path
+
+=cut
+
+$mc->{fail} = undef;
+ok(! defined($mc->_untaint_path("", "empty")), "failed to untaint empty string");
+is($mc->{fail}, "Failed to untaint empty: path ",
+   "failed to untaint empty string fail attribute set with message");
+
+$mc->{fail} = undef;
+ok(! defined($mc->_untaint_path("abc\0eef", "null")), "failed to untaint string with null");
+is($mc->{fail}, "Failed to untaint null: path abc\0eef",
+   "failed to untaint string with null fail attribute set with message");
+
+
+$mc->{fail} = undef;
+is($mc->_untaint_path("abc", "ok"), "abc", "untaint ok");
+ok(! defined($mc->{fail}), "no fail attribute set with ok path");
+
 =head2 directory/file/any exists
 
 =cut
@@ -314,6 +333,11 @@ ok($mc->_reset_exception_fail(), "_reset_exception_fail after existence tests");
 =head2 directory
 
 =cut
+
+$mc->{fail} = undef;
+ok(! defined $mc->directory("\0"), "failing untaint directory returns undef");
+is($mc->{fail}, "Failed to untaint directory: path \0",
+   "fail attribute set for failing directory untaint");
 
 $CAF::Object::NoAction = 0;
 
@@ -400,6 +424,11 @@ $CAF::Object::NoAction = 1;
 =head2 cleanup
 
 =cut
+
+$mc->{fail} = undef;
+ok(! defined $mc->cleanup("\0"), "failing untaint cleanup returns undef");
+is($mc->{fail}, "Failed to untaint cleanup dest: path \0",
+   "fail attribute set for failing cleanup dest untaint");
 
 # Tests without NoAction
 $CAF::Object::NoAction = 0;
@@ -565,6 +594,12 @@ $CAF::Object::NoAction = 1;
 
 =cut
 
+$mc->{fail} = undef;
+ok(! defined $mc->status("\0"), "failing untaint status returns undef");
+is($mc->{fail}, "Failed to untaint status: path \0",
+   "fail attribute set for failing status untaint");
+
+
 my $statusfile = "$basetest/status";
 my ($mode, $res);
 
@@ -657,6 +692,17 @@ $CAF::Object::NoAction = 1;
 =head2 move
 
 =cut
+
+
+$mc->{fail} = undef;
+ok(! defined $mc->move("\0", "ok"), "failing untaint move src returns undef");
+is($mc->{fail}, "Failed to untaint move src: path \0",
+   "fail attribute set for failing move src untaint");
+
+$mc->{fail} = undef;
+ok(! defined $mc->move("ok", "\0"), "failing untaint move dest returns undef");
+is($mc->{fail}, "Failed to untaint move dest: path \0",
+   "fail attribute set for failing move dest untaint");
 
 # disable NoAction
 $CAF::Object::NoAction = 0;
