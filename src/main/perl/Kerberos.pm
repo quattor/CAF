@@ -253,6 +253,8 @@ sub update_principal
 =item create_credential_cache
 
 Create the credential cache and add the C<KRB5CCNAME> to the temp environment.
+Use C<kinit> to get an initial TGT for that cache.
+
 Returns SUCCESS on success, undef otherwise (see fail attribute).
 
 =cut
@@ -270,9 +272,16 @@ sub create_credential_cache
         $self->{ENV}->{$KRB5ENV_CCNAME} = "FILE:$tmppath/tkt";
     }
 
-    $self->verbose("credential cache: ". $self->{ccdir});
-
-    return SUCCESS;
+    # Get TGT with kinit
+    # Getting a TGT is possible on EL7 with gssapi and krb5 alone,
+    # but not on older OS.
+    # By default, always use kinit
+    if($self->_kinit()) {
+        $self->verbose("credential cache with TGT: $self->{ccdir}");
+        return SUCCESS;
+    } else {
+        return $self->fail("Failed to get TGT for credential cache $self->{ccdir}: $self->{fail}");
+    }
 }
 
 =item get_context
@@ -829,7 +838,7 @@ use strict 'refs';
 
 Run arrayref $cmd via C<CAF::Process->new->output> in updated environment.
 
-Returns the output.
+Returns the output (and sets C<< $? >>).
 
 =cut
 
@@ -891,7 +900,7 @@ sub _kinit
         push(@$cmd, $principal);
     } else {
         if($self->{fail}) {
-            $self->error("_kinit: no principal $self->{fail}");
+            return $self->fail("_kinit: no principal $self->{fail}");
         } else {
             $self->warn('_kinit: no principal defined');
         }
@@ -899,9 +908,8 @@ sub _kinit
 
     my $output = $self->_process($cmd);
     if ($?) {
-        $self->error("_kinit returned failure ec $? (output $output,",
-                     " command '", join(' ', @$cmd),"')");
-        return;
+        return $self->fail("_kinit returned failure ec $? (output $output,",
+                           " command '", join(' ', @$cmd),"')");
     } else {
         $self->verbose("_kinit ok");
         return SUCCESS;
