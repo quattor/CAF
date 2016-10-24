@@ -8,7 +8,10 @@ use Fcntl qw(:flock);
 use vars qw(@ISA @EXPORT @EXPORT_OK);
 
 # Only required to support legacy CAF::Reporter inheritance
+# Make sure nothing gets imported
+use CAF::Reporter qw();
 our @ISA;
+
 use parent qw(CAF::Object Exporter);
 
 our @EXPORT_OK = qw(FORCE_NONE FORCE_ALWAYS FORCE_IF_STALE);
