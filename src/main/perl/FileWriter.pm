@@ -222,11 +222,6 @@ sub close
         $self->verbose("File ", *$self->{filename}, " was", ($ret ? '' : ' not')," modified");
     }
 
-    # TODO: cleanup CAF#153
-    if (*$self->{LOG} && *$self->{LOG}->can('add_files')) {
-        *$self->{LOG}->add_files(*$self->{filename});
-    }
-
     $self->event(modified => $ret,
                  noaction => *$self->{options}->{noaction}, # TODO: useful to track?
                  backup => *$self->{options}->{backup},
