@@ -1,6 +1,7 @@
 #${PMpre} CAF::FileWriter${PMpost}
 
 use LC::File;
+use Text::Diff qw(diff);
 use IO::String;
 use CAF::Process;
 use CAF::Object;
@@ -178,9 +179,7 @@ secure way (not following symlinks, etc).
 
 Under a verbose level, it will show in the standard output a diff of
 the old and the newly-generated contents for this file before actually
-saving to disk. This diff will B<not> be stored in any logs to prevent
-any leakages of confidential information (f.i. when writing to
-/etc/shadow).
+saving to disk.
 
 =cut
 
@@ -188,33 +187,43 @@ sub close
 {
     my $self = shift;
 
-    my ($str, $changed, $cmd, $diff);
+    my ($changed, $diff);
     my $filename = *$self->{filename};
 
     if (*$self->{save}) {
-        # We have to do this because Text::Diff is not present in SL5. :(
-        if ($self->is_verbose() && -e $filename && *$self->{buf}) {
-            $cmd = CAF::Process->new (["diff", "-u", $filename, "-"],
-                                      stdin => "$self", stdout => \$diff,
-                                      keeps_state => 1);
-            $cmd->execute();
-            if ($diff) {
+        *$self->{save} = 0;
+        my $content_ref = *$self->{buf};
+
+        # Always read and (try to) determine the diff
+        $self->debug(2, "Reading initial contents from $filename");
+        my $content_orig = LC::File::file_contents($filename);
+
+        $diff = diff(\$content_orig, $content_ref, { STYLE => "Unified" });
+        $changed = $diff ? 1 : 0;
+
+        my $msg = 'was';
+
+        if ($changed) {
+            if($self->is_verbose()) {
                 $self->verbose ("Changes to $filename:");
                 $self->report ($diff);
-            } else {
-                $self->debug(1, "No changes to make to $filename");
             }
+
+            if (*$self->{options}->{noaction}) {
+                *$self->{options}->{contents} = $$content_ref;
+
+                LC::Check::file ($filename, %{*$self->{options}});
+                # Restore the SELinux context in case of modifications.
+                $self->change_hook();
+            } else {
+                $msg = 'would have been';
+                $self->debug(1, "File $filename with NoAction=1");
+            }
+        } else {
+            $msg = 'was not';
         }
 
-        *$self->{save} = 0;
-        $str = *$self->{buf};
-        *$self->{options}->{contents} = $$str;
-        $changed = LC::Check::file ($filename, %{*$self->{options}});
-        # Restore the SELinux context in case of modifications.
-        if ($changed) {
-            $self->change_hook();
-        }
-        $self->verbose("File $filename was", ($changed ? '' : ' not'), " modified");
+        $self->verbose("File $filename $msg modified");
     } else {
         $self->verbose("Not saving file $filename");
     }
