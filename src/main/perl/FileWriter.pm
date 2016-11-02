@@ -187,49 +187,47 @@ any leakages of confidential information (f.i. when writing to
 sub close
 {
     my $self = shift;
-    my ($str, $ret, $cmd, $diff);
 
-    # We have to do this because Text::Diff is not present in SL5. :(
-    if ($self->is_verbose() && -e *$self->{filename} && *$self->{buf}) {
-        $cmd = CAF::Process->new (["diff", "-u", *$self->{filename}, "-"],
-                                  stdin => "$self", stdout => \$diff,
-                                  keeps_state => 1);
-        $cmd->execute();
-        if ($diff) {
-            $self->verbose ("Changes to ", *$self->{filename}, ":");
-            $self->report ($diff);
-        } else {
-            $self->debug(1, "No changes to make to ", *$self->{filename});
-        }
-    }
+    my ($str, $changed, $cmd, $diff);
+    my $filename = *$self->{filename};
 
     if (*$self->{save}) {
+        # We have to do this because Text::Diff is not present in SL5. :(
+        if ($self->is_verbose() && -e $filename && *$self->{buf}) {
+            $cmd = CAF::Process->new (["diff", "-u", $filename, "-"],
+                                      stdin => "$self", stdout => \$diff,
+                                      keeps_state => 1);
+            $cmd->execute();
+            if ($diff) {
+                $self->verbose ("Changes to $filename:");
+                $self->report ($diff);
+            } else {
+                $self->debug(1, "No changes to make to $filename");
+            }
+        }
+
         *$self->{save} = 0;
         $str = *$self->{buf};
         *$self->{options}->{contents} = $$str;
-
-        my %cf_opts = %{*$self->{options}};
-        if(! exists($cf_opts{silent})) {
-            # make sure LC::Check::file is silent unless in noaction mode
-            # (or when explicitly set via silent option)
-            $cf_opts{silent} = *$self->{options}->{noaction} ? 0 : 1
-        }
-
-        $ret = LC::Check::file (*$self->{filename}, %cf_opts);
+        $changed = LC::Check::file ($filename, %{*$self->{options}});
         # Restore the SELinux context in case of modifications.
-        if ($ret) {
+        if ($changed) {
             $self->change_hook();
         }
-        $self->verbose("File ", *$self->{filename}, " was", ($ret ? '' : ' not')," modified");
+        $self->verbose("File $filename was", ($changed ? '' : ' not'), " modified");
+    } else {
+        $self->verbose("Not saving file $filename");
     }
 
-    $self->event(modified => $ret,
-                 noaction => *$self->{options}->{noaction}, # TODO: useful to track?
+    $self->event(modified => $changed,
+                 noaction => *$self->{options}->{noaction},
+                 save => *$self->{save},
                  backup => *$self->{options}->{backup},
+                 diff => $diff,
                  );
 
     $self->SUPER::close();
-    return $ret;
+    return $changed;
 }
 
 =item cancel
