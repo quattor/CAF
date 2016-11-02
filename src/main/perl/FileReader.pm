@@ -1,4 +1,5 @@
 #${PMpre} CAF::FileReader${PMpost}
+
 use base qw(CAF::FileEditor);
 
 =pod
