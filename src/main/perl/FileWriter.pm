@@ -1,5 +1,6 @@
 #${PMpre} CAF::FileWriter${PMpost}
-use LC::Check;
+
+use LC::File;
 use IO::String;
 use CAF::Process;
 use CAF::Object;
@@ -71,7 +72,8 @@ level.
 
 =head2 Gory details
 
-This is just a wrapper class for C<LC::Check::file>
+This is a wrapper class for C<IO::String> with customised close based on
+C<File::AtomicWrite>.
 
 =head2 Public methods
 
