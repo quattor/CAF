@@ -4,11 +4,13 @@ use parent qw(CAF::Object);
 use Readonly;
 use CAF::Object qw (SUCCESS);
 use CAF::Process;
-
+use LC::Exception;
 use File::Temp qw(tempdir);
 use File::Path qw(rmtree);
 
 use GSSAPI;
+
+our $_EC = LC::Exception::Context->new()->will_store_errors();
 
 # Interfaces for the following methods of each class will be generated.
 Readonly::Hash our %GSSAPI_INTERFACE_WRAPPER => {
@@ -852,6 +854,13 @@ sub _process
 
     my $proc = CAF::Process->new($cmd, log => $self);
     my $output = $proc->output();
+
+    if ($_EC->error()) {
+        # LC::Exception supports formatted stringification
+        my $errmsg = ''.$_EC->error();
+        $_EC->ignore_error();
+        return $self->fail($errmsg);
+    }
 
     $self->verbose("output from $proc: $output");
 
