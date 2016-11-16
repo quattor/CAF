@@ -1,32 +1,17 @@
-#!/usr/bin/perl
+# TODO
+#    - test failures of write_file
+#    - diffs with non-existing file
+#       - what does file_contents return? undef + exception
+#    - actual tests without LC or any mocking
+#       - test creation of parent dir
+#    - touch: open and close file with filewriter? no, reset file
+
 
 use strict;
 use warnings;
 
-use Test::MockModule;
-
-our $cmd;
-our $mock;
-our $app;
-our $execute_stdout = '';
-
-BEGIN {
-    $mock = Test::MockModule->new ("CAF::Process");
-    $mock->mock ("execute", sub {
-                     $cmd = $_[0];
-                     ${$cmd->{OPTIONS}->{stdout}} .= $execute_stdout;
-                     $? = 0;
-                     return 1;
-                 });
-
-    $mock->mock ("run", sub {
-                     $cmd = $_[0];
-                     $? = 0;
-                     return 1;
-                });
-    $app = Test::MockModule->new ('CAF::Application');
-}
-
+use Test::More;
+$SIG{__WARN__} = sub {ok(0, "Perl warning: $_[0]");};
 
 use FindBin qw($Bin);
 use lib "$Bin/modules";
@@ -34,8 +19,9 @@ use testapp;
 use CAF::Reporter qw($HISTORY);
 use CAF::History qw($EVENTS);
 use CAF::Object;
-use Test::More; # tests => 26;
+use Test::MockModule;
 use Scalar::Util qw(refaddr);
+
 
 # El ingenioso hidalgo Don Quijote de La Mancha
 use constant TEXT => <<EOF;
@@ -45,23 +31,42 @@ EOF
 
 use constant FILENAME => "/my/test";
 
-# $path and %opts are set via the dummy LC/Check module
-# in resources/LC
-# file_changed is the value that is returned
-our $path;
+# $path and %opts are set via the dummy File/AtomicWrite module
+# $text is the file_contents from dummy LC/File module
+# file_changed is not used anymore (actual Text::Diff is used against the $text)
+our ($path, $text);
 our %opts = ();
-our $file_changed = 1;
 
 my ($log, $str);
+open ($log, ">", \$str);
 
-our $report;
+my $report;
 my $this_app = testapp->new ($0, qw (--verbose));
 
 sub init_test
 {
+    $text = undef;
     $path = "";
     %opts = ();
     $report = 0;
+    close($log);
+    open ($log, ">", \$str);
+}
+
+my $proc;
+my $mock;
+my $app;
+
+
+BEGIN {
+    $mock = Test::MockModule->new ("CAF::Process");
+    # (Mocked) run is used for selinux restore call
+    $mock->mock ("run", sub {
+                     $proc = $_[0];
+                     $? = 0;
+                     return 1;
+                });
+    $app = Test::MockModule->new ('CAF::Application');
 }
 
 my $mock_history = Test::MockModule->new('CAF::History');
@@ -69,10 +74,9 @@ my $mock_history = Test::MockModule->new('CAF::History');
 use CAF::FileWriter;
 
 if ($^O eq 'linux') {
-    isa_ok ($cmd, "CAF::Process", "restorecon hook enabled at load time");
+    isa_ok ($proc, "CAF::Process", "restorecon hook enabled at load time");
 }
 
-open ($log, ">", \$str);
 $this_app->config_reporter(logfile => $log);
 
 init_test;
@@ -88,7 +92,9 @@ is ($path, FILENAME, "The correct file is opened");
 my @methods = qw(info verbose report debug warn error event is_verbose);
 foreach my $method (@methods) {
     ok($fh->can($method), "FileWriter instance has $method method");
-    ok(! defined($fh->$method("abc")), "conditional logger without log defined returns undef");
+    # for event, a hash is expected, so pass a second argument
+    # please don't ever use it like this
+    ok(! defined($fh->$method("abc", $method eq 'event' ? 'def' : undef)), "conditional logger without log defined returns undef");
 }
 
 
@@ -99,9 +105,7 @@ $fh = "";
 is ($opts{contents}, TEXT, "The file is written when the object is destroyed");
 is ($opts{mode}, 0400, "The file gets the correct permissions when the object is destroyed");
 ok(! defined($CAF::Object::NoAction), "NoAction is not defined");
-is($opts{noaction}, 0, "NoAction=0 flag is passed to LC with NoAction undefined");
 is ($path, FILENAME, "Correct path opened on object destruction");
-
 
 $CAF::Object::NoAction = 0;
 
@@ -116,12 +120,12 @@ ok (!exists ($opts{contents}), "Nothing is written after cancel");
 
 init_test;
 $fh = CAF::FileWriter->new (
-    FILENAME, 
+    FILENAME,
     mode => 0600,
     log => $this_app,
 );
 print $fh TEXT;
-is ($str, "Opening file " . FILENAME,
+is ($str, "Opening file " . FILENAME . "\n",
     "Correct log message when creating the object");
 $fh->close;
 is ($opts{contents}, TEXT, "Correct contents written to the logged file");
@@ -129,7 +133,7 @@ is ($path, FILENAME, "Correct file opened with log");
 my $re =  ".*File " . FILENAME . " was modified"; #
 like($str, qr{$re},
      "Modified file correctly reported");
-ok (!exists ($opts{LOG}), "No log information passed to LC::Check::file");
+ok (!exists ($opts{LOG}), "No log information passed to File::atomicWrite::write_file");
 $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
 $fh->cancel();
 like ($str, qr{Not saving file /}, "Cancel operation correctly logged");
@@ -137,7 +141,7 @@ $fh->close();
 
 init_test;
 $fh = CAF::FileWriter->open (
-    FILENAME, 
+    FILENAME,
     log => $this_app,
     backup => "foo",
     mode => 0400,
@@ -149,19 +153,27 @@ print $fh TEXT;
 $fh->close();
 is ($opts{backup}, "foo", "Checking options: correct backup option passed");
 is ($opts{mode}, 0400, "Checking options: correct mode passed");
-is ($opts{owner}, 100, "Checking options: correct owner passed");
-is ($opts{group}, 200, "Checking options: correct group passed");
+is ($opts{owner}, "100:200", "Checking options: correct owner/group passed as owner:group");
 is ($opts{mtime}, 1234567, "Checking options: correct mtime passed");
 
 is($CAF::Object::NoAction, 0, "NoAction is set to 0");
-is($opts{noaction}, 0, "NoAction=0 flag is passed to LC with NoAction set to 0");
 
 init_test;
+# already written file
+$text = TEXT;
 $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
-$file_changed = 0;
-$re = "File " . FILENAME . " was not modified";
+print $fh TEXT;
 $fh->close();
-like($str, qr{$re}, "Unmodified file correctly reported");
+$re = "File " . FILENAME . " was not modified";
+like($str, qr{^$re}m, "Writing same contents correctly reported");
+
+# Not writing anything to $fh and close -> (new) empty file
+init_test;
+$fh = CAF::FileWriter->new (FILENAME, log => $this_app);
+$text = 'abc';
+$fh->close();
+$re = "File " . FILENAME . " was modified";
+like($str, qr{^$re}m, "Unused opened file correctly reported");
 
 $CAF::Object::NoAction = 1;
 
@@ -172,7 +184,7 @@ is ("$fh", TEXT, "Stringify works");
 like ($fh, qr(En un lugar), "Regexp also works");
 $fh->close();
 is($CAF::Object::NoAction, 1, "NoAction is set to 1");
-is($opts{noaction}, 1, "NoAction=1 flag is passed to LC with NoAction 1");
+is(scalar keys %opts, 0, "NoAction=1: File::AtomicWrite file_write is not called");
 
 init_test;
 is($CAF::Object::NoAction, 1, "NoAction is set to 1 before keeps_state true");
@@ -182,28 +194,22 @@ is ("$fh", TEXT, "Stringify works");
 like ($fh, qr(En un lugar), "Regexp also works");
 $fh->close();
 is($CAF::Object::NoAction, 1, "NoAction is (still) set to 1 with keeps_state true");
-is($opts{noaction}, 0, "NoAction=0 flag is passed to LC with NoAction 1 and keeps_state true");
+is($opts{file}, FILENAME, "NoAction 1 and keeps_state true: File::AtomicWrite file_write is called");
 
 # Check that the diff works
-close($log);
-open ($log, ">", \$str);
-*testapp::report = sub { $report = 1; };
+$app->mock('report', sub { $report = 1; });
 
 $this_app->config_reporter(logfile => $log);
 init_test();
+$report = 0;
 $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello, world\n";
-# Mock diff output via CAF::Process execute()
-$execute_stdout = "+ something changed";
-
 $fh->close();
 like($str, qr{Changes to \S+:}, "Diff is reported");
-ok(!$cmd->{NoAction},
-   "Diff will be shown even with noaction");
+ok($report, "Diff will be shown/reported even with noaction");
 
 # No diffs if no contents
-close ($log);
-open ($log, ">", \$str);
+init_test();
 $fh->close();
 unlike($str, qr{Changes to \S+:}, "Diff not reported on already closed file");
 
@@ -214,10 +220,6 @@ $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello world\n";
 $fh->close();
 is($report, 0, "Diff output is reported only with verbose");
-
-# Reset mocked diff via execute_stdout
-undef $cmd;
-$execute_stdout = '';
 
 # Test events via CAF::History
 
@@ -239,7 +241,7 @@ $fh->close();
 
 my $fhid = 'CAF::FileWriter '.refaddr($fh);
 
-diag explain $this_app->{$HISTORY}->{$EVENTS};
+#diag explain $this_app->{$HISTORY}->{$EVENTS};
 
 # events since History enabled
 #   new one initialised
@@ -263,8 +265,9 @@ is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
         WHOAMI => 'testapp',
         filename =>  $INC{"CAF/FileWriter.pm"},
         backup => undef,
-        modified => undef,
+        modified => 0,
         noaction => 1,
+        save => 0,
     },
     {
         IDX => 2,
@@ -275,7 +278,10 @@ is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
         WHOAMI => 'testapp',
         backup => undef,
         modified => 0,
+        changed => 1,
+        diff => '',
         noaction => 1,
+        save => 1,
     },
 ], "events added to history on init and close");
 

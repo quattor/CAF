@@ -119,8 +119,8 @@ sub new
     }
     if ( $src_file ) {
         $self->debug(2, "Reading initial contents from $src_file");
-        my $txt = LC::File::file_contents ($src_file);
-        $self->IO::String::open ($txt);
+        *$self->{orig_contents} = LC::File::file_contents ($src_file);
+        $self->IO::String::open (*$self->{orig_contents});
         $self->seek(IO_SEEK_END);
     }
     return $self;

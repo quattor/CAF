@@ -1,7 +1,10 @@
 #${PMpre} CAF::FileWriter${PMpost}
 
+use LC::Exception qw(throw_error);
 use LC::File;
 use Text::Diff qw(diff);
+use File::AtomicWrite 1.18;
+use Errno qw(ENOENT);
 use IO::String;
 use CAF::Process;
 use CAF::Object;
@@ -9,6 +12,7 @@ use overload '""' => "stringify";
 
 our @ISA = qw (IO::String);
 
+our $_EC = LC::Exception::Context->new()->will_store_errors();
 
 # This code makes sense only in Linux with SELinux enabled.  Other
 # platforms might require other adjustments after files are written.
@@ -134,11 +138,13 @@ sub new
     *$self->{filename} = $path;
     *$self->{LOG} = $opts{log} if exists ($opts{log});
     *$self->{LOG}->verbose ("Opening file $path") if exists (*$self->{LOG});
+
     *$self->{options}->{mode} = $opts{mode} if exists ($opts{mode});
     *$self->{options}->{owner} = $opts{owner} if exists ($opts{owner});
     *$self->{options}->{group} = $opts{group} if exists ($opts{group});
     *$self->{options}->{mtime} = $opts{mtime} if exists ($opts{mtime});
     *$self->{options}->{backup} = $opts{backup} if exists ($opts{backup});
+
     *$self->{save} = 1;
     bless ($self, $class);
 
@@ -189,17 +195,47 @@ sub close
 
     my ($changed, $diff);
     my $filename = *$self->{filename};
+    my $options = *$self->{options};
+
+    my $modified = 0;
+
+    my %event = (
+        noaction => $options->{noaction},
+        save => *$self->{save},
+        backup => $options->{backup},
+    );
 
     if (*$self->{save}) {
         *$self->{save} = 0;
         my $content_ref = *$self->{buf};
 
         # Always read and (try to) determine the diff
-        $self->debug(2, "Reading initial contents from $filename");
-        my $content_orig = LC::File::file_contents($filename);
+        my $content_orig;
+        if (defined(*$self->{content_orig})) {
+            $self->debug(2, "Using original contents from $filename");
+            $content_orig = *$self->{content_orig};
+        } else {
+            $self->debug(2, "Reading initial contents from $filename");
+            $content_orig = LC::File::file_contents($filename);
+        }
 
-        $diff = diff(\$content_orig, $content_ref, { STYLE => "Unified" });
-        $changed = $diff ? 1 : 0;
+        if (defined($content_orig)) {
+            $diff = diff(\$content_orig, $content_ref, { STYLE => "Unified" });
+            $changed = $diff ? 1 : 0;
+        } else {
+            if ($! == ENOENT) {
+                $self->verbose("No previous file $filename");
+            } else {
+                # TODO: Only verbose?
+                $self->verbose("There was a problem reading the original file content for $filename: $!");
+            };
+            $diff = $$content_ref;
+            $changed = 1;
+        }
+
+        # Update event metadata with diff
+        $event{changed} = $changed;
+        $event{diff} = $diff if $changed;
 
         my $msg = 'was';
 
@@ -209,15 +245,33 @@ sub close
                 $self->report ($diff);
             }
 
-            if (*$self->{options}->{noaction}) {
-                *$self->{options}->{contents} = $$content_ref;
-
-                LC::Check::file ($filename, %{*$self->{options}});
-                # Restore the SELinux context in case of modifications.
-                $self->change_hook();
-            } else {
+            if ($options->{noaction}) {
                 $msg = 'would have been';
                 $self->debug(1, "File $filename with NoAction=1");
+            } else {
+                my $opts = {
+                    file => $filename,
+                    input => $content_ref,
+                };
+                # group is handled separately
+                foreach my $name (qw(mode mtime backup owner)) {
+                    $opts->{$name} = $options->{$name} if exists($options->{$name});
+                };
+                # No need to check if owner exists. :groupname is supported
+                $opts->{owner} .= ":$options->{group}" if exists($options->{group});
+
+                eval {
+                    File::AtomicWrite->write_file($opts);
+                    $modified = 1;
+                };
+                if ($@) {
+                    $self->verbose("AtomicWrite gave error: $@");
+                    # Make an oldstyle exception
+                    throw_error("close AtomicWrite failed filename $filename: $@");
+                }
+
+                # Restore the SELinux context in case of modifications.
+                $self->change_hook();
             }
         } else {
             $msg = 'was not';
@@ -228,12 +282,9 @@ sub close
         $self->verbose("Not saving file $filename");
     }
 
-    $self->event(modified => $changed,
-                 noaction => *$self->{options}->{noaction},
-                 save => *$self->{save},
-                 backup => *$self->{options}->{backup},
-                 diff => $diff,
-                 );
+    # Always keep the modified state, even with save==0
+    $event{modified} = $modified;
+    $self->event(%event);
 
     $self->SUPER::close();
     return $changed;
