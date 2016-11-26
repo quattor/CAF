@@ -163,8 +163,6 @@ sub new
     return $self;
 }
 
-=pod
-
 =item open
 
 Synonym for C<new()>
@@ -175,7 +173,6 @@ Synonym for C<new()>
 no warnings 'redefine';
 *open = \&new;
 use warnings;
-
 
 =item close
 
@@ -215,20 +212,16 @@ sub close
             $self->debug(2, "Using original contents from $filename");
             $content_orig = *$self->{content_orig};
         } else {
-            $self->debug(2, "Reading initial contents from $filename");
-            $content_orig = LC::File::file_contents($filename);
+            # missing_ok=1 mimics original LC::Check::file behaviour
+            $content_orig = $self->_read_contents($filename, event => \%event, missing_ok => 1);
         }
 
         if (defined($content_orig)) {
             $diff = diff(\$content_orig, $content_ref, { STYLE => "Unified" });
             $changed = $diff ? 1 : 0;
         } else {
-            if ($! == ENOENT) {
-                $self->verbose("No previous file $filename");
-            } else {
-                # TODO: Only verbose?
-                $self->verbose("There was a problem reading the original file content for $filename: $!");
-            };
+            $self->verbose("No original file content for $filename; new content is the diff");
+
             $diff = $$content_ref;
             $changed = 1;
         }
@@ -252,6 +245,7 @@ sub close
                 my $opts = {
                     file => $filename,
                     input => $content_ref,
+                    MKPATH => 1, # create missing parent directory
                 };
                 # group is handled separately
                 foreach my $name (qw(mode mtime backup owner)) {
@@ -265,7 +259,7 @@ sub close
                     $modified = 1;
                 };
                 if ($@) {
-                    $self->verbose("AtomicWrite gave error: $@");
+                    $self->warn("AtomicWrite gave error: $@");
                     # Make an oldstyle exception
                     throw_error("close AtomicWrite failed filename $filename: $@");
                 }
@@ -306,8 +300,6 @@ sub cancel
     *$self->{save} = 0;
 }
 
-=pod
-
 =item noAction
 
 Returns the NoAction flag value (boolean)
@@ -319,8 +311,6 @@ sub noAction
     my $self = shift;
     return *$self->{options}->{noaction};
 }
-
-=pod
 
 =item stringify
 
@@ -434,6 +424,59 @@ sub event
 =head2 Private methods
 
 =over
+
+=item _read_contents
+
+Read the contents from file C<filename> using C<LC::File::file_contents>
+and return it.
+
+Optional named arguments
+
+=over
+
+=item event
+
+A hashref that will be updated in place if an error occured. The C<error>
+attribute is set to the exception text.
+
+=item missing_ok
+
+When true and C<LC::File::file_contents> fails with C<ENOENT>
+(i.e. when C<filename> is missing),
+the exception is ignored and no warning is reported.
+
+=back
+
+By default, a warning is reported in case of an error and the exception is (re)thrown.
+
+=cut
+
+sub _read_contents
+{
+    my ($self, $filename, %opts) = @_;
+
+    $self->debug(2, "Reading initial contents from $filename");
+    my $content_orig = LC::File::file_contents($filename);
+    if ($_EC->error) {
+        if ($opts{missing_ok} and $_EC->error()->reason() == ENOENT) {
+            # the filename does not exist (yet), and this is ok
+            $self->verbose("No contents from missing $filename");
+            $_EC->ignore_error();
+	    } else {
+            my $errtxt = $_EC->error->text();
+
+            $opts{event}->{error} = $errtxt if defined $opts{event};
+            $self->warn("Reading contents from $filename gave error: $errtxt");
+
+            # Keep legacy exception behaviour
+            $_EC->rethrow_error();
+            return();
+        }
+    };
+
+    return $content_orig;
+}
+
 
 =item DESTROY
 

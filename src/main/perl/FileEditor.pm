@@ -1,6 +1,5 @@
 #${PMpre} CAF::FileEditor${PMpost}
 
-use LC::File;
 use Fcntl qw(:seek);
 
 use parent qw(CAF::FileWriter Exporter);
@@ -117,12 +116,13 @@ sub new
     } elsif ($self->_is_valid_file(*$self->{filename})) {
         $src_file = *$self->{filename};
     }
+
     if ( $src_file ) {
-        $self->debug(2, "Reading initial contents from $src_file");
-        *$self->{orig_contents} = LC::File::file_contents ($src_file);
+        *$self->{orig_contents} = $self->_read_contents($src_file);
         $self->IO::String::open (*$self->{orig_contents});
         $self->seek(IO_SEEK_END);
     }
+
     return $self;
 }
 

@@ -1,12 +1,3 @@
-# TODO
-#    - test failures of write_file
-#    - diffs with non-existing file
-#       - what does file_contents return? undef + exception
-#    - actual tests without LC or any mocking
-#       - test creation of parent dir
-#    - touch: open and close file with filewriter? no, reset file
-
-
 use strict;
 use warnings;
 
@@ -21,6 +12,14 @@ use CAF::History qw($EVENTS);
 use CAF::Object;
 use Test::MockModule;
 use Scalar::Util qw(refaddr);
+use Errno qw(ENOENT);
+
+use Test::Quattor::Object;
+
+my $obj = Test::Quattor::Object->new();
+
+use LC::Exception;
+my $EC = LC::Exception::Context->new()->will_store_errors();
 
 
 # El ingenioso hidalgo Don Quijote de La Mancha
@@ -34,7 +33,7 @@ use constant FILENAME => "/my/test";
 # $path and %opts are set via the dummy File/AtomicWrite module
 # $text is the file_contents from dummy LC/File module
 # file_changed is not used anymore (actual Text::Diff is used against the $text)
-our ($path, $text);
+our ($path, $text, $text_throw, $text_from_file, $faw_die);
 our %opts = ();
 
 my ($log, $str);
@@ -46,6 +45,9 @@ my $this_app = testapp->new ($0, qw (--verbose));
 sub init_test
 {
     $text = undef;
+    $text_throw = undef;
+    $text_from_file = undef;
+    $faw_die = undef;
     $path = "";
     %opts = ();
     $report = 0;
@@ -62,10 +64,10 @@ BEGIN {
     $mock = Test::MockModule->new ("CAF::Process");
     # (Mocked) run is used for selinux restore call
     $mock->mock ("run", sub {
-                     $proc = $_[0];
-                     $? = 0;
-                     return 1;
-                });
+        $proc = $_[0];
+        $? = 0;
+        return 1;
+    });
     $app = Test::MockModule->new ('CAF::Application');
 }
 
@@ -96,6 +98,51 @@ foreach my $method (@methods) {
     # please don't ever use it like this
     ok(! defined($fh->$method("abc", $method eq 'event' ? 'def' : undef)), "conditional logger without log defined returns undef");
 }
+
+# test _read_contents
+
+
+# test _read_contents ok
+ok(! $EC->error(), "No previous error before _read_contents test");
+my $fake_event = {};
+$text = 'test read';
+is($fh->_read_contents('somefile', event => $fake_event), 'test read',
+    "_read_contents returns text from LC::File::file_contents");
+is($text_from_file, 'somefile', '_read_contents passes filename to LC::File::file_contents');
+is_deeply($fake_event, {}, "_read_contents event unmodified on success");
+ok(! $EC->error(), "No error after success _read_contents test / before _read_contents failure test");
+
+# test _read_contents fails with exception due to ENOENT and missing_ok
+$text = 'test read fail missing ok';
+$text_throw = ['failure reading missing ok', ENOENT];
+is($fh->_read_contents('somefilefail', event => $fake_event, missing_ok => 1),
+   'test read fail missing ok',
+    "_read_contents returns LC::File::file_contents return value with missing_ok");
+is_deeply($fake_event, {},
+          "_read_contents event not modified on failure missing ok");
+ok(! $EC->error(), "no error by _read_contents missing ok");
+
+# test _read_contents fails with exception
+$text = 'test read fail';
+$text_throw = 'failure reading';
+ok(! defined($fh->_read_contents('somefilefail', event => $fake_event)),
+    "_read_contents failure returns undef");
+is($text_from_file, 'somefilefail', '_read_contents passes filename to LC::File::file_contents on fail');
+is_deeply($fake_event, {error => 'file_contents failure reading'}, "_read_contents event modified on failure");
+ok($EC->error(), "old-style exception thrown by LC::File::file_contents rethrown by _read_contents");
+is($EC->error->text, $fake_event->{error}, "exception message from LC::File::file_contents rethrown");
+$EC->ignore_error();
+
+# test _read_contents fails with exception due to ENOENT
+$text = 'test read fail missing';
+$text_throw = ['failure reading missing', ENOENT];
+ok(! defined($fh->_read_contents('somefilefail', event => $fake_event)),
+    "_read_contents failure missing returns undef");
+is_deeply($fake_event, {error => 'file_contents failure reading missing'},
+          "_read_contents event modified on failure missing");
+ok($EC->error(), "old-style exception thrown by LC::File::file_contents rethrown by _read_contents missing");
+is($EC->error->text, $fake_event->{error}, "exception message from LC::File::file_contents rethrown missing");
+$EC->ignore_error();
 
 
 init_test;
@@ -173,7 +220,9 @@ $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
 $text = 'abc';
 $fh->close();
 $re = "File " . FILENAME . " was modified";
-like($str, qr{^$re}m, "Unused opened file correctly reported");
+like($str, qr{^$re}m, "Open/close file correctly reported");
+is($opts{contents}, '', "Open/close file resets content");
+
 
 $CAF::Object::NoAction = 1;
 
@@ -284,5 +333,21 @@ is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
         save => 1,
     },
 ], "events added to history on init and close");
+
+# test failures
+$CAF::Object::NoAction = 0;
+
+init_test();
+ok(! $EC->error(), "No previous error before failure check");
+$faw_die = "special problem";
+$text = '123';
+$fh = CAF::FileWriter->open (FILENAME, log => $obj);
+print $fh TEXT;
+is ("$fh", TEXT, "Stringify works");
+$fh->close();
+ok($EC->error(), "old-style exception thrown");
+like($EC->error->text, qr{^close AtomicWrite failed filename /my/test: File::AtomicWrite special problem at },
+     "message from die converted in exception");
+$EC->ignore_error();
 
 done_testing();

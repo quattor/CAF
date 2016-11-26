@@ -14,7 +14,7 @@ use Test::Quattor::Object;
 use Test::MockModule;
 use CAF::Lock qw(FORCE_ALWAYS FORCE_NONE FORCE_IF_STALE);
 
-use constant LOCK_TEST_DIR => "target/tests";
+use constant LOCK_TEST_DIR => "target/test";
 use constant LOCK_TEST => LOCK_TEST_DIR . "/lock-caf";
 
 my $obj = Test::Quattor::Object->new();

@@ -21,6 +21,7 @@ use Test::Quattor::Object;
 use FindBin qw($Bin);
 use lib "$Bin/modules";
 use mypath;
+use filetools qw(makefile readfile);
 
 use File::Path qw(mkpath rmtree);
 use File::Basename qw(dirname);
@@ -31,24 +32,6 @@ my $obj = Test::Quattor::Object->new();
 
 my $mock = Test::MockModule->new('CAF::Path');
 
-# cannot use mocked filewriter
-sub makefile
-{
-    my $fn = shift;
-    my $dir = dirname($fn);
-    mkpath $dir if ! -d $dir;
-    open(FH, ">$fn");
-    print FH (shift || "ok");
-    close(FH);
-}
-
-sub readfile
-{
-    open(FH, shift);
-    my $txt = join('', <FH>);
-    close(FH);
-    return $txt;
-}
 
 my $basetest = 'target/test/check';
 my $basetestfile = "$basetest/file";

@@ -12,7 +12,7 @@ use testapp;
 use CAF::FileEditor;
 
 use Carp qw(confess);
-use File::Path;
+use File::Path qw(mkpath);
 use File::Temp qw(tempfile);
 use CAF::Object;
 
@@ -101,6 +101,7 @@ is_deeply(\%opts, {
     mtime => 1234567,
     contents => TEXT."another line\n",
     file => $filename,
+    MKPATH => 1,
 }, "options set in new() and current contents are passed to File::AtomicWrite");
 
 is(*$fh->{filename}, $filename, "The object stores its parent's attributes");
@@ -116,7 +117,7 @@ isa_ok ($fh, "CAF::FileEditor", "Correct class after open method");
 isa_ok ($fh, "CAF::FileWriter", "Correct class inheritance after open method");
 $fh->close();
 diag "keeps_state + noaction=1 ", explain \%opts;
-is_deeply([sort keys %opts], [qw(contents file input)], "noaction=1 with keeps_state calls File::AtomicWrite::write_file");
+is_deeply([sort keys %opts], [qw(MKPATH contents file input)], "noaction=1 with keeps_state calls File::AtomicWrite::write_file");
 
 
 $fh = CAF::FileEditor->open($filename);

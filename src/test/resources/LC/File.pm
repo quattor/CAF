@@ -3,6 +3,8 @@ package LC::File;
 use strict;
 use warnings;
 
+use LC::Exception qw(throw_error);
+
 =pod
 
 =head1 SYNOPSIS
@@ -29,6 +31,16 @@ to mock the contents of the file.
 
 If 2 arguments are passed, return C<$main::edition_result>.
 
+=item text_from_file
+
+The filename passed to read the contents from.
+
+=item text_throw
+
+If true, throw an error with message C<<file_contents <text_throw>>>.
+If C<text_throw> is an arrayref, throw message C<<file_contents <text_throw->[0]>>>
+and 2nd argument (reason) C<text_throw->[1]>.
+
 =back
 
 Use in test as
@@ -38,6 +50,19 @@ Use in test as
 
 sub file_contents
 {
+    $main::text_from_file = shift;
+    if ($main::text_throw) {
+        my ($msg, $reason);
+
+        if (ref($main::text_throw) eq 'ARRAY') {
+            $msg = $main::text_throw->[0];
+            $reason = $main::text_throw->[1];
+        } else {
+            $msg = $main::text_throw;
+        }
+
+        throw_error("file_contents $msg", $reason);
+    };
     if (scalar(@_) == 2) {
         return $main::edition_result;
     } else {
