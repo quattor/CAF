@@ -217,11 +217,6 @@ undef $cmd;
 $execute_stdout = '';
 
 # Test events via CAF::History
-# and legacy add_files
-$app->mock('add_files', sub {
-    my ($self, @args) = @_;
-    $self->{FILES} = \@args;
-});
 
 # no need to track time
 $mock_history->mock('_now', 0);
@@ -280,9 +275,5 @@ is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
         noaction => 1,
     },
 ], "events added to history on init and close");
-
-# legacy add_files: there were 2 closes, only last one is tracked
-is(scalar(@{$this_app->{FILES}}), 1,
-   "Files were recorded when the logger can add_files");
 
 done_testing();
