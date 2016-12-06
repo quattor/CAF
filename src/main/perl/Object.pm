@@ -1,15 +1,7 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-
-package CAF::Object;
-
-use strict;
-use warnings;
+#${PMpre} CAF::Object${PMpost}
 
 use Exporter;
-our @ISA = qw(Exporter);
+use parent qw(Exporter);
 
 use LC::Exception qw (throw_error);
 
@@ -93,7 +85,7 @@ sub new
         }
         throw_error($msg);
         undef $self;
-        return undef;
+        return;
     }
 }
 

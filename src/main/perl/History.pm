@@ -1,12 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-
-package CAF::History;
-
-use strict;
-use warnings;
+#${PMpre} CAF::History${PMpost}
 
 use LC::Exception qw (SUCCESS);
 use Readonly;

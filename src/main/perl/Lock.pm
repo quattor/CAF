@@ -5,8 +5,6 @@ use FileHandle;
 use File::stat; # overrides builtin stat
 use Fcntl qw(:flock);
 
-use vars qw(@ISA @EXPORT @EXPORT_OK);
-
 # Only required to support legacy CAF::Reporter inheritance
 # Make sure nothing gets imported
 use CAF::Reporter qw();

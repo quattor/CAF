@@ -24,11 +24,6 @@ my $obj = Test::Quattor::Object->new();
 
 $SIG{__DIE__} = \&confess;
 
-*testapp::error = sub {
-    my $self = shift;
-    $self->{ERROR} = @_;
-};
-
 open ($log, ">", \$str);
 my $fh = CAF::FileEditor->new ($filename, log => $obj);
 

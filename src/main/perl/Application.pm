@@ -1,13 +1,5 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} CAF::Application${PMpost}
 
-package CAF::Application;
-
-use strict;
-use warnings;
-use vars qw(@ISA);
 use CAF::Reporter;
 use LC::Exception qw (SUCCESS throw_error);
 use AppConfig qw (:argcount :expand);
@@ -16,7 +8,7 @@ use CAF::Log;
 use File::Basename;
 use POSIX;
 
-@ISA = qw(CAF::Reporter CAF::Object Exporter);
+use parent qw(CAF::Reporter CAF::Object Exporter);
 
 use Readonly;
 Readonly our $OPTION_CFGFILE => 'cfgfile';
@@ -166,8 +158,7 @@ sub show_usage
 
     # now loop over the options, print out aliases, default values
     # and types, and help text.
-    my $opt;
-    foreach $opt (sort keys %{$self->{'CFHELP'}}) {
+    foreach my $opt (sort keys %{$self->{'CFHELP'}}) {
         # format is (option|alias1|alias2|..(!|((:|=)(s|f|i)(@|%)?))?)
         # take everything into one regexp as faster.
         if ($opt =~ /([^=:!|]+)((\|([^=:!|]+))*)(!|((:|=)(s|f|i)(@|%)?))?/) {
@@ -221,7 +212,7 @@ sub show_usage
             print $str;
         } else {
             throw_error("cannot parse option: $opt");
-            return undef;
+            return;
         }
     }
     print "\n"; # nice last empty line
@@ -360,7 +351,7 @@ sub _initialize
     # add application-specific options
     unless ($self->_add_options()) {
         throw_error('Cannot add options');
-        return undef;
+        return;
     }
 
     # check if we have a config file to read or a --help request.
@@ -460,7 +451,7 @@ sub _initialize
             $self->{'LOG'} = CAF::Log->new($logfile, $logflags);
             unless (defined $self->{'LOG'}) {
                 $ec->rethrow_error;
-                return undef;
+                return;
             }
         }
     }
@@ -541,10 +532,9 @@ sub _add_options
     my @opts = @{$opt_default_ref};
     push (@opts, @{$opt_app_ref});
 
-    my $opt;
-    foreach $opt (@opts) {
-        my $default=undef;
-        $default=$opt->{'DEFAULT'} if (defined $opt->{'DEFAULT'});
+    foreach my $opt (@opts) {
+        my $default;
+        $default = $opt->{'DEFAULT'} if (defined $opt->{'DEFAULT'});
 
         # AppConfig doesn't return anything sensible - if an error is found,
         # it just uses a 'warn'. A user defined function should be used here

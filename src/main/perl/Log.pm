@@ -1,12 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-
-package CAF::Log;
-
-use strict;
-use warnings;
+#${PMpre} CAF::Log${PMpost}
 
 use parent qw(CAF::Object Exporter);
 

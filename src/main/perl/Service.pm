@@ -1,17 +1,10 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} CAF::Service${PMpost}
 
-package CAF::Service;
-
-use strict;
-use warnings;
 use CAF::Process;
 use LC::Exception qw (SUCCESS);
 
 our $AUTOLOAD;
-use base qw(CAF::Object Exporter);
+use parent qw(CAF::Object Exporter);
 
 use Readonly;
 
