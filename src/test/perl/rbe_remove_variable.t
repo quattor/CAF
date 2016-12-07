@@ -165,7 +165,7 @@ my $fh;
 # Test negated keywords
 my $dpm_options = {};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
+$fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_1,
                            $dpm_options,
@@ -176,7 +176,7 @@ $fh->close();
 # Test removal of a config line is config option is not defined
 $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
+$fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_2,
                            $dpm_options,
@@ -187,7 +187,7 @@ $fh->close();
 # Test removal of a config line is rule condition is not met
 $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
+$fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_3,
                            $dpm_options,
@@ -199,7 +199,7 @@ $fh->close();
 # when keyword is prefixed by ?
 $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_1);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
+$fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_4,
                            $dpm_options);
@@ -210,7 +210,7 @@ $fh->close();
 # Test removal of config lines appearing multiple times
 $dpm_options = {"dpm" => {"globusThreadModel" => "pthread"}};
 set_file_contents($DPM_CONF_FILE,$DPM_INITIAL_CONF_2);
-my $fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
+$fh = CAF::RuleBasedEditor->open($DPM_CONF_FILE, log => $obj);
 ok(defined($fh), $DPM_CONF_FILE." was opened");
 $changes = $fh->updateFile(\%config_rules_1,
                            $dpm_options,
