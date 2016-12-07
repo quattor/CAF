@@ -68,6 +68,7 @@ is_deeply(\%opts, {
     mtime => 1234567,
     contents => TEXT,
     noaction => 0,
+    silent => 1,
 }, "options set in new(), derived noaction and current contents are passed to LC (via parent filewriter)");
 
 is(*$fh->{filename}, $filename, "The object stores its parent's attributes");

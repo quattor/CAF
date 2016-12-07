@@ -214,7 +214,15 @@ sub close
         *$self->{save} = 0;
         $str = *$self->{buf};
         *$self->{options}->{contents} = $$str;
-        $ret = LC::Check::file (*$self->{filename}, %{*$self->{options}});
+
+        my %cf_opts = %{*$self->{options}};
+        if(! exists($cf_opts{silent})) {
+            # make sure LC::Check::file is silent unless in noaction mode
+            # (or when explicitly set via silent option)
+            $cf_opts{silent} = *$self->{options}->{noaction} ? 0 : 1
+        }
+
+        $ret = LC::Check::file (*$self->{filename}, %cf_opts);
         # Restore the SELinux context in case of modifications.
         if ($ret) {
             $self->change_hook();
