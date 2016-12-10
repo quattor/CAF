@@ -1,4 +1,5 @@
-#!/usr/bin/perl
+use strict;
+use warnings;
 
 BEGIN {
     # remove the module path that is holding the temp LC mock
@@ -10,8 +11,6 @@ use FindBin qw($Bin);
 # actually running executable; don't fake LC
 use lib "$Bin/modules";
 
-use strict;
-use warnings;
 use testapp;
 use CAF::Process;
 use Test::More;
@@ -22,8 +21,8 @@ my $exe = abs_path("$Bin/../resources/stream_output.sh");
 my ($fh, $str, $output);
 
 open ($fh, ">", \$str);
-my $this_app = testapp->new ($0, qw (--verbose));
-$this_app->set_report_logfile ($fh);
+my $this_app = testapp->new($0, qw (--verbose));
+$this_app->config_reporter(logfile => $fh);
 
 my $string_output='';
 

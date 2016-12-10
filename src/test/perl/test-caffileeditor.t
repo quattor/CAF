@@ -167,13 +167,13 @@ $fh->cancel();
 
 close ($log);
 open ($log, ">", \$str);
-$this_app->set_report_logfile($log);
+$this_app->config_reporter(logfile => $log);
 $fh = CAF::FileEditor->new($filename, log => $this_app);
 $fh->add_or_replace_lines("ljhljh", "Ljhljhluih", "oiojhpih", BEGINNING_OF_FILE);
 ok($str, "Debug output invoked by add_or_replace_lines when there is a log object");
 close ($log);
 open ($log, ">", \$str);
-$this_app->set_report_logfile($log);
+$this_app->config_reporter(logfile => $log);
 $fh = CAF::FileEditor->new($filename, log => $this_app);
 $fh->remove_lines("ljhljh", "lkjhljh");
 ok($str, "Debug output invoked by remove_lines when there is a log object");

@@ -46,7 +46,7 @@ Test all methods for C<CAF::Reporter>
 
 =over
 
-=item init_reporter / _rep_setup / setup_reporter / set_report_logfile / init_logfile
+=item init_reporter / _rep_setup / config_reporter / init_logfile
 
 =cut
 
@@ -78,13 +78,13 @@ my $myrep = myreporter->new();
 isa_ok($myrep, 'myreporter', 'myrep is a myreporter instance');
 
 # shouldn't be called like this, but this shouldn't change anything
-$myrep->setup_reporter();
+$myrep->config_reporter();
 
 is_deeply($CAF::Reporter::_REP_SETUP, $init,
-          "_REP_SETUP not changed with dummy setup_reporter call");
+          "_REP_SETUP not changed with dummy config_reporter call");
 
 # debug level 0, enable quiet, verbose, set facility and verbose_logfile
-$myrep->setup_reporter(0, 1, 1, 'facility', 1);
+$myrep->config_reporter(debuglvl => 0, quiet => 1, verbose => 1, facility => 'facility', verbose_logfile => 1);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$QUIET}, 1, "Quiet enabled");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
@@ -100,26 +100,26 @@ $myrep->init_reporter();
 is_deeply($CAF::Reporter::_REP_SETUP, $init, "_REP_SETUP re-initialsed");
 
 $myrep->init_reporter();
-$myrep->setup_reporter(-1);
+$myrep->config_reporter(debuglvl => -1);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Negative debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose not enabled with negative debug level");
 
 ok(! $myrep->is_verbose(), "is not verbose");
 
 $myrep->init_reporter();
-$myrep->setup_reporter(0);
+$myrep->config_reporter(debuglvl => 0);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose not enabled with 0 debug level");
 
 
 $myrep->init_reporter();
-$myrep->setup_reporter(2);
+$myrep->config_reporter(debuglvl => 2);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 2, "Debug level set to 2");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled with positive debug level");
 
 $myrep->init_reporter();
 # this is not a valid logfile, just a test value
-$myrep->set_report_logfile('whatever');
+$myrep->config_reporter(logfile => 'whatever');
 is($CAF::Reporter::_REP_SETUP->{$LOGFILE}, 'whatever', "LOGFILE set");
 
 $myrep->init_logfile('target/test/test_init_logfile.log', 'a');
@@ -130,18 +130,29 @@ is($initlogfile->{OPTS}, 'a', "new LOGFILE options set");
 
 # test preservation with undefs
 $myrep->init_reporter();
-$myrep->setup_reporter(2, 1, 1, 'facility');
+$myrep->config_reporter(debuglvl => 2, quiet => 1, verbose => 1, facility => 'facility');
 
 is($myrep->get_debuglevel(), 2, "Returned debug level 2");
 ok($myrep->is_quiet(), "is quiet");
 ok($myrep->is_verbose(), "is verbose");
 
 
-$myrep->set_report_logfile('whatever');
+$myrep->config_reporter(logfile => 'whatever');
 my $current = { %$CAF::Reporter::_REP_SETUP };
-$myrep->setup_reporter();
+$myrep->config_reporter();
 is_deeply($CAF::Reporter::_REP_SETUP, $current,
-   "passing undefs to setup_reporter preserves the settings");
+   "passing noargs to config_reporter preserves the settings");
+
+$myrep->config_reporter(
+    debuglvl => undef,
+    quiet => undef,
+    verbose => undef,
+    facility => undef,
+    verbose_logfile => undef,
+    logfile => undef,
+);
+is_deeply($CAF::Reporter::_REP_SETUP, $current,
+   "passing undefs to config_reporter preserves the settings");
 
 =item _make_message_string
 
@@ -177,8 +188,7 @@ ok($log->{SYSLOG}, 'SYSLOG is set for CAF::Log instance');
 isa_ok($log, 'CAF::Log', "log is a CAF::Log instance");
 
 $myrep->init_reporter();
-$myrep->setup_reporter(0,0,0,'myfacility');
-$myrep->set_report_logfile($log);
+$myrep->config_reporter(debuglvl => 0, quiet => 0, verbose => 0, facility => 'myfacility', logfile => $log);
 isa_ok($CAF::Reporter::_REP_SETUP->{LOGFILE}, 'CAF::Log',
        "LOGFILE is a CAF::Log instance");
 is($CAF::Reporter::_REP_SETUP->{LOGFILE}->{SYSLOG}, 'testlog',
@@ -223,7 +233,7 @@ is_deeply($logged, ['1','2','3'], "report call log with passed args with quiet d
 
 $printed = undef;
 # enable quiet
-$myrep->setup_reporter(0, 1);
+$myrep->config_reporter(debuglvl => 0, quiet => 1);
 is($CAF::Reporter::_REP_SETUP->{$QUIET}, 1, "Quiet enabled");
 is($myrep->report(4, 5 ,6), SUCCESS,
    "report returns SUCCESS");
@@ -312,7 +322,7 @@ ok(! defined($reported), 'verbose does not report with verbose disabled');
 ok(! defined($syslogged), 'verbose does not syslog with verbose disabled');
 
 
-$myrep->setup_reporter(0, 0, 1);
+$myrep->config_reporter(debuglvl => 0, quiet => 0, verbose => 1);
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
 $reported = undef;
 $syslogged = undef;
@@ -322,7 +332,7 @@ is_deeply($reported, ['[VERB] ', 'hello', 'verbose', 'enabled'],
 is_deeply($syslogged, ['notice', 'hello', 'verbose', 'enabled'],
           'verbose calls syslogs with notice priority and args with verbose verbose enabled');
 
-$myrep->setup_reporter(0, 0, 0, 'whatever', 1);
+$myrep->config_reporter(debuglvl => 0, quiet => 0, verbose => 0, facility => 'whatever', verbose_logfile => 1);
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose disabled (verbose_logfile)");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE_LOGFILE}, 1, "Verbose logfile enabled");
 $reported = undef;
@@ -360,7 +370,7 @@ ok(! defined($reported), 'debug1 does not report with debuglv0');
 ok(! defined($syslogged), 'debug1 does not syslog with debuglv0');
 
 # equal level
-$myrep->setup_reporter(1);
+$myrep->config_reporter(debuglvl => 1);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 1, "debuglv 1 set");
 is($myrep->debug(1, 'hello', 'debug', 'lv1'), SUCCESS, 'debug1 returns success with debuglv1');
 is_deeply($reported, ['[DEBUG] ', 'hello', 'debug', 'lv1'],
@@ -369,7 +379,7 @@ is_deeply($syslogged, ['debug', 'hello', 'debug', 'lv1'],
           'debug calls syslogs with debug priority and args with lvl 1 equal debuglv 1');
 
 # global lv > level
-$myrep->setup_reporter(2);
+$myrep->config_reporter(debuglvl => 2);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 2, "debuglv 2 set");
 is($myrep->debug(1, 'hello', 'debug', 'lv2'), SUCCESS, 'debug1 returns success with debuglv2');
 is_deeply($reported, ['[DEBUG] ', 'hello', 'debug', 'lv2'],
@@ -389,7 +399,7 @@ $reported = undef;
 my $myrep2 = myreporter->new();
 isa_ok($myrep2, 'myreporter', 'myrep2 is a myreporter instance');
 
-$myrep->setup_reporter(2);
+$myrep->config_reporter(debuglvl => 2);
 
 is($myrep2->debug(1, 'hello', 'myrep2', 'debug', 'lv2'),
    SUCCESS, 'myrep2 debug1 returns success with debuglv2');
@@ -423,7 +433,7 @@ is_deeply($mcurrent1, $CAF::Reporter::_REP_SETUP,
 
 # disable debug level on mymany1
 is($mymany1->{DEBUGLV}, 2, "mymany1 debuglv set to 2");
-$mymany1->setup_reporter(0);
+$mymany1->config_reporter(debuglvl => 0);
 $reported = undef;
 is($mymany1->debug(1, 'hello', 'mymany1', 'debug', 'lv0'),
    SUCCESS, 'mymany1 debug1 returns success with debuglv0');
@@ -455,9 +465,36 @@ is_deeply($mcurrent2, $CAF::Reporter::_REP_SETUP,
           "mymany2 init reporter config from global _REP_SETUP");
 
 
-$mymany2->setup_reporter(5);
+$mymany2->config_reporter(debuglvl => 5);
 is($mymany2->{DEBUGLV}, 5, "mymany2 debuglv set to 5");
 is($mymany1->{DEBUGLV}, 0, "mymany1 debuglv unmodified at 0");
+
+=item legacy methods setup_reporter / set_report_logfile
+
+=cut
+
+my $opts;
+$mock->mock('config_reporter', sub {shift; $opts = {@_}; return 123});
+
+$opts = undef;
+is($myrep->setup_reporter(qw(a b c d e)), 123, "setup_reporter returns config_reporter value");
+is_deeply($opts, {
+    debuglvl => 'a',
+    quiet => 'b',
+    verbose => 'c',
+    facility => 'd',
+    verbose_logfile => 'e',
+}, "setup_reporter calls config_reporter options");
+
+$opts = undef;
+is($myrep->set_report_logfile(123), 123, "set_report_logfile returns config_reporter value");
+is_deeply($opts, {logfile => 123},
+          "set_report_logfile calls config_reporter with logfile value");
+
+$opts = undef;
+$myrep->set_report_logfile();
+is_deeply($opts, {logfile => 0},
+          "set_report_logfile(undef) is equal to config_reporter with false logfile value");
 
 
 =pod

@@ -70,7 +70,7 @@ if ($^O eq 'linux') {
 }
 
 open ($log, ">", \$str);
-$this_app->set_report_logfile ($log);
+$this_app->config_reporter(logfile => $log);
 
 init_test;
 my $fh = CAF::FileWriter->new (FILENAME, mode => 0600);
@@ -186,7 +186,7 @@ close($log);
 open ($log, ">", \$str);
 *testapp::report = sub { $report = 1; };
 
-$this_app->set_report_logfile ($log);
+$this_app->config_reporter(logfile => $log);
 init_test();
 $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello, world\n";
