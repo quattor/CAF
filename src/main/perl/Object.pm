@@ -189,7 +189,7 @@ Returns the C<env> hashref.
 
 To be used as
     # Setup local environment
-    local %ENV;
+    local %ENV = %ENV;
     $self->update_env(\%ENV);
 
 Example:
@@ -207,7 +207,7 @@ Example:
     {
        ...
        # Setup local environment
-       local %ENV;
+       local %ENV = %ENV;
        $self->update_env(\%ENV);
 
        # everything in the remainder of the method runs in modified environment
