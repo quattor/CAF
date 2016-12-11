@@ -9,7 +9,12 @@ use myreportermany;
 use Test::More;
 use Test::MockModule;
 use CAF::Log;
-use CAF::Reporter qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY $HISTORY $WHOAMI $VERBOSE_LOGFILE);
+use CAF::Reporter qw($VERBOSE
+    $DEBUGLV $QUIET $LOGFILE
+    $SYSLOG $FACILITY $HISTORY
+    $WHOAMI $VERBOSE_LOGFILE
+    $STRUCT
+);
 use LC::Exception qw (SUCCESS);
 
 use Scalar::Util qw(refaddr);
@@ -22,7 +27,9 @@ use object_ok;
 
 mkdir('target/test');
 
-my ($openlogged, $closelogged, $syssyslogged, $printed, $logged, $syslogged, $reported, $logprinted);
+my ($openlogged, $closelogged, $syssyslogged,
+    $printed, $logged, $syslogged, $reported,
+    $logprinted, $struct);
 
 
 my $syslogmock = Test::MockModule->new('Sys::Syslog');
@@ -33,6 +40,7 @@ $caflogmock->mock('print', sub ($$) {shift; $logprinted = \@_; });
 
 my $mock = Test::MockModule->new('CAF::Reporter');
 $mock->mock('_print', sub { $printed = \@_;});
+$mock->mock('_struct_teststruct', sub {shift; $struct = \@_;});
 
 # not via syslogmock
 $mock->mock('openlog', sub { $openlogged = \@_;});
@@ -62,6 +70,7 @@ is($FACILITY, 'FACILITY', 'expected value for readonly $FACILITY');
 is($HISTORY, 'HISTORY', 'expected value for readonly $HISTORY');
 is($WHOAMI, 'WHOAMI', 'expected value for readonly $WHOAMI');
 is($VERBOSE_LOGFILE, 'VERBOSE_LOGFILE', 'expected value for readonly $VERBOSE_LOGFILE');
+is($STRUCT, 'STRUCT', 'expected value for readonly $STRUCT');
 
 my $init = {
     $VERBOSE => 0,
@@ -70,6 +79,7 @@ my $init = {
     $LOGFILE => undef,
     $FACILITY => 'local1',
     $VERBOSE_LOGFILE => 0,
+    $STRUCT => undef,
 };
 
 is_deeply($CAF::Reporter::_REP_SETUP, $init, "_REP_SETUP initialsed");
@@ -84,12 +94,22 @@ is_deeply($CAF::Reporter::_REP_SETUP, $init,
           "_REP_SETUP not changed with dummy config_reporter call");
 
 # debug level 0, enable quiet, verbose, set facility and verbose_logfile
-$myrep->config_reporter(debuglvl => 0, quiet => 1, verbose => 1, facility => 'facility', verbose_logfile => 1);
+$myrep->config_reporter(
+    debuglvl => 0,
+    quiet => 1,
+    verbose => 1,
+    facility => 'facility',
+    verbose_logfile => 1,
+    logfile => 'not an actual log instance',
+    struct => 'teststruct',
+);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$QUIET}, 1, "Quiet enabled");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
 is($CAF::Reporter::_REP_SETUP->{$FACILITY}, 'facility', "Facility set");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE_LOGFILE}, 1, "verbose_logfile set");
+is($CAF::Reporter::_REP_SETUP->{$LOGFILE}, 'not an actual log instance', "logfile set");
+is($CAF::Reporter::_REP_SETUP->{$STRUCT}, "_struct_teststruct", "struct set");
 is($CAF::Reporter::_REP_SETUP, $myrep->_rep_setup(), "_rep_setup returns ref to _REP_SETUP for Reporter");
 
 is($myrep->get_debuglevel(), 0, "Returned debug level 0");
@@ -150,9 +170,25 @@ $myrep->config_reporter(
     facility => undef,
     verbose_logfile => undef,
     logfile => undef,
+    struct => undef,
 );
 is_deeply($CAF::Reporter::_REP_SETUP, $current,
    "passing undefs to config_reporter preserves the settings");
+
+$myrep->init_reporter();
+$printed = undef;
+ok($myrep->config_reporter(struct => 'teststruct'), 'setting struct retruns success');
+is($CAF::Reporter::_REP_SETUP->{$STRUCT}, "_struct_teststruct", "struct set 2");
+ok($myrep->config_reporter(struct => 0), 'unsetting struct with false value retruns success');
+ok(! defined($CAF::Reporter::_REP_SETUP->{$STRUCT}), "struct unset");
+ok($myrep->config_reporter(struct => 'teststruct'), 'setting struct retruns success 2');
+is($CAF::Reporter::_REP_SETUP->{$STRUCT}, "_struct_teststruct", "struct set 3");
+ok(!defined($myrep->config_reporter(struct => 'novalidstruct')), 'try to setting invalid struct retruns undef');
+is_deeply($printed,
+          ["[ERROR] No method _struct_novalidstruct found for structured logging\n"],
+          "error message reported with invalid struct");
+is($CAF::Reporter::_REP_SETUP->{$STRUCT}, "_struct_teststruct", "struct not modified on failure");
+
 
 =item _make_message_string
 
@@ -183,6 +219,12 @@ is(mms("Hello [% world %]", {world => 'quattor'}),
    "Hello quattor",
    "TT based templating triggered by hashref as last element");
 ok(!defined($warn), "no warn on success");
+
+$warn = undef;
+is(mms("Hello world", {world => 'quattor'}),
+   "Hello world",
+   "TT based templating success w/o any templating");
+ok(!defined($warn), "no warn on success w/o templating");
 
 $warn = undef;
 is(mms("Hello [% world %]", {worldz => 'quattorz'}),
@@ -220,6 +262,7 @@ isa_ok($log, 'CAF::Log', "log is a CAF::Log instance");
 
 $myrep->init_reporter();
 $myrep->config_reporter(debuglvl => 0, quiet => 0, verbose => 0, facility => 'myfacility', logfile => $log);
+$struct = undef;
 isa_ok($CAF::Reporter::_REP_SETUP->{LOGFILE}, 'CAF::Log',
        "LOGFILE is a CAF::Log instance");
 is($CAF::Reporter::_REP_SETUP->{LOGFILE}->{SYSLOG}, 'testlog',
@@ -227,9 +270,25 @@ is($CAF::Reporter::_REP_SETUP->{LOGFILE}->{SYSLOG}, 'testlog',
 is($CAF::Reporter::_REP_SETUP->{FACILITY}, 'myfacility',
    "myfacility FACILITY set");
 
-is($myrep->log('something', 'else'), SUCCESS, "log returned success");
+# No templating
+is($myrep->log('something', 'else', {a => 1}), SUCCESS, "log returned success");
 is_deeply($logprinted, ["somethingelse\n"],
           "LOGFILE print method called on log (string concat with newline)");
+ok(! defined($struct), "no struct logging without STRUCT set");
+
+$myrep->config_reporter(struct => 'teststruct');
+is($myrep->log('[% a %]something', 'else', {a => 1}), SUCCESS, "log returned success 2");
+is_deeply($logprinted, ["1somethingelse\n"],
+          "LOGFILE print method called on log (string concat with newline and templating) 2");
+is_deeply($struct, [{a => 1}],
+          "struct logging called with STRUCT set and hasref as last element");
+
+$struct = undef;
+is($myrep->log('[% a %]something', 'else'), SUCCESS, "log returned success 3");
+is_deeply($logprinted, ["[% a %]somethingelse\n"],
+          "LOGFILE print method called on log (string concat with newline and no templating) 3");
+ok(! defined($struct), "no struct logging with STRUCT set and w/o hashref as last element");
+
 
 $closelogged = undef;
 ok(! defined($myrep->syslog('myprio', 'syslog', 'set')), "syslog returned undef");

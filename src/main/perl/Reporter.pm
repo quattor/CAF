@@ -28,24 +28,27 @@ Readonly our $FACILITY => 'FACILITY';
 Readonly our $HISTORY => 'HISTORY';
 Readonly our $WHOAMI => 'WHOAMI';
 Readonly our $VERBOSE_LOGFILE => 'VERBOSE_LOGFILE';
+Readonly our $STRUCT => 'STRUCT';
+
 
 our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET
     $LOGFILE $SYSLOG $FACILITY
     $HISTORY $WHOAMI
-    $VERBOSE_LOGFILE
+    $VERBOSE_LOGFILE $STRUCT
 );
 
-
-my $_reporter_default = {
 # Very limited: no include path, strict interpretation, no recursion
 my $_tt_inst = get_template_instance([], STRICT => 1, RECURSION => 0);
 
+
+my $_reporter_default = {
     $VERBOSE  => 0,        # no verbose
     $DEBUGLV  => 0,        # no debug
     $QUIET    => 0,        # don't be quiet
     $LOGFILE  => undef,    # no log file
     $FACILITY => 'local1', # syslog facility
     $VERBOSE_LOGFILE => 0,
+    $STRUCT => undef,
 };
 
 # setup the initial/default _REP_SETUP
@@ -218,6 +221,13 @@ If C<logfile> is defined but false, no logfile will be used.
 (The name is slightly misleading, because is it does not set the logfile's
 filename, but the internal C<$LOGFILE> attribute).
 
+=item struct
+
+Enable the structured logging type C<struct> (implemented by method
+C< <_struct_<struct> >>).
+
+If C<struct> is defined but false, structured logging will be disabled.
+
 =back
 
 If any of these arguments is C<undef>, current application settings
@@ -232,6 +242,8 @@ sub config_reporter
 {
     my ($self, %opts) = @_;
 
+    my $fail;
+
     $self->_rep_setup()->{$DEBUGLV} = ($opts{debuglvl} > 0 ? $opts{debuglvl} : 0)
         if defined($opts{debuglvl});
     $self->_rep_setup()->{$QUIET} = ($opts{quiet} ? 1 : 0)
@@ -245,7 +257,22 @@ sub config_reporter
     $self->_rep_setup()->{$LOGFILE} = ($opts{logfile} ? $opts{logfile} : undef)
         if defined($opts{logfile});
 
-    return SUCCESS;
+    if (defined($opts{struct})) {
+        if ($opts{struct}) {
+            my $method = "_struct_$opts{struct}";
+            if ($self->can($method)) {
+                $self->_rep_setup()->{$STRUCT} = $method;
+            } else {
+                $fail = 1;
+                $self->error("No method $method found for structured logging");
+            }
+        } else {
+            # Do nothing
+            $self->_rep_setup()->{$STRUCT} = undef;
+        }
+    }
+
+    return $fail ? undef : SUCCESS;
 }
 
 
@@ -496,6 +523,10 @@ Writes C<@array> as a concatenated string with added newline
 to the log file, if one is setup
 (via C<<config_reporter(logfile => $loginst) >>).
 
+If the last argument is a hashref and structured logging is enabled
+(via C<<config_reporter(struct => $type) >>), call the structured
+logging method with this hashref as argument.
+
 =cut
 
 sub log
@@ -503,6 +534,12 @@ sub log
     my $self = shift;
 
     $self->_rep_setup()->{$LOGFILE}->print(_make_message_string(@_)."\n") if ($self->_rep_setup()->{$LOGFILE});
+
+    my $struct = $self->_rep_setup()->{$STRUCT};
+    if ($struct && ref($_[-1]) eq 'HASH') {
+        $self->$struct($_[-1]);
+    }
+
     return SUCCESS;
 }
 
