@@ -3,8 +3,10 @@
 use LC::Exception qw (SUCCESS throw_error);
 use Sys::Syslog qw (openlog closelog);
 
+use Data::Dumper;
 use CAF::Log qw($SYSLOG);
 use CAF::History qw($EVENTS);
+use CAF::TextRender qw(get_template_instance);
 
 use vars qw($_REP_SETUP);
 use parent qw(Exporter);
@@ -35,6 +37,9 @@ our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET
 
 
 my $_reporter_default = {
+# Very limited: no include path, strict interpretation, no recursion
+my $_tt_inst = get_template_instance([], STRICT => 1, RECURSION => 0);
+
     $VERBOSE  => 0,        # no verbose
     $DEBUGLV  => 0,        # no debug
     $QUIET    => 0,        # don't be quiet
@@ -57,13 +62,44 @@ sub _rep_setup
 
 # Join all arguments into a single string
 # Handles undefined arguments and non-printable garbage
+# If last argument is a hashref, use the first arguments as template
+# with last argument as data
 sub _make_message_string
 {
+    my @args = @_;
+
+    # Template with hashref
+    my $do_template = ref($args[-1]) eq 'HASH';
+    my $template_data;
+    if ($do_template) {
+        # Handle last arg as template data
+        $template_data = pop(@args);
+    }
+
     # Ensure that there is no undefined arg: replace by <undef> if any, force stringification otherwise.
-    my @args = map {defined($_) ? "$_" : '<undef>'} @_;
+    @args = map {defined($_) ? "$_" : '<undef>'} @args;
 
     # Make single string
     my $string = join('', @args);
+
+    if ($do_template) {
+        # Try to use C<$string> as template
+
+        local $Data::Dumper::Indent = 0;
+        local $Data::Dumper::Terse = 1;
+        my $res;
+        if ($string eq '') {
+            # only hashref passed
+            $string = Dumper($template_data);
+        } elsif ($_tt_inst->process(\$string, $template_data, \$res)) {
+            $string = $res;
+        } else {
+            # the new "message" will contain the old template and data, so still useful
+            $string = "Unable to process template '$string' with data " . Dumper($template_data) . ": " . $_tt_inst->error();
+            # Don't die, but warn
+            warn($string);
+        }
+    }
 
     # Replace any non-printable character with a ?
     # print charclass only includes whitespace that is not a control charater

@@ -158,18 +158,49 @@ is_deeply($CAF::Reporter::_REP_SETUP, $current,
 
 =cut
 
+sub mms {return CAF::Reporter::_make_message_string(@_)};
+
 use utf8;
-is(CAF::Reporter::_make_message_string("begin", undef, "testutf8_☺_", "test_binary_\0_\0\0", "\nnext\t ","end"),
+is(mms("begin", undef, "testutf8_☺_", "test_binary_\0_\0\0", "\nnext\t ","end"),
    "begin<undef>testutf8_☺_test_binary_?_??\nnext\t end",
    "_make_message_string handles undef, utf8 and non-utf8 code (in proper encoding)");
 no utf8;
 
 # U+263A (the smiley) is now used in non-utf8 encoding, so it's binary garbage
 # the smiley is 3 bytes (0xE2 0x98 0xBA)
-is(CAF::Reporter::_make_message_string("testutf8_☺_"),
+is(mms("testutf8_☺_"),
    "testutf8_???_",
    "_make_message_string via :print: charclass is encoding aware");
 
+#
+# test templating with hashrefs
+#
+my $warn;
+$SIG{__WARN__} = sub {$warn = $_[0];};
+
+$warn = undef;
+is(mms("Hello [% world %]", {world => 'quattor'}),
+   "Hello quattor",
+   "TT based templating triggered by hashref as last element");
+ok(!defined($warn), "no warn on success");
+
+$warn = undef;
+is(mms("Hello [% world %]", {worldz => 'quattorz'}),
+   "Unable to process template 'Hello [% world %]' with data {'worldz' => 'quattorz'}: var.undef error - undefined variable: world",
+   "Nothing to template, strict mode");
+like($warn, qr{Unable to process template .* undefined variable: world}, "warn on nothing to template");
+
+$warn = undef;
+is(mms("Hello [% IF world %] missing end", {world => 'quattor'}),
+   "Unable to process template 'Hello [% IF world %] missing end' with data {'world' => 'quattor'}: file error - parse error - input text line 1: unexpected end of input",
+   "Invalid template failure");
+like($warn, qr{Unable to process template .* parse error}, "warn on invalid template");
+
+$warn = undef;
+is(mms({world => 'quattor'}),
+   "{'world' => 'quattor'}",
+   "special case with only hashref and no template passed");
+ok(!defined($warn), "no warn on success without template");
 
 =item log and syslog
 
