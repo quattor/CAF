@@ -11,6 +11,13 @@ use parent qw(Exporter);
 
 use Readonly;
 
+# Speedup _make_message_string
+# expires after 3 seconds (mainly intended for reused _print / log / syslog)
+use Memoize;
+use Memoize::Expire;
+tie my %cache => 'Memoize::Expire', LIFETIME => 3;
+memoize '_make_message_string', SCALAR_CACHE => [HASH => \%cache ];
+
 Readonly our $VERBOSE => 'VERBOSE';
 Readonly our $DEBUGLV => 'DEBUGLV';
 Readonly our $QUIET => 'QUIET';
