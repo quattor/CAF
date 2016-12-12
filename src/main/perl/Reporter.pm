@@ -7,6 +7,8 @@ use Data::Dumper;
 use CAF::Log qw($SYSLOG);
 use CAF::History qw($EVENTS);
 use CAF::TextRender qw(get_template_instance);
+use JSON::XS;
+use Storable qw(dclone);
 
 use vars qw($_REP_SETUP);
 use parent qw(Exporter);
@@ -19,6 +21,9 @@ use Memoize;
 use Memoize::Expire;
 tie my %cache => 'Memoize::Expire', LIFETIME => 3;
 memoize '_make_message_string', SCALAR_CACHE => [HASH => \%cache ];
+
+# Hold the JSON::XS instance for struct CEEsyslog
+my $_ceelog_jsonxs;
 
 Readonly our $VERBOSE => 'VERBOSE';
 Readonly our $DEBUGLV => 'DEBUGLV';
@@ -76,7 +81,9 @@ sub _make_message_string
     my $template_data;
     if ($do_template) {
         # Handle last arg as template data
-        $template_data = pop(@args);
+        # Use a deep-copy, to prevent stringification type changes
+        # for optional struct logger usage.
+        $template_data = dclone(pop(@args));
     }
 
     # Ensure that there is no undefined arg: replace by <undef> if any, force stringification otherwise.
@@ -100,7 +107,7 @@ sub _make_message_string
             # the new "message" will contain the old template and data, so still useful
             $string = "Unable to process template '$string' with data " . Dumper($template_data) . ": " . $_tt_inst->error();
             # Don't die, but warn
-            warn($string);
+            CORE::warn($string);
         }
     }
 
@@ -577,6 +584,46 @@ sub syslog
     };
 
     return;
+}
+
+=item _struct_CEEsyslog
+
+A structured logging method that uses CEE C<Common Event Expression> format
+and reports it via syslog with info facility.
+
+=cut
+
+sub _struct_CEEsyslog
+{
+    my ($self, $data) = @_;
+
+    if (!defined($_ceelog_jsonxs)) {
+        # see also Log::Log4perl::Layout::JSON settings
+        $_ceelog_jsonxs = JSON::XS->new()
+            ->indent(0)          # to prevent newlines (and save space)
+            ->ascii(1)           # to avoid encoding issues downstream
+            ->allow_unknown(1)   # encode null on bad value (instead of exception)
+            ->convert_blessed(1) # call TO_JSON on blessed ref, if it exists
+            ->allow_blessed(1)   # encode null on blessed ref that can't be converted
+            ->canonical(1);      # sort the keys, to create reproducable results
+    }
+
+    my $jsontxt;
+
+    local $@;
+    eval {
+        $jsontxt = $_ceelog_jsonxs->encode($data);
+    };
+    if ($@) {
+        local $Data::Dumper::Indent = 0;
+        local $Data::Dumper::Terse = 1;
+        # Don't die, but warn
+        CORE::warn("Failed JSON::XS encoding data " . Dumper($data) . ": $@");
+    } else {
+        $self->syslog('info', '@cee: ', $jsontxt);
+
+        return SUCCESS;
+    }
 }
 
 =pod

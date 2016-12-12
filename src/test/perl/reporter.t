@@ -304,9 +304,40 @@ $openlogged = undef;
 ok(! defined($myrep->syslog('myprio', 'syslog', 'not', 'set')), "syslog returned undef");
 ok(! defined($openlogged), "openlog not called when SYSLOG attribute of LOGFILE is not set");
 
-# from now on, mock log and syslog
+# from now on, mock syslog
+my $previoussyslogged;
+$mock->mock('syslog', sub { shift; $previoussyslogged = $syslogged; $syslogged = \@_;});
+
+=item _struct_CEEsyslog / struct CEEsyslog
+
+=cut
+
+
+$myrep->init_reporter();
+
+$myrep->_struct_CEEsyslog({a => 1, b => { c => [0]} });
+is_deeply($syslogged, ['info', '@cee: ', '{"a":1,"b":{"c":[0]}}'],
+          '_struct_CEEsyslog calls syslogs with info priority and @cee and jsonencoded data');
+
+$myrep->init_reporter();
+ok($myrep->config_reporter(struct => 'CEEsyslog', verbose => 1),
+   'CEEsyslog struct logging selected');
+ok($myrep->verbose('[% b.c.0 %] something with [% a %]', {a => 2, b => { c => [1,2,3]} }),
+   'verbose reported CEEsyslog');
+
+# check reported via print
+is_deeply($printed, ["[VERB] 1 something with 2\n"],
+          'verbose calls report/_print with templated data');
+# check double syslog, first/previous syslog call, 2nd/last syslog via CEEsyslog via log
+is_deeply($previoussyslogged, ['notice', '[% b.c.0 %] something with [% a %]', {a => 2, b => { c => [1,2,3]} }],
+          'verbose with all args untemplated data to syslog');
+# it is important that integers are preserved
+is_deeply($syslogged, ['info', '@cee: ', '{"a":2,"b":{"c":[1,2,3]}}'],
+          'verbose with struct CEEsyslog');
+
+
+# from now on, mock log
 $mock->mock('log', sub { shift; $logged = \@_; return SUCCESS});
-$mock->mock('syslog', sub { shift; $syslogged = \@_;});
 
 =pod
 
