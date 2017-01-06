@@ -109,6 +109,7 @@
                       <directory>src/main/perl</directory>
                       <includes>
                         <include>*.pm</include>
+                        <include>**/*.pm</include>
                       </includes>
                       <filtering>true</filtering>
                     </resource>
@@ -162,6 +163,7 @@
                       <directory>src/main/perl</directory>
                       <includes>
                         <include>*.pm</include>
+                        <include>**/*.pm</include>
                       </includes>
                       <filtering>true</filtering>
                     </resource>
@@ -265,9 +267,6 @@
             <mappings>
               <mapping>
                 <directory>/usr/lib/perl/CAF</directory>
-                <filemode>644</filemode>
-                <username>root</username>
-                <groupname>root</groupname>
                 <directoryIncluded>false</directoryIncluded>
                 <sources>
                   <source>
@@ -278,9 +277,6 @@
               </mapping>
               <mapping>
                 <directory>/usr/share/doc/${project.artifactId}-${project.version}</directory>
-                <filemode>644</filemode>
-                <username>root</username>
-                <groupname>root</groupname>
                 <documentation>true</documentation>
                 <directoryIncluded>false</directoryIncluded>
                 <sources>
@@ -294,9 +290,6 @@
               </mapping>
               <mapping>
                 <directory>${man.page.dir}/man8</directory>
-                <filemode>644</filemode>
-                <username>root</username>
-                <groupname>root</groupname>
                 <configuration>false</configuration>
                 <documentation>true</documentation>
                 <directoryIncluded>false</directoryIncluded>

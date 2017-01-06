@@ -66,7 +66,7 @@ To create a new ticket for principal SERVICE/host@REALM
 
     # set environment to temporary credential cache
     # temporary cache is cleaned-up during destroy of $krb
-    local %ENV;
+    local %ENV = %ENV;
     $krb->update_env(\%ENV);
 
 =cut
@@ -772,7 +772,7 @@ foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
             my $self = shift;
 
             # Setup local environment
-            local %ENV;
+            local %ENV = %ENV;
             $self->update_env(\%ENV);
 
             my ($status);
@@ -849,7 +849,7 @@ sub _process
     my ($self, $cmd) = @_;
 
     # Setup local environment
-    local %ENV;
+    local %ENV = %ENV;
     $self->update_env(\%ENV);
 
     my $proc = CAF::Process->new($cmd, log => $self);
