@@ -29,7 +29,11 @@ my $_default_https_class;
 # This is the main variable that should be set asap.
 # It is relevant for Net::HTTPS;
 # first module to import it wins.
-local $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+
+# assigning undef to ENV gives warning in EL5
+my $_orig_val = $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+local $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+$ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $_orig_val if defined($_orig_val);
 
 BEGIN {
     Readonly $HTTPS_CLASS_NET_SSL => 'Net::SSL';
@@ -57,8 +61,12 @@ BEGIN {
         }
     }
 
-    # This doesn't do anything on EL5?
-    $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $_default_https_class;
+    # assigning undef to ENV gives warning in EL5
+    if (defined($_default_https_class)) {
+        $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $_default_https_class;
+    } else {
+        delete $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+    };
 }
 
 # Keep this outside the BEGIN{} block

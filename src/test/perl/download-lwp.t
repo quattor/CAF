@@ -38,7 +38,6 @@ $mock->mock('testenv', sub {shift;return [\@_, eval '\%ENV']});
 my $obj = Test::Quattor::Object->new();
 
 is_deeply(\%ENV, {
-    PERL_NET_HTTPS_SSL_SOCKET_CLASS => undef,
     SOMETHING_ELSE => 'else',
 }, "test local ENV as expected 0");
 
@@ -59,7 +58,6 @@ my $ua = $lwp->_get_ua(
 );
 isa_ok($ua, 'LWP::UserAgent', 'got a LWP::UserAgent instance');
 is_deeply(\%ENV, {
-    PERL_NET_HTTPS_SSL_SOCKET_CLASS => undef,
     SOMETHING_ELSE => 'else',
           }, "test local ENV as expected 1");
 
@@ -86,7 +84,6 @@ is_deeply($lwp->_do_ua('testenv', [qw(arg1 arg2)], key => 'key2'), [
                   SOMETHING_ELSE => 'else',
               }], "mocked testenv method call returned passed args and expected env");
 is_deeply(\%ENV, {
-    PERL_NET_HTTPS_SSL_SOCKET_CLASS => undef,
     SOMETHING_ELSE => 'else',
 }, "test local ENV as expected 2");
 
