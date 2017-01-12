@@ -72,7 +72,7 @@ sub set_lock
     my ($self, $retries, $timeout, $force) = @_;
 
     $retries = 0 unless (defined $retries);
-    $timeout = 0 unless (defined $retries);
+    $timeout = 0 unless (defined $timeout);
 
     if ($self->{LOCK_SET}) {
         $self->warn("lock already set by this application instance: $self->{LOCK_FILE}");
