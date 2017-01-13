@@ -113,7 +113,7 @@ $EC = LC::Exception::Context->new->will_store_all;
 
 use parent qw(CAF::FileEditor Exporter);
 
-use EDG::WP4::CCM::Element;
+use EDG::WP4::CCM::Path qw(unescape);
 
 use Readonly;
 
