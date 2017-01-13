@@ -11,6 +11,24 @@ C<CAF::Download::LWP> class to use C<LWP> (and C<Net::HTTPS>).
 C<CAF::Download::LWP> prepares C<LWP> (and C<Net::HTTPS>) and
 provides interface to C<LWP::UserAgent>.
 
+Remarks wrt SSL/TLS:
+
+=over
+
+=item If LWP is recent enough (v8.333, e.g. on EL6+),
+the choice of SSL module will be the system default
+(typically C<IO::Socket::SSL> when available, C<Net::SSL> otherwise).
+
+The usual environment variable will not be honoured
+(this module will typically be executed in a minimal environment anyway).
+
+When LWP is too old, C<Net::SSL> will be forced (e.g. on EL5).
+
+=item If LWP is recent enough and C<IO::Socket::SSL> is the default,
+hostname verification is forced.
+
+=back
+
 =head1 METHODS
 
 =over
