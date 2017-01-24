@@ -8,6 +8,7 @@ BEGIN {
     use LWP::UserAgent;
 
     # aka "ancient"
+    # will always use Net::SSL, never system default
     $LWP::UserAgent::VERSION = undef;
     %ENV = (
         PERL_NET_HTTPS_SSL_SOCKET_CLASS => 'woohaha',

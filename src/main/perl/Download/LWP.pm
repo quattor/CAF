@@ -11,6 +11,24 @@ C<CAF::Download::LWP> class to use C<LWP> (and C<Net::HTTPS>).
 C<CAF::Download::LWP> prepares C<LWP> (and C<Net::HTTPS>) and
 provides interface to C<LWP::UserAgent>.
 
+Remarks wrt SSL/TLS:
+
+=over
+
+=item If LWP is recent enough (v8.333, e.g. on EL6+),
+the choice of SSL module will be the system default
+(typically C<IO::Socket::SSL> when available, C<Net::SSL> otherwise).
+
+The usual environment variable will not be honoured
+(this module will typically be executed in a minimal environment anyway).
+
+When LWP is too old, C<Net::SSL> will be forced (e.g. on EL5).
+
+=item If LWP is recent enough and C<IO::Socket::SSL> is the default,
+hostname verification is forced.
+
+=back
+
 =head1 METHODS
 
 =over
@@ -29,7 +47,11 @@ my $_default_https_class;
 # This is the main variable that should be set asap.
 # It is relevant for Net::HTTPS;
 # first module to import it wins.
-local $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+
+# assigning undef to ENV gives warning in EL5
+my $_orig_val = $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+local $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+$ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $_orig_val if defined($_orig_val);
 
 BEGIN {
     Readonly $HTTPS_CLASS_NET_SSL => 'Net::SSL';
@@ -57,8 +79,12 @@ BEGIN {
         }
     }
 
-    # This doesn't do anything on EL5?
-    $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $_default_https_class;
+    # assigning undef to ENV gives warning in EL5
+    if (defined($_default_https_class)) {
+        $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $_default_https_class;
+    } else {
+        delete $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+    };
 }
 
 # Keep this outside the BEGIN{} block
