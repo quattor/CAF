@@ -12,6 +12,7 @@ package testapp;
 
 use strict;
 use warnings;
+use Test::More;
 use CAF::Process;
 use CAF::Application;
 use LC::Exception qw (SUCCESS);
@@ -50,7 +51,17 @@ sub verbose
     my ($self, @lines) = @_;
     my $text = join ("", @lines);
     my $fh = $CAF::Reporter::_REP_SETUP->{LOGFILE};
-    print $fh $text;
+    print $fh $text if defined($fh);
+    diag "[VERB] $text\n";
 }
+
+sub debug
+{
+    my ($self, $lvl, @lines) = @_;
+    my $text = join ("", @lines);
+    diag "[DEBUG] $lvl $text\n";
+}
+
+
 
 1;
