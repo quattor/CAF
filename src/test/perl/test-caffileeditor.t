@@ -16,6 +16,7 @@ mkpath($testdir);
 (undef, our $filename) = tempfile(DIR => $testdir);
 
 use constant TEXT => <<EOF;
+sysconfig = "in spanish"
 En un lugar de La Mancha, de cuyo nombre no quiero acordarme
 no ha tiempo que vivía un hidalgo de los de lanza en astillero...
 EOF
@@ -39,7 +40,7 @@ sub init_test
 
 
 my ($log, $str);
-my $this_app = testapp->new ($0, qw (--verbose));
+my $this_app = testapp->new ($0, qw (--verbose --debug 5));
 
 $SIG{__DIE__} = \&confess;
 
@@ -98,7 +99,7 @@ unlike(${$fh->string_ref()}, qr(no corredor), "replace_lines doesn't do anything
 my $re = "There was Eru, who in Arda is called Ilúvatar" . HEADTEXT;
 $fh->replace_lines(HEADTEXT, "There was Eru.*", $re);
 like(${$fh->string_ref()},  qr($re), "replace lines actually replaces lines that match re but not goodre");
-$fh = CAF::FileEditor->new($filename);
+$fh = CAF::FileEditor->new($filename, log => $this_app);
 print $fh TEXT;
 $fh->add_or_replace_lines(
     qr(En un lugar de La Mancha),
@@ -142,6 +143,14 @@ $fh->replace_lines(qr(la mancha)i, qr(blah blah blah), "la mancha blah blah blah
 like(${$fh->string_ref()},
      qr(la mancha blah blah blah)s,
      "Regular expression modifiers work");
+
+like($fh, qr{^sysconfig.*spanish}m,
+     "add_or_replace_sysconfig_lines going to replace original sysconfig format entry");
+$fh->add_or_replace_sysconfig_lines('sysconfig', "another language");
+like($fh, qr{sysconfig=another language}m,
+     "add_or_replace_sysconfig_lines replaces sysconfig format");
+unlike($fh, qr{^sysconfig.*spanish}m,
+     "add_or_replace_sysconfig_lines replaced original sysconfig format entry");
 
 $fh->add_or_replace_sysconfig_lines("Quijote", "Rocinante");
 like($fh, qr{Quijote\s*=\s*Rocinante$},

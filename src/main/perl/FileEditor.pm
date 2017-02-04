@@ -266,8 +266,8 @@ sub add_or_replace_sysconfig_lines {
     ($offset, $whence) = IO_SEEK_END if (not defined($whence));
     $offset = 0 if (not defined($offset));
 
-    $self->add_or_replace_lines('^/s*'.$key.'/s*'.SYSCONFIG_SEPARATOR,
-                                '^'.$key.'/s*'.SYSCONFIG_SEPARATOR.'/s*'.$value,
+    $self->add_or_replace_lines('^\s*'.$key.'\s*'.SYSCONFIG_SEPARATOR,
+                                '^'.$key.'\s*'.SYSCONFIG_SEPARATOR.'\s*'.$value.'\s*\n$',
                                 $key.SYSCONFIG_SEPARATOR.$value."\n",
                                 $whence, $offset);
 }
