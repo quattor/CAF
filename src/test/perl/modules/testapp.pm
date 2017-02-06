@@ -62,6 +62,4 @@ sub debug
     diag "[DEBUG] $lvl $text\n";
 }
 
-
-
 1;

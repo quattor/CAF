@@ -16,6 +16,15 @@ use File::Path qw(mkpath);
 use File::Temp qw(tempfile);
 use CAF::Object;
 
+use Test::MockModule;
+my $mockapp = Test::MockModule->new('CAF::Application');
+$mockapp->mock('error', sub {
+    my ($self, @lines) = @_;
+    $self->{ERROR} = @lines;
+    my $text = join ("", @lines);
+    diag "[ERROR] $text\n";
+});
+
 use Test::Quattor::Object;
 
 my $obj = Test::Quattor::Object->new();
@@ -44,7 +53,6 @@ our $path;
 our %opts = ();
 
 my ($log, $str);
-
 open ($log, ">", \$str);
 
 sub init_test
@@ -55,15 +63,9 @@ sub init_test
     open ($log, ">", \$str);
 }
 
-my ($log, $str);
 my $this_app = testapp->new ($0, qw (--verbose --debug 5));
 
 $SIG{__DIE__} = \&confess;
-
-*testapp::error = sub {
-    my $self = shift;
-    $self->{ERROR} = @_;
-};
 
 init_test();
 my $fh = CAF::FileEditor->new ($filename,

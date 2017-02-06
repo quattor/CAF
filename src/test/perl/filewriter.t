@@ -2,7 +2,25 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::MockModule;
 $SIG{__WARN__} = sub {ok(0, "Perl warning: $_[0]");};
+
+my $proc;
+my $mock;
+my $app;
+
+
+BEGIN {
+    $mock = Test::MockModule->new ("CAF::Process");
+    # (Mocked) run is used for selinux restore call
+    $mock->mock ("run", sub {
+        $proc = $_[0];
+        $? = 0;
+        return 1;
+    });
+    $app = Test::MockModule->new ('CAF::Application');
+}
+
 
 use FindBin qw($Bin);
 use lib "$Bin/modules";
@@ -10,7 +28,6 @@ use testapp;
 use CAF::Reporter qw($HISTORY);
 use CAF::History qw($EVENTS);
 use CAF::Object;
-use Test::MockModule;
 use Scalar::Util qw(refaddr);
 use Errno qw(ENOENT);
 
@@ -53,22 +70,6 @@ sub init_test
     $report = 0;
     close($log);
     open ($log, ">", \$str);
-}
-
-my $proc;
-my $mock;
-my $app;
-
-
-BEGIN {
-    $mock = Test::MockModule->new ("CAF::Process");
-    # (Mocked) run is used for selinux restore call
-    $mock->mock ("run", sub {
-        $proc = $_[0];
-        $? = 0;
-        return 1;
-    });
-    $app = Test::MockModule->new ('CAF::Application');
 }
 
 my $mock_history = Test::MockModule->new('CAF::History');
