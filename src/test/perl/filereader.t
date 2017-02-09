@@ -23,7 +23,8 @@ EOF
 
 our $text = TEXT;
 
-my $fh = CAF::FileReader->new("/etc/resolv.conf");
+# file must exist, even offline
+my $fh = CAF::FileReader->new("/etc/hosts");
 
 isa_ok($fh, "CAF::FileReader");
 ok("$fh", "Contents are read");
