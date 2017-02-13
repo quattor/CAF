@@ -1,12 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-
-package CAF::ObjectText;
-
-use strict;
-use warnings;
+#${PMpre} CAF::ObjectText${PMpost}
 
 use CAF::Object qw(SUCCESS);
 use parent qw(CAF::Object);

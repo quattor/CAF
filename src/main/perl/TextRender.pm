@@ -1,12 +1,5 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} CAF::TextRender${PMpost}
 
-package CAF::TextRender;
-
-use strict;
-use warnings;
 use LC::Exception qw (SUCCESS);
 use CAF::FileWriter;
 use Cwd qw(abs_path);
@@ -21,8 +14,9 @@ use JSON::XS;
 use YAML::XS;
 use Config::Properties;
 use Config::Tiny;
+use Module::Load;
 
-use base qw(CAF::ObjectText Exporter);
+use parent qw(CAF::ObjectText Exporter);
 
 our @EXPORT_OK = qw($YAML_BOOL $YAML_BOOL_PREFIX);
 
@@ -419,7 +413,9 @@ sub load_module
     $self->verbose("Loading module $module");
 
     local $@;
-    eval "use $module";
+    eval {
+        load $module;
+    };
     if ($@) {
         return $self->fail("Unable to load $module: $@");
     }

@@ -1,4 +1,4 @@
-${PMpre} CAF::Path${PMpost}
+#${PMpre} CAF::Path${PMpost}
 
 use CAF::Object qw(SUCCESS CHANGED);
 use LC::Check;

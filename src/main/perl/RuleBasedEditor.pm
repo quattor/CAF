@@ -1,7 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} CAF::RuleBasedEditor${PMpost}
 
 =pod
 
@@ -104,12 +101,7 @@ configuration-modules-grid repository.
 =cut
 
 
-package CAF::RuleBasedEditor;
-
-use strict;
-use warnings;
-use vars qw($EC);
-$EC = LC::Exception::Context->new->will_store_all;
+our $EC = LC::Exception::Context->new->will_store_all;
 
 use parent qw(CAF::FileEditor Exporter);
 

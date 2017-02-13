@@ -1,12 +1,5 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} CAF::FileEditor${PMpost}
 
-package CAF::FileEditor;
-
-use strict;
-use warnings;
 use LC::File;
 use Fcntl qw(:seek);
 
@@ -494,6 +487,8 @@ sub remove_lines
     $self->set_contents(join("", @lns));
     $self->seek_end();
 }
+
+1;
 
 __END__
 

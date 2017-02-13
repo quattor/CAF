@@ -1,12 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-
-package CAF::FileReader;
-
-use strict;
-use warnings;
+#${PMpre} CAF::FileReader${PMpost}
 use base qw(CAF::FileEditor);
 
 =pod

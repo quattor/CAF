@@ -15,7 +15,7 @@ use Readonly;
 $SIG{__DIE__} = \&confess;
 
 # FIXME:
-# LC::File::file_contents (used by CAF::FileEditor constructor) doesn't work 
+# LC::File::file_contents (used by CAF::FileEditor constructor) doesn't work
 # in the unit test context. Mock it until we find a better solution...
 our $lcfile = Test::MockModule->new("LC::File");
 
@@ -52,8 +52,8 @@ $fh->close();
 
 # Check that reference file contents is used as the initial contents when it
 # is newer than the file edited.
-my $time=time();
-utime(undef, $time - 10, $filename); # make filename old enough
+my $time = time();
+utime($time, $time - 10, $filename); # make filename old enough
 my ($ref_fh, $ref_filename) = tempfile(DIR => $testdir);
 print $ref_fh $TEXT;
 $ref_fh->close();
@@ -65,8 +65,8 @@ $fh->close();
 
 # Check that reference file contents is not used as the initial contents when it
 # is older than the file edited.
-$time=time();
-utime(undef, $time - 10, $ref_filename); # make ref_filename old enough
+$time = time();
+utime($time, $time - 10, $ref_filename); # make ref_filename old enough
 my ($new_fh, $new_filename) = tempfile(DIR => $testdir);
 print $new_fh $ANOTHER_TEXT;
 $new_fh->close();

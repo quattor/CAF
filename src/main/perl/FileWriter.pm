@@ -1,12 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-
-package CAF::FileWriter;
-
-use strict;
-use warnings;
+#${PMpre} CAF::FileWriter${PMpost}
 use LC::Check;
 use IO::String;
 use CAF::Process;

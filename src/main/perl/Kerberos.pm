@@ -1,4 +1,4 @@
-${PMpre} CAF::Kerberos${PMpost}
+#${PMpre} CAF::Kerberos${PMpost}
 
 use parent qw(CAF::Object);
 use Readonly;
