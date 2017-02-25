@@ -2,6 +2,32 @@
 
 use strict;
 use warnings;
+
+use Test::MockModule;
+
+our $cmd;
+our $mock;
+our $app;
+our $execute_stdout = '';
+
+BEGIN {
+    $mock = Test::MockModule->new ("CAF::Process");
+    $mock->mock ("execute", sub {
+                     $cmd = $_[0];
+                     ${$cmd->{OPTIONS}->{stdout}} .= $execute_stdout;
+                     $? = 0;
+                     return 1;
+                 });
+
+    $mock->mock ("run", sub {
+                     $cmd = $_[0];
+                     $? = 0;
+                     return 1;
+                });
+    $app = Test::MockModule->new ('CAF::Application');
+}
+
+
 use FindBin qw($Bin);
 use lib "$Bin/modules";
 use testapp;
@@ -9,7 +35,6 @@ use CAF::Reporter qw($HISTORY);
 use CAF::History qw($EVENTS);
 use CAF::Object;
 use Test::More; # tests => 26;
-use Test::MockModule;
 use Scalar::Util qw(refaddr);
 
 # El ingenioso hidalgo Don Quijote de La Mancha
@@ -39,28 +64,6 @@ sub init_test
     $report = 0;
 }
 
-our $cmd;
-our $mock;
-our $app;
-our $execute_stdout = '';
-
-BEGIN {
-    $mock = Test::MockModule->new ("CAF::Process");
-    $mock->mock ("execute", sub {
-                     $cmd = $_[0];
-                     ${$cmd->{OPTIONS}->{stdout}} .= $execute_stdout;
-                     $? = 0;
-                     return 1;
-                 });
-
-    $mock->mock ("run", sub {
-                     $cmd = $_[0];
-                     $? = 0;
-                     return 1;
-                });
-    $app = Test::MockModule->new ('CAF::Application');
-}
-
 my $mock_history = Test::MockModule->new('CAF::History');
 
 use CAF::FileWriter;
@@ -70,7 +73,7 @@ if ($^O eq 'linux') {
 }
 
 open ($log, ">", \$str);
-$this_app->set_report_logfile ($log);
+$this_app->config_reporter(logfile => $log);
 
 init_test;
 my $fh = CAF::FileWriter->new (FILENAME, mode => 0600);
@@ -186,7 +189,7 @@ close($log);
 open ($log, ">", \$str);
 *testapp::report = sub { $report = 1; };
 
-$this_app->set_report_logfile ($log);
+$this_app->config_reporter(logfile => $log);
 init_test();
 $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello, world\n";

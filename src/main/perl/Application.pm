@@ -426,17 +426,17 @@ sub _initialize
         $facility = $self->option('facility');
     }
 
-    $self->setup_reporter(
-        $self->option('debug'),
-        $self->option('quiet'),
-        $self->option('verbose'),
-        $facility
+    $self->config_reporter(
+        debuglvl => $self->option('debug'),
+        quiet => $self->option('quiet'),
+        verbose => $self->option('verbose'),
+        facility => $facility
         );
 
     # initialize log file if any.
     # the log file is to be activated inside the
     # application itself using
-    #     $self->set_report_logfile($self->{'LOG'})
+    #     $self->config_reporter(logfile => $self->{'LOG'})
     my %logvar = $self->{'CONFIG'}->varlist('^logfile$');
     if (exists $logvar{'logfile'}) {
         my $logfile = $self->option("logfile");

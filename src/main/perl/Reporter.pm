@@ -3,13 +3,27 @@
 use LC::Exception qw (SUCCESS throw_error);
 use Sys::Syslog qw (openlog closelog);
 
+use Data::Dumper;
 use CAF::Log qw($SYSLOG);
 use CAF::History qw($EVENTS);
+use CAF::TextRender qw(get_template_instance);
+use JSON::XS;
+use Storable qw(dclone);
 
 use vars qw($_REP_SETUP);
 use parent qw(Exporter);
 
 use Readonly;
+
+# Speedup _make_message_string
+# expires after 3 seconds (mainly intended for reused _print / log / syslog)
+use Memoize;
+use Memoize::Expire;
+tie my %cache => 'Memoize::Expire', LIFETIME => 3;
+memoize '_make_message_string', SCALAR_CACHE => [HASH => \%cache ];
+
+# Hold the JSON::XS instance for struct CEEsyslog
+my $_ceelog_jsonxs;
 
 Readonly our $VERBOSE => 'VERBOSE';
 Readonly our $DEBUGLV => 'DEBUGLV';
@@ -19,12 +33,17 @@ Readonly our $FACILITY => 'FACILITY';
 Readonly our $HISTORY => 'HISTORY';
 Readonly our $WHOAMI => 'WHOAMI';
 Readonly our $VERBOSE_LOGFILE => 'VERBOSE_LOGFILE';
+Readonly our $STRUCT => 'STRUCT';
+
 
 our @EXPORT_OK = qw($VERBOSE $DEBUGLV $QUIET
     $LOGFILE $SYSLOG $FACILITY
     $HISTORY $WHOAMI
-    $VERBOSE_LOGFILE
+    $VERBOSE_LOGFILE $STRUCT
 );
+
+# Very limited: no include path, strict interpretation, no recursion
+my $_tt_inst = get_template_instance([], STRICT => 1, RECURSION => 0);
 
 
 my $_reporter_default = {
@@ -34,6 +53,7 @@ my $_reporter_default = {
     $LOGFILE  => undef,    # no log file
     $FACILITY => 'local1', # syslog facility
     $VERBOSE_LOGFILE => 0,
+    $STRUCT => undef,
 };
 
 # setup the initial/default _REP_SETUP
@@ -50,13 +70,46 @@ sub _rep_setup
 
 # Join all arguments into a single string
 # Handles undefined arguments and non-printable garbage
+# If last argument is a hashref, use the first arguments as template
+# with last argument as data
 sub _make_message_string
 {
+    my @args = @_;
+
+    # Template with hashref
+    my $do_template = ref($args[-1]) eq 'HASH';
+    my $template_data;
+    if ($do_template) {
+        # Handle last arg as template data
+        # Use a deep-copy, to prevent stringification type changes
+        # for optional struct logger usage.
+        $template_data = dclone(pop(@args));
+    }
+
     # Ensure that there is no undefined arg: replace by <undef> if any, force stringification otherwise.
-    my @args = map {defined($_) ? "$_" : '<undef>'} @_;
+    @args = map {defined($_) ? "$_" : '<undef>'} @args;
 
     # Make single string
     my $string = join('', @args);
+
+    if ($do_template) {
+        # Try to use C<$string> as template
+
+        local $Data::Dumper::Indent = 0;
+        local $Data::Dumper::Terse = 1;
+        my $res;
+        if ($string eq '') {
+            # only hashref passed
+            $string = Dumper($template_data);
+        } elsif ($_tt_inst->process(\$string, $template_data, \$res)) {
+            $string = $res;
+        } else {
+            # the new "message" will contain the old template and data, so still useful
+            $string = "Unable to process template '$string' with data " . Dumper($template_data) . ": " . $_tt_inst->error();
+            # Don't die, but warn
+            CORE::warn($string);
+        }
+    }
 
     # Replace any non-printable character with a ?
     # print charclass only includes whitespace that is not a control charater
@@ -85,8 +138,7 @@ C<CAF::Reporter> - Class for console & log message reporting in CAF applications
 
     sub new {
         ...
-        $self->setup_reporter(2, 0, 1);
-        $self->set_report_logfile($logger);
+        $self->config_reporter(debuglvl => 2, verbose => 1, logfile => $logger);
         ...
     }
 
@@ -113,7 +165,7 @@ with the C<set_logfile> method.
 
 =head2 Public methods
 
-=over 5
+=over
 
 =item init_reporter
 
@@ -128,31 +180,60 @@ sub init_reporter
     return SUCCESS;
 }
 
-=pod
 
-=item C<setup_reporter ($debuglvl, $quiet, $verbose, $facility)>: boolean
+=item config_reporter
 
-Reporter setup:
+Reporter configuration:
+
+Following options are supported
 
 =over
 
-=item  C<$debuglvl> sets the (highest) debug level, for messages reported with
-    the 'debug' method.
-    The following recommendations apply:
-        0: no debug information
-        1: main package
-        2: main libraries/functions
-        3: helper libraries
-        4: core functions (constructors, destructors)
+=item debuglvl
 
-=item C<$quiet>: if set to a true value (eg. 1), stops any output to console.
+Set the (highest) debug level, for messages reported with
+the 'debug' method.
+The following recommendations apply:
+    0: no debug information
+    1: main package
+    2: main libraries/functions
+    3: helper libraries
+    4: core functions (constructors, destructors)
 
-=item C<$verbose>: if set to a true value (eg. 1), produce verbose output
-            (with the C<verbose> method). Implied by debug >= 1.
+=item quiet
 
-=item C<$facility>: syslog facility the messages will be sent to
+If set to a true value (eg. 1), stops any output to console.
 
-=item C<$verbose_logfile>: reporting to logfiles will be verbose
+=item verbose
+
+If set to a true value (eg. 1), produce verbose output
+(with the C<verbose> method). Implied by debug >= 1.
+
+=item facility
+
+The syslog facility the messages will be sent to
+
+=item verbose_logfile
+
+All reporting to logfiles will be verbose
+
+=item logfile
+
+C<logfile> can be any type of class object reference,
+but the object must support a C<< print(@array) >> method.
+Typically, it should be an C<CAF::Log> instance.
+
+If C<logfile> is defined but false, no logfile will be used.
+
+(The name is slightly misleading, because is it does not set the logfile's
+filename, but the internal C<$LOGFILE> attribute).
+
+=item struct
+
+Enable the structured logging type C<struct> (implemented by method
+C< <_struct_<struct> >>).
+
+If C<struct> is defined but false, structured logging will be disabled.
 
 =back
 
@@ -164,55 +245,50 @@ will be preserved.
 # Written with the indented 'if defined' to make clear that
 # nothing happens when undef is set for a certain value
 
-sub setup_reporter
+sub config_reporter
 {
-    my ($self, $debuglvl, $quiet, $verbose, $facility, $verbose_logfile) = @_;
+    my ($self, %opts) = @_;
 
-    $self->_rep_setup()->{$DEBUGLV} = ($debuglvl > 0 ? $debuglvl : 0)
-        if defined($debuglvl);
-    $self->_rep_setup()->{$QUIET} = ($quiet ? 1 : 0)
-        if defined($quiet);
-    $self->_rep_setup()->{$VERBOSE} = (($verbose || $self->_rep_setup()->{$DEBUGLV}) ? 1 : 0)
-        if (defined ($verbose) || defined($debuglvl));
-    $self->_rep_setup()->{$FACILITY} = $facility
-        if defined($facility);
-    $self->_rep_setup()->{$VERBOSE_LOGFILE} = $verbose_logfile
-        if defined($verbose_logfile);
+    my $fail;
 
-    return SUCCESS;
+    $self->_rep_setup()->{$DEBUGLV} = ($opts{debuglvl} > 0 ? $opts{debuglvl} : 0)
+        if defined($opts{debuglvl});
+    $self->_rep_setup()->{$QUIET} = ($opts{quiet} ? 1 : 0)
+        if defined($opts{quiet});
+    $self->_rep_setup()->{$VERBOSE} = (($opts{verbose} || $self->_rep_setup()->{$DEBUGLV}) ? 1 : 0)
+        if (defined ($opts{verbose}) || defined($opts{debuglvl}));
+    $self->_rep_setup()->{$FACILITY} = $opts{facility}
+        if defined($opts{facility});
+    $self->_rep_setup()->{$VERBOSE_LOGFILE} = $opts{verbose_logfile}
+        if defined($opts{verbose_logfile});
+    $self->_rep_setup()->{$LOGFILE} = ($opts{logfile} ? $opts{logfile} : undef)
+        if defined($opts{logfile});
+
+    if (defined($opts{struct})) {
+        if ($opts{struct}) {
+            my $method = "_struct_$opts{struct}";
+            if ($self->can($method)) {
+                $self->_rep_setup()->{$STRUCT} = $method;
+            } else {
+                $fail = 1;
+                $self->error("No method $method found for structured logging");
+            }
+        } else {
+            # Do nothing
+            $self->_rep_setup()->{$STRUCT} = undef;
+        }
+    }
+
+    return $fail ? undef : SUCCESS;
 }
 
-=pod
-
-=item C<set_report_logfile($loginstance)>: bool
-
-If C<$loginstance> is defined, it will be used as log file. C<$loginstance> can be
-any type of class object reference, but the object must support a
-C<< print(@array) >> method. Typically, it should be an C<CAF::Log>
-instance. If C<$loginstance> is undefined, no log file will be used.
-
-Returns SUCCESS on success, undef otherwise.
-
-(The method name is slightly misleading, because is it does not set the logfile's
-filename, but the internal C<$LOGFILE> attribute).
-
-=cut
-
-sub set_report_logfile
-{
-    my ($self, $loginstance) = @_;
-
-    $self->_rep_setup()->{$LOGFILE} = $loginstance;
-
-    return SUCCESS;
-}
 
 =pod
 
 =item C<init_logfile($filename, $options)>: bool
 
 Create a new B<CAF::Log> instance with C<$filename> and C<$options> and
-set it using C<set_report_logfile>.
+set it using C<config_reporter>.
 Returns SUCCESS on success, undef otherwise.
 
 (The method name is slightly misleading, because is it does
@@ -231,7 +307,7 @@ sub init_logfile
         return;
     }
 
-    return $self->set_report_logfile($objlog);
+    return $self->config_reporter(logfile => $objlog);
 }
 
 =pod
@@ -387,7 +463,7 @@ sub error
 
 =item C<verbose(@array)>: boolean
 
-If C<verbose> is enabled (via C<setup_reporter>), the C<verbose> method
+If C<verbose> is enabled (via C<config_reporter>), the C<verbose> method
 logs using C<syslog> method with C<notice> priority
 and reports C<@array> using the C<report> method, but with a C<[VERB]> prefix.
 
@@ -415,7 +491,7 @@ sub verbose
 
 =item C<debug($debuglvl, @array)>: boolean
 
-If C<$debuglvl> is higher or equal than then one set via C<setup_reporter>,
+If C<$debuglvl> is higher or equal than then one set via C<config_reporter>,
 the C<debug> method
 logs to syslog with C<debug> priority
 and reports C<@array> using the C<report> method, but with a C<[DEBUG]> prefix.
@@ -451,7 +527,12 @@ sub debug
 =item C<log(@array)>: boolean
 
 Writes C<@array> as a concatenated string with added newline
-to the log file, if one is setup (via C<set_report_logfile>).
+to the log file, if one is setup
+(via C<<config_reporter(logfile => $loginst) >>).
+
+If the last argument is a hashref and structured logging is enabled
+(via C<<config_reporter(struct => $type) >>), call the structured
+logging method with this hashref as argument.
 
 =cut
 
@@ -460,6 +541,12 @@ sub log
     my $self = shift;
 
     $self->_rep_setup()->{$LOGFILE}->print(_make_message_string(@_)."\n") if ($self->_rep_setup()->{$LOGFILE});
+
+    my $struct = $self->_rep_setup()->{$STRUCT};
+    if ($struct && ref($_[-1]) eq 'HASH') {
+        $self->$struct($_[-1]);
+    }
+
     return SUCCESS;
 }
 
@@ -497,6 +584,46 @@ sub syslog
     };
 
     return;
+}
+
+=item _struct_CEEsyslog
+
+A structured logging method that uses CEE C<Common Event Expression> format
+and reports it via syslog with info facility.
+
+=cut
+
+sub _struct_CEEsyslog
+{
+    my ($self, $data) = @_;
+
+    if (!defined($_ceelog_jsonxs)) {
+        # see also Log::Log4perl::Layout::JSON settings
+        $_ceelog_jsonxs = JSON::XS->new()
+            ->indent(0)          # to prevent newlines (and save space)
+            ->ascii(1)           # to avoid encoding issues downstream
+            ->allow_unknown(1)   # encode null on bad value (instead of exception)
+            ->convert_blessed(1) # call TO_JSON on blessed ref, if it exists
+            ->allow_blessed(1)   # encode null on blessed ref that can't be converted
+            ->canonical(1);      # sort the keys, to create reproducable results
+    }
+
+    my $jsontxt;
+
+    local $@;
+    eval {
+        $jsontxt = $_ceelog_jsonxs->encode($data);
+    };
+    if ($@) {
+        local $Data::Dumper::Indent = 0;
+        local $Data::Dumper::Terse = 1;
+        # Don't die, but warn
+        CORE::warn("Failed JSON::XS encoding data " . Dumper($data) . ": $@");
+    } else {
+        $self->syslog('info', '@cee: ', $jsontxt);
+
+        return SUCCESS;
+    }
 }
 
 =pod
@@ -571,6 +698,65 @@ sub event
     $metadata{$WHOAMI} = ref($self);
 
     return $hist->event($obj, %metadata);
+}
+
+=pod
+
+=back
+
+=head2 Deprecated/legacy methods
+
+=over
+
+=item setup_reporter
+
+Deprecated method to configure the reporter.
+
+The configure options C<debuglvl>, C<quiet>, C<verbose>, C<facility>, C<verbose_logfile>
+are passed as postional arguments in that order.
+    $self->setup_reporter(2, 0, 1);
+is equal to
+    $self->config_reporter(debuglvl => 2, quiet => 0, verbose => 1);
+
+=cut
+
+sub setup_reporter
+{
+    my ($self, @args) = @_;
+
+    # ordered option names to pass to config_reporter
+    my @legacy_pos_args = qw(debuglvl quiet verbose facility verbose_logfile);
+
+    my %opts = map {$legacy_pos_args[$_] => $args[$_]} 0..$#args;
+
+    return $self->config_reporter(%opts);
+
+}
+
+=pod
+
+=item set_report_logfile
+
+Deprecated method to configure the reporter C<LOGFILE> attribute:
+    $self->setup_report_logfile($instance);
+is equal to
+    $self->config_reporter(logfile => $instance);
+
+Returns SUCCESS on success, undef otherwise.
+
+(The method name is slightly misleading, because is it does not set the logfile's
+filename, but the internal C<$LOGFILE> attribute).
+
+=cut
+
+sub set_report_logfile
+{
+    my ($self, $loginstance) = @_;
+
+    # Old behaviour when passing undef.
+    $loginstance = 0 if (!defined($loginstance));
+
+    return $self->config_reporter(logfile => $loginstance);
 }
 
 =pod

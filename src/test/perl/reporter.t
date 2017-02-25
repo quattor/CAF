@@ -9,7 +9,12 @@ use myreportermany;
 use Test::More;
 use Test::MockModule;
 use CAF::Log;
-use CAF::Reporter qw($VERBOSE $DEBUGLV $QUIET $LOGFILE $SYSLOG $FACILITY $HISTORY $WHOAMI $VERBOSE_LOGFILE);
+use CAF::Reporter qw($VERBOSE
+    $DEBUGLV $QUIET $LOGFILE
+    $SYSLOG $FACILITY $HISTORY
+    $WHOAMI $VERBOSE_LOGFILE
+    $STRUCT
+);
 use LC::Exception qw (SUCCESS);
 
 use Scalar::Util qw(refaddr);
@@ -22,7 +27,9 @@ use object_ok;
 
 mkdir('target/test');
 
-my ($openlogged, $closelogged, $syssyslogged, $printed, $logged, $syslogged, $reported, $logprinted);
+my ($openlogged, $closelogged, $syssyslogged,
+    $printed, $logged, $syslogged, $reported,
+    $logprinted, $struct);
 
 
 my $syslogmock = Test::MockModule->new('Sys::Syslog');
@@ -33,6 +40,7 @@ $caflogmock->mock('print', sub ($$) {shift; $logprinted = \@_; });
 
 my $mock = Test::MockModule->new('CAF::Reporter');
 $mock->mock('_print', sub { $printed = \@_;});
+$mock->mock('_struct_teststruct', sub {shift; $struct = \@_;});
 
 # not via syslogmock
 $mock->mock('openlog', sub { $openlogged = \@_;});
@@ -46,7 +54,7 @@ Test all methods for C<CAF::Reporter>
 
 =over
 
-=item init_reporter / _rep_setup / setup_reporter / set_report_logfile / init_logfile
+=item init_reporter / _rep_setup / config_reporter / init_logfile
 
 =cut
 
@@ -62,6 +70,7 @@ is($FACILITY, 'FACILITY', 'expected value for readonly $FACILITY');
 is($HISTORY, 'HISTORY', 'expected value for readonly $HISTORY');
 is($WHOAMI, 'WHOAMI', 'expected value for readonly $WHOAMI');
 is($VERBOSE_LOGFILE, 'VERBOSE_LOGFILE', 'expected value for readonly $VERBOSE_LOGFILE');
+is($STRUCT, 'STRUCT', 'expected value for readonly $STRUCT');
 
 my $init = {
     $VERBOSE => 0,
@@ -70,6 +79,7 @@ my $init = {
     $LOGFILE => undef,
     $FACILITY => 'local1',
     $VERBOSE_LOGFILE => 0,
+    $STRUCT => undef,
 };
 
 is_deeply($CAF::Reporter::_REP_SETUP, $init, "_REP_SETUP initialsed");
@@ -78,18 +88,28 @@ my $myrep = myreporter->new();
 isa_ok($myrep, 'myreporter', 'myrep is a myreporter instance');
 
 # shouldn't be called like this, but this shouldn't change anything
-$myrep->setup_reporter();
+$myrep->config_reporter();
 
 is_deeply($CAF::Reporter::_REP_SETUP, $init,
-          "_REP_SETUP not changed with dummy setup_reporter call");
+          "_REP_SETUP not changed with dummy config_reporter call");
 
 # debug level 0, enable quiet, verbose, set facility and verbose_logfile
-$myrep->setup_reporter(0, 1, 1, 'facility', 1);
+$myrep->config_reporter(
+    debuglvl => 0,
+    quiet => 1,
+    verbose => 1,
+    facility => 'facility',
+    verbose_logfile => 1,
+    logfile => 'not an actual log instance',
+    struct => 'teststruct',
+);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$QUIET}, 1, "Quiet enabled");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
 is($CAF::Reporter::_REP_SETUP->{$FACILITY}, 'facility', "Facility set");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE_LOGFILE}, 1, "verbose_logfile set");
+is($CAF::Reporter::_REP_SETUP->{$LOGFILE}, 'not an actual log instance', "logfile set");
+is($CAF::Reporter::_REP_SETUP->{$STRUCT}, "_struct_teststruct", "struct set");
 is($CAF::Reporter::_REP_SETUP, $myrep->_rep_setup(), "_rep_setup returns ref to _REP_SETUP for Reporter");
 
 is($myrep->get_debuglevel(), 0, "Returned debug level 0");
@@ -100,26 +120,26 @@ $myrep->init_reporter();
 is_deeply($CAF::Reporter::_REP_SETUP, $init, "_REP_SETUP re-initialsed");
 
 $myrep->init_reporter();
-$myrep->setup_reporter(-1);
+$myrep->config_reporter(debuglvl => -1);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Negative debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose not enabled with negative debug level");
 
 ok(! $myrep->is_verbose(), "is not verbose");
 
 $myrep->init_reporter();
-$myrep->setup_reporter(0);
+$myrep->config_reporter(debuglvl => 0);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 0, "Debug level set to 0");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose not enabled with 0 debug level");
 
 
 $myrep->init_reporter();
-$myrep->setup_reporter(2);
+$myrep->config_reporter(debuglvl => 2);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 2, "Debug level set to 2");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled with positive debug level");
 
 $myrep->init_reporter();
 # this is not a valid logfile, just a test value
-$myrep->set_report_logfile('whatever');
+$myrep->config_reporter(logfile => 'whatever');
 is($CAF::Reporter::_REP_SETUP->{$LOGFILE}, 'whatever', "LOGFILE set");
 
 $myrep->init_logfile('target/test/test_init_logfile.log', 'a');
@@ -130,35 +150,99 @@ is($initlogfile->{OPTS}, 'a', "new LOGFILE options set");
 
 # test preservation with undefs
 $myrep->init_reporter();
-$myrep->setup_reporter(2, 1, 1, 'facility');
+$myrep->config_reporter(debuglvl => 2, quiet => 1, verbose => 1, facility => 'facility');
 
 is($myrep->get_debuglevel(), 2, "Returned debug level 2");
 ok($myrep->is_quiet(), "is quiet");
 ok($myrep->is_verbose(), "is verbose");
 
 
-$myrep->set_report_logfile('whatever');
+$myrep->config_reporter(logfile => 'whatever');
 my $current = { %$CAF::Reporter::_REP_SETUP };
-$myrep->setup_reporter();
+$myrep->config_reporter();
 is_deeply($CAF::Reporter::_REP_SETUP, $current,
-   "passing undefs to setup_reporter preserves the settings");
+   "passing noargs to config_reporter preserves the settings");
+
+$myrep->config_reporter(
+    debuglvl => undef,
+    quiet => undef,
+    verbose => undef,
+    facility => undef,
+    verbose_logfile => undef,
+    logfile => undef,
+    struct => undef,
+);
+is_deeply($CAF::Reporter::_REP_SETUP, $current,
+   "passing undefs to config_reporter preserves the settings");
+
+$myrep->init_reporter();
+$printed = undef;
+ok($myrep->config_reporter(struct => 'teststruct'), 'setting struct retruns success');
+is($CAF::Reporter::_REP_SETUP->{$STRUCT}, "_struct_teststruct", "struct set 2");
+ok($myrep->config_reporter(struct => 0), 'unsetting struct with false value retruns success');
+ok(! defined($CAF::Reporter::_REP_SETUP->{$STRUCT}), "struct unset");
+ok($myrep->config_reporter(struct => 'teststruct'), 'setting struct retruns success 2');
+is($CAF::Reporter::_REP_SETUP->{$STRUCT}, "_struct_teststruct", "struct set 3");
+ok(!defined($myrep->config_reporter(struct => 'novalidstruct')), 'try to setting invalid struct retruns undef');
+is_deeply($printed,
+          ["[ERROR] No method _struct_novalidstruct found for structured logging\n"],
+          "error message reported with invalid struct");
+is($CAF::Reporter::_REP_SETUP->{$STRUCT}, "_struct_teststruct", "struct not modified on failure");
+
 
 =item _make_message_string
 
 =cut
 
+sub mms {return CAF::Reporter::_make_message_string(@_)};
+
 use utf8;
-is(CAF::Reporter::_make_message_string("begin", undef, "testutf8_☺_", "test_binary_\0_\0\0", "\nnext\t ","end"),
+is(mms("begin", undef, "testutf8_☺_", "test_binary_\0_\0\0", "\nnext\t ","end"),
    "begin<undef>testutf8_☺_test_binary_?_??\nnext\t end",
    "_make_message_string handles undef, utf8 and non-utf8 code (in proper encoding)");
 no utf8;
 
 # U+263A (the smiley) is now used in non-utf8 encoding, so it's binary garbage
 # the smiley is 3 bytes (0xE2 0x98 0xBA)
-is(CAF::Reporter::_make_message_string("testutf8_☺_"),
+is(mms("testutf8_☺_"),
    "testutf8_???_",
    "_make_message_string via :print: charclass is encoding aware");
 
+#
+# test templating with hashrefs
+#
+my $warn;
+$SIG{__WARN__} = sub {$warn = $_[0];};
+
+$warn = undef;
+is(mms("Hello [% world %]", {world => 'quattor'}),
+   "Hello quattor",
+   "TT based templating triggered by hashref as last element");
+ok(!defined($warn), "no warn on success");
+
+$warn = undef;
+is(mms("Hello world", {world => 'quattor'}),
+   "Hello world",
+   "TT based templating success w/o any templating");
+ok(!defined($warn), "no warn on success w/o templating");
+
+$warn = undef;
+is(mms("Hello [% world %]", {worldz => 'quattorz'}),
+   "Unable to process template 'Hello [% world %]' with data {'worldz' => 'quattorz'}: var.undef error - undefined variable: world",
+   "Nothing to template, strict mode");
+like($warn, qr{Unable to process template .* undefined variable: world}, "warn on nothing to template");
+
+$warn = undef;
+is(mms("Hello [% IF world %] missing end", {world => 'quattor'}),
+   "Unable to process template 'Hello [% IF world %] missing end' with data {'world' => 'quattor'}: file error - parse error - input text line 1: unexpected end of input",
+   "Invalid template failure");
+like($warn, qr{Unable to process template .* parse error}, "warn on invalid template");
+
+$warn = undef;
+is(mms({world => 'quattor'}),
+   "{'world' => 'quattor'}",
+   "special case with only hashref and no template passed");
+ok(!defined($warn), "no warn on success without template");
 
 =item log and syslog
 
@@ -177,8 +261,8 @@ ok($log->{SYSLOG}, 'SYSLOG is set for CAF::Log instance');
 isa_ok($log, 'CAF::Log', "log is a CAF::Log instance");
 
 $myrep->init_reporter();
-$myrep->setup_reporter(0,0,0,'myfacility');
-$myrep->set_report_logfile($log);
+$myrep->config_reporter(debuglvl => 0, quiet => 0, verbose => 0, facility => 'myfacility', logfile => $log);
+$struct = undef;
 isa_ok($CAF::Reporter::_REP_SETUP->{LOGFILE}, 'CAF::Log',
        "LOGFILE is a CAF::Log instance");
 is($CAF::Reporter::_REP_SETUP->{LOGFILE}->{SYSLOG}, 'testlog',
@@ -186,9 +270,25 @@ is($CAF::Reporter::_REP_SETUP->{LOGFILE}->{SYSLOG}, 'testlog',
 is($CAF::Reporter::_REP_SETUP->{FACILITY}, 'myfacility',
    "myfacility FACILITY set");
 
-is($myrep->log('something', 'else'), SUCCESS, "log returned success");
+# No templating
+is($myrep->log('something', 'else', {a => 1}), SUCCESS, "log returned success");
 is_deeply($logprinted, ["somethingelse\n"],
           "LOGFILE print method called on log (string concat with newline)");
+ok(! defined($struct), "no struct logging without STRUCT set");
+
+$myrep->config_reporter(struct => 'teststruct');
+is($myrep->log('[% a %]something', 'else', {a => 1}), SUCCESS, "log returned success 2");
+is_deeply($logprinted, ["1somethingelse\n"],
+          "LOGFILE print method called on log (string concat with newline and templating) 2");
+is_deeply($struct, [{a => 1}],
+          "struct logging called with STRUCT set and hasref as last element");
+
+$struct = undef;
+is($myrep->log('[% a %]something', 'else'), SUCCESS, "log returned success 3");
+is_deeply($logprinted, ["[% a %]somethingelse\n"],
+          "LOGFILE print method called on log (string concat with newline and no templating) 3");
+ok(! defined($struct), "no struct logging with STRUCT set and w/o hashref as last element");
+
 
 $closelogged = undef;
 ok(! defined($myrep->syslog('myprio', 'syslog', 'set')), "syslog returned undef");
@@ -204,9 +304,40 @@ $openlogged = undef;
 ok(! defined($myrep->syslog('myprio', 'syslog', 'not', 'set')), "syslog returned undef");
 ok(! defined($openlogged), "openlog not called when SYSLOG attribute of LOGFILE is not set");
 
-# from now on, mock log and syslog
+# from now on, mock syslog
+my $previoussyslogged;
+$mock->mock('syslog', sub { shift; $previoussyslogged = $syslogged; $syslogged = \@_;});
+
+=item _struct_CEEsyslog / struct CEEsyslog
+
+=cut
+
+
+$myrep->init_reporter();
+
+$myrep->_struct_CEEsyslog({a => 1, b => { c => [0]} });
+is_deeply($syslogged, ['info', '@cee: ', '{"a":1,"b":{"c":[0]}}'],
+          '_struct_CEEsyslog calls syslogs with info priority and @cee and jsonencoded data');
+
+$myrep->init_reporter();
+ok($myrep->config_reporter(struct => 'CEEsyslog', verbose => 1),
+   'CEEsyslog struct logging selected');
+ok($myrep->verbose('[% b.c.0 %] something with [% a %]', {a => 2, b => { c => [1,2,3]} }),
+   'verbose reported CEEsyslog');
+
+# check reported via print
+is_deeply($printed, ["[VERB] 1 something with 2\n"],
+          'verbose calls report/_print with templated data');
+# check double syslog, first/previous syslog call, 2nd/last syslog via CEEsyslog via log
+is_deeply($previoussyslogged, ['notice', '[% b.c.0 %] something with [% a %]', {a => 2, b => { c => [1,2,3]} }],
+          'verbose with all args untemplated data to syslog');
+# it is important that integers are preserved
+is_deeply($syslogged, ['info', '@cee: ', '{"a":2,"b":{"c":[1,2,3]}}'],
+          'verbose with struct CEEsyslog');
+
+
+# from now on, mock log
 $mock->mock('log', sub { shift; $logged = \@_; return SUCCESS});
-$mock->mock('syslog', sub { shift; $syslogged = \@_;});
 
 =pod
 
@@ -223,7 +354,7 @@ is_deeply($logged, ['1','2','3'], "report call log with passed args with quiet d
 
 $printed = undef;
 # enable quiet
-$myrep->setup_reporter(0, 1);
+$myrep->config_reporter(debuglvl => 0, quiet => 1);
 is($CAF::Reporter::_REP_SETUP->{$QUIET}, 1, "Quiet enabled");
 is($myrep->report(4, 5 ,6), SUCCESS,
    "report returns SUCCESS");
@@ -312,7 +443,7 @@ ok(! defined($reported), 'verbose does not report with verbose disabled');
 ok(! defined($syslogged), 'verbose does not syslog with verbose disabled');
 
 
-$myrep->setup_reporter(0, 0, 1);
+$myrep->config_reporter(debuglvl => 0, quiet => 0, verbose => 1);
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 1, "Verbose enabled");
 $reported = undef;
 $syslogged = undef;
@@ -322,7 +453,7 @@ is_deeply($reported, ['[VERB] ', 'hello', 'verbose', 'enabled'],
 is_deeply($syslogged, ['notice', 'hello', 'verbose', 'enabled'],
           'verbose calls syslogs with notice priority and args with verbose verbose enabled');
 
-$myrep->setup_reporter(0, 0, 0, 'whatever', 1);
+$myrep->config_reporter(debuglvl => 0, quiet => 0, verbose => 0, facility => 'whatever', verbose_logfile => 1);
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose disabled (verbose_logfile)");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE_LOGFILE}, 1, "Verbose logfile enabled");
 $reported = undef;
@@ -360,7 +491,7 @@ ok(! defined($reported), 'debug1 does not report with debuglv0');
 ok(! defined($syslogged), 'debug1 does not syslog with debuglv0');
 
 # equal level
-$myrep->setup_reporter(1);
+$myrep->config_reporter(debuglvl => 1);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 1, "debuglv 1 set");
 is($myrep->debug(1, 'hello', 'debug', 'lv1'), SUCCESS, 'debug1 returns success with debuglv1');
 is_deeply($reported, ['[DEBUG] ', 'hello', 'debug', 'lv1'],
@@ -369,7 +500,7 @@ is_deeply($syslogged, ['debug', 'hello', 'debug', 'lv1'],
           'debug calls syslogs with debug priority and args with lvl 1 equal debuglv 1');
 
 # global lv > level
-$myrep->setup_reporter(2);
+$myrep->config_reporter(debuglvl => 2);
 is($CAF::Reporter::_REP_SETUP->{$DEBUGLV}, 2, "debuglv 2 set");
 is($myrep->debug(1, 'hello', 'debug', 'lv2'), SUCCESS, 'debug1 returns success with debuglv2');
 is_deeply($reported, ['[DEBUG] ', 'hello', 'debug', 'lv2'],
@@ -389,7 +520,7 @@ $reported = undef;
 my $myrep2 = myreporter->new();
 isa_ok($myrep2, 'myreporter', 'myrep2 is a myreporter instance');
 
-$myrep->setup_reporter(2);
+$myrep->config_reporter(debuglvl => 2);
 
 is($myrep2->debug(1, 'hello', 'myrep2', 'debug', 'lv2'),
    SUCCESS, 'myrep2 debug1 returns success with debuglv2');
@@ -423,7 +554,7 @@ is_deeply($mcurrent1, $CAF::Reporter::_REP_SETUP,
 
 # disable debug level on mymany1
 is($mymany1->{DEBUGLV}, 2, "mymany1 debuglv set to 2");
-$mymany1->setup_reporter(0);
+$mymany1->config_reporter(debuglvl => 0);
 $reported = undef;
 is($mymany1->debug(1, 'hello', 'mymany1', 'debug', 'lv0'),
    SUCCESS, 'mymany1 debug1 returns success with debuglv0');
@@ -455,9 +586,36 @@ is_deeply($mcurrent2, $CAF::Reporter::_REP_SETUP,
           "mymany2 init reporter config from global _REP_SETUP");
 
 
-$mymany2->setup_reporter(5);
+$mymany2->config_reporter(debuglvl => 5);
 is($mymany2->{DEBUGLV}, 5, "mymany2 debuglv set to 5");
 is($mymany1->{DEBUGLV}, 0, "mymany1 debuglv unmodified at 0");
+
+=item legacy methods setup_reporter / set_report_logfile
+
+=cut
+
+my $opts;
+$mock->mock('config_reporter', sub {shift; $opts = {@_}; return 123});
+
+$opts = undef;
+is($myrep->setup_reporter(qw(a b c d e)), 123, "setup_reporter returns config_reporter value");
+is_deeply($opts, {
+    debuglvl => 'a',
+    quiet => 'b',
+    verbose => 'c',
+    facility => 'd',
+    verbose_logfile => 'e',
+}, "setup_reporter calls config_reporter options");
+
+$opts = undef;
+is($myrep->set_report_logfile(123), 123, "set_report_logfile returns config_reporter value");
+is_deeply($opts, {logfile => 123},
+          "set_report_logfile calls config_reporter with logfile value");
+
+$opts = undef;
+$myrep->set_report_logfile();
+is_deeply($opts, {logfile => 0},
+          "set_report_logfile(undef) is equal to config_reporter with false logfile value");
 
 
 =pod

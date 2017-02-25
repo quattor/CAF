@@ -18,7 +18,7 @@ use Module::Load;
 
 use parent qw(CAF::ObjectText Exporter);
 
-our @EXPORT_OK = qw($YAML_BOOL $YAML_BOOL_PREFIX);
+our @EXPORT_OK = qw($YAML_BOOL $YAML_BOOL_PREFIX get_template_instance);
 
 use Readonly;
 

@@ -1,9 +1,8 @@
-#!/usr/bin/perl
+use strict;
+use warnings;
 
 use FindBin qw($Bin);
 use lib "$Bin/modules";
-use strict;
-use warnings;
 use testapp;
 use CAF::Process;
 use Test::More;
@@ -36,7 +35,7 @@ my $command = [qw (ls a random command which I do not care)];
 
 open ($fh, ">", \$str);
 $this_app = testapp->new ($0, qw (--verbose));
-$this_app->set_report_logfile ($fh);
+$this_app->config_reporter(logfile => $fh);
 
 $p = CAF::Process->new ($command);
 $p->execute ();
@@ -75,9 +74,9 @@ is ($opts{stdin}, "Something", "Execute applied the correct options");
 
 $str = "";
 open ($fh, ">", \$str);
-$this_app->set_report_logfile ($fh);
+$this_app->config_reporter(logfile => $fh);
 $p = CAF::Process->new ($command, log => $this_app,
-            stdin => "Something");
+                        stdin => "Something");
 ok($p->is_executable(), "Command is executable");
 my $res = $p->execute_if_exists ();
 is ($execute, 3, "execute_if_exists runs execute");
@@ -87,7 +86,7 @@ is ($opts{stdin}, "Something", "execute_if_exists does the same thing as execute
 
 $str = "";
 open ($fh, ">", \$str);
-$this_app->set_report_logfile ($fh);
+$this_app->config_reporter(logfile => $fh);
 $p->run ();
 is ($run, 2, "Logged run correctly run");
 like ($str, qr/Running the command: ls a random command/,
@@ -98,14 +97,14 @@ like ($str, qr/Getting output of command: ls a random command/,
       "output used the correct options and was correctly logged");
 $str = "";
 open ($fh, ">", \$str);
-$this_app->set_report_logfile ($fh);
+$this_app->config_reporter(logfile => $fh);
 $p->trun (10);
 is ($trun, 2, "Logged trun correctly run");
 like ($str, qr/Running the command: ls a random command.* with 10 seconds/,
       "trun logged");
 $str = "";
 open ($fh, ">", \$str);
-$this_app->set_report_logfile ($fh);
+$this_app->config_reporter(logfile => $fh);
 $p->toutput (10);
 is ($toutput, 2, "Logged toutput correctly run");
 like ($str, qr/Getting output of command: ls a random command.* with 10 seconds/,

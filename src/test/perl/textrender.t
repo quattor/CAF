@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Quattor;
-use CAF::TextRender qw($YAML_BOOL $YAML_BOOL_PREFIX);
+use CAF::TextRender qw($YAML_BOOL $YAML_BOOL_PREFIX get_template_instance);
 use Test::MockModule;
 use Cwd;
 
@@ -85,7 +85,7 @@ is($trd->{relpath}, 'rendertest', 'found rendertest template relpath');
 my $sane_tpl = $trd->sanitize_template();
 is($sane_tpl, "rendertest/test.tt", "correct TT file with relpath prefixed");
 
-my $tpl = CAF::TextRender::get_template_instance($trd->{includepath});
+my $tpl = get_template_instance($trd->{includepath});
 isa_ok ($tpl, "Template", "Returns Template instance");
 
 my $res;
@@ -101,7 +101,7 @@ EOF
 =cut
 
 # tests usage of _convert_includepaths
-my $tplm = CAF::TextRender::get_template_instance("/a:/b");
+my $tplm = get_template_instance("/a:/b");
 isa_ok ($tplm, "Template", "Returns Template instance");
 # ugly!
 is_deeply($tplm->{SERVICE}->{CONTEXT}->{CONFIG}->{INCLUDE_PATH},

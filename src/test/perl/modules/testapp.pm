@@ -37,9 +37,9 @@ sub _initialize {
     $self->{'LOG_PROCID'} = 1;
 
     # start initialization of CAF::Application
-    if($self->SUPER::_initialize(@_)) {
+    if ($self->SUPER::_initialize(@_)) {
         # why is this not the default?
-        $self->set_report_logfile($self->{'LOG'});
+        $self->config_reporter(logfile => $self->{'LOG'});
         return SUCCESS;
     }
     return;
