@@ -308,7 +308,7 @@ sub directory_exists
 
 =item file_exists
 
-Test if C<filename> exists ans is a directory.
+Test if C<filename> exists and is a file.
 
 This is basically the perl builtin C<-f>,
 wrapped in a method to allow unittesting.
