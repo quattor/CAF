@@ -3,7 +3,6 @@ use LC::Check;
 use IO::String;
 use CAF::Process;
 use CAF::Object;
-use CAF::Reporter;
 use overload '""' => "stringify";
 
 our @ISA = qw (IO::String);
@@ -330,6 +329,9 @@ sub is_verbose
             $res = $log->is_verbose();
         } else {
             # Fallback to CAF::Reporter
+            # must use 'require' for evaluation at runtime
+            # ('use' is evaluated at compile time and might trigger a cyclic dependency eg in TextRender).
+            require CAF::Reporter;
             $res = $CAF::Reporter::_REP_SETUP->{VERBOSE};
         };
     }
