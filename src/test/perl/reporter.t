@@ -18,6 +18,8 @@ use CAF::Reporter qw($VERBOSE
 use LC::Exception qw (SUCCESS);
 
 use Scalar::Util qw(refaddr);
+use Template;
+use version;
 
 use Readonly;
 Readonly my $EVENTS => 'EVENTS';
@@ -227,10 +229,17 @@ is(mms("Hello world", {world => 'quattor'}),
 ok(!defined($warn), "no warn on success w/o templating");
 
 $warn = undef;
-is(mms("Hello [% world %]", {worldz => 'quattorz'}),
-   "Unable to process template 'Hello [% world %]' with data {'worldz' => 'quattorz'}: var.undef error - undefined variable: world",
-   "Nothing to template, strict mode");
-like($warn, qr{Unable to process template .* undefined variable: world}, "warn on nothing to template");
+my $msg_undef = mms("Hello [% world %]", {worldz => 'quattorz'});
+# No STRICT support on TT 2.18 (default on el5)
+if (version->new($Template::VERSION) <= version->new('2.18')) {
+    is($msg_undef, 'Hello ', "Templated with undefined variable, missing strict mode in old TT version");
+    ok(! defined($warn), "no warn on template with undefined variable, missing strict mode in old TT version");
+} else {
+    is($msg_undef,
+       "Unable to process template 'Hello [% world %]' with data {'worldz' => 'quattorz'}: var.undef error - undefined variable: world",
+       "Nothing to template, strict mode");
+    like($warn, qr{Unable to process template .* undefined variable: world}, "warn on nothing to template, strict mode");
+}
 
 $warn = undef;
 is(mms("Hello [% IF world %] missing end", {world => 'quattor'}),
