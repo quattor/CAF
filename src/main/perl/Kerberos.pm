@@ -772,7 +772,11 @@ foreach my $class (sort keys %GSSAPI_INTERFACE_WRAPPER) {
             my $self = shift;
 
             # Setup local environment
+            # assigning undef to ENV gives warning in EL5
+            no warnings qw(uninitialized);
             local %ENV = %ENV;
+            use warnings qw(uninitialized);
+
             $self->update_env(\%ENV);
 
             my ($status);
@@ -849,7 +853,11 @@ sub _process
     my ($self, $cmd) = @_;
 
     # Setup local environment
+    # assigning undef to ENV gives warning in EL5
+    no warnings qw(uninitialized);
     local %ENV = %ENV;
+    use warnings qw(uninitialized);
+
     $self->update_env(\%ENV);
 
     my $proc = CAF::Process->new($cmd, log => $self);
