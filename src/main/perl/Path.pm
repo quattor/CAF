@@ -295,8 +295,9 @@ Test if C<directory> exists and is a directory.
 This is basically the perl builtin C<-d>,
 wrapped in a method to allow unittesting.
 
-A broken symlink is not a directory. (As C<-d> follows a symlink,
-a broken symlink either exists with C<-l> or not.)
+If  C<directory> is a symlink, the symlink target
+is tested. If the symlink is broken (no target), 
+C<directory_exists> returns false.
 
 =cut
 
@@ -308,13 +309,14 @@ sub directory_exists
 
 =item file_exists
 
-Test if C<filename> exists ans is a directory.
+Test if C<filename> exists and is a file.
 
 This is basically the perl builtin C<-f>,
 wrapped in a method to allow unittesting.
 
-A broken symlink is not a file. (As C<-f> follows a symlink,
-a broken symlink either exists with C<-l> or not.)
+If  C<filename> is a symlink, the symlink target
+is tested. If the symlink is broken (no target), 
+C<file_exists> returns false.
 
 =cut
 
@@ -331,8 +333,8 @@ Test if C<path> exists.
 This is basically the perl builtin C<-e || -l>,
 wrapped in a method to allow unittesting.
 
-A broken symlink exists. As C<-e> follows a symlink,
-a broken symlink either exists with C<-l> or not.
+A broken symlink (symlink whose target doesn't
+exist) exists: C<any_exists> returns true.
 
 =cut
 
