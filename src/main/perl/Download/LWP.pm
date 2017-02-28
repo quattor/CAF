@@ -49,9 +49,9 @@ my $_default_https_class;
 # first module to import it wins.
 
 # assigning undef to ENV gives warning in EL5
-my $_orig_val = $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
-local $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
-$ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $_orig_val if defined($_orig_val);
+no warnings qw(uninitialized);
+local $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS} = $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS};
+use warnings qw(uninitialized);
 
 BEGIN {
     Readonly $HTTPS_CLASS_NET_SSL => 'Net::SSL';
@@ -238,7 +238,12 @@ sub _get_ua
 
     # unclear if the enviroment is needed diuring init and/or during usage
     # set it in both cases, to be on the safe side
+
+    # assigning undef to ENV gives warning in EL5
+    no warnings qw(uninitialized);
     local %ENV = %ENV;
+    use warnings qw(uninitialized);
+
     $self->update_env(\%ENV);
     my $lwp = LWP::UserAgent->new(%lwp_opts);
     $lwp->timeout($opts{timeout}) if (defined($opts{timeout}));
@@ -261,7 +266,11 @@ sub _do_ua
 
     my $lwp = $self->_get_ua(%opts);
 
+    # assigning undef to ENV gives warning in EL5
+    no warnings qw(uninitialized);
     local %ENV = %ENV;
+    use warnings qw(uninitialized);
+
     $self->update_env(\%ENV);
     my $res = $lwp->$method(@$args);
 
