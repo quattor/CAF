@@ -125,7 +125,7 @@ sub username
 
 Returns true if the option exists, false otherwhise. Option can be
 defined either in the application configuration file or on the
-command line (based on AppConfig module).
+command line (based on C<AppConfig> module).
 
 =cut
 
@@ -160,6 +160,28 @@ sub option
     }
 
     return $default;
+}
+
+=pod
+
+=item set_option($opt, $val): SUCCESS
+
+Defines an option and sets its value. If the option was previously
+defined, its value is overwritten. This is a wrapper over C<AppConfig>
+methods to hide the internal implementation of a C<CAF::Application>.
+
+This method always returns SUCCESS.
+
+=cut
+
+sub set_option
+{
+    my ($self, $opt, $val) = @_;
+
+    $self->{'CONFIG'}->define($opt);
+    $self->{'CONFIG'}->set($opt, $val);
+
+    return SUCCESS;
 }
 
 =pod
