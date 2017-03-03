@@ -24,8 +24,6 @@ use mypath;
 use File::Path qw(mkpath rmtree);
 use File::Basename qw(dirname);
 
-$CAF::Object::NoAction = 1;
-
 my $ec_check = $CAF::Path::EC;
 
 my $obj = Test::Quattor::Object->new();

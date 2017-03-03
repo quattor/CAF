@@ -121,20 +121,45 @@ sub username
 
 =pod
 
+=item option_exists($opt): boolean
+
+Returns true if the option exists, false otherwhise. Option can be
+defined either in the application configuration file or on the
+command line (based on AppConfig module).
+
+=cut
+
+# Check if a configuration option exists
+sub option_exists
+{
+    my ($self, $option) = @_;
+    return $self->{CONFIG}->_exists($option);
+}
+
+=pod
+
 =item option($opt): scalar|undef
 
 Returns the option value coming from the command line and/or
 configuration file. Scalar can be a string, or a reference to a hash
 or an array containing the option's value. option() is a wrapper
-on top of AppConfig->get($opt).
+on top of AppConfig->get($opt). 
+
+If the option doesn't exist, returns C<undef>, except if the C<default>
+argument has been specified: in this case this value is returned but
+the option remains undefined.
 
 =cut
 
 sub option
 {
-    my ($self,$opt) = @_;
+    my ($self, $opt, $default) = @_;
 
-    return $self->{'CONFIG'}->get($opt);
+    if ( $self->option_exists($opt) ) {
+        return $self->{'CONFIG'}->get($opt);
+    }
+
+    return $default;
 }
 
 =pod
