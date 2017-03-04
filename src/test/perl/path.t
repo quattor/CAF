@@ -290,20 +290,24 @@ rmtree if -d $basetest;
 ok(! $mc->directory_exists($basetest), "directory_exists false on missing directory");
 ok(! $mc->file_exists($basetest), "file_exists false on missing directory");
 ok(! $mc->any_exists($basetest), "any_exists false on missing directory");
+ok(! $mc->is_symlink($basetest), "is_symlink false on missing directory");
 
 ok(! $mc->directory_exists($basetestfile), "directory_exists false on missing file");
 ok(! $mc->file_exists($basetestfile), "file_exists false on missing file");
 ok(! $mc->any_exists($basetestfile), "any_exists false on missing file");
+ok(! $mc->is_symlink($basetestfile), "is_symlink false on missing file");
 
 makefile($basetestfile);
 
 ok($mc->directory_exists($basetest), "directory_exists true on created directory");
 ok($mc->any_exists($basetest), "any_exists true on created directory");
 ok(! $mc->file_exists($basetest), "file_exists false on created directory");
+ok(! $mc->is_symlink($basetest), "is_symlink false on created directory");
 
 ok(! $mc->directory_exists($basetestfile), "directory_exists false on created file");
 ok($mc->any_exists($basetestfile), "any_exists true on created file");
 ok($mc->file_exists($basetestfile), "file_exists true on created file");
+ok(! $mc->is_symlink($basetestfile), "is_symlink false on created file");
 
 # Test (broken) symlink and _exsists methods
 
@@ -315,14 +319,17 @@ ok(symlink("tgtdir/tgtfile", $filelink), "file symlink created");
 ok(! $mc->directory_exists($brokenlink), "directory_exists false on brokenlink");
 ok(! $mc->file_exists($brokenlink), "file_exists false on brokenlink");
 ok($mc->any_exists($brokenlink), "any_exists true on brokenlink");
+ok($mc->is_symlink($brokenlink), "is_symlink true on brokenlink");
 
 ok($mc->directory_exists($dirlink), "directory_exists true on dirlink");
 ok(! $mc->file_exists($dirlink), "file_exists false on dirlink");
 ok($mc->any_exists($dirlink), "any_exists true on dirlink");
+ok($mc->is_symlink($dirlink), "is_symlink true on dirlink");
 
 ok(! $mc->directory_exists($filelink), "directory_exists false on filelink");
 ok($mc->file_exists($filelink), "file_exists true on filelink");
 ok($mc->any_exists($filelink), "any_exists true on filelink");
+ok($mc->is_symlink($filelink), "is_symlink true on filelink");
 
 
 # noreset=1

@@ -346,6 +346,18 @@ sub any_exists
     return $path && (-e $path || -l $path);
 }
 
+=item is_symlink
+
+Test if C<path> is a symlink.
+
+=cut
+
+sub is_symlink
+{
+    my ($self, $path) = @_;
+    return $path && -l $path;
+}
+
 =item cleanup
 
 cleanup removes C<dest> with backup support.
