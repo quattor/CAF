@@ -28,6 +28,7 @@ Readonly::Hash my %CLEANUP_DISPATCH => {
 # Use dispatch table instead of non-strict function by variable call
 Readonly::Hash my %LC_CHECK_DISPATCH => {
     directory => \&LC::Check::directory,
+    link => \&LC::Check::link,
     status => \&LC::Check::status,
 };
 
@@ -356,6 +357,9 @@ sub any_exists
 
 Test if C<path> is a symlink.
 
+Returns true as long as C<path> is a symlink, even though the 
+symlink target doesn't exist.
+
 =cut
 
 sub is_symlink
@@ -559,6 +563,116 @@ sub directory
     # A new directory always implies something changed
     my $changed = ($newdir || $status == CHANGED) ? CHANGED : SUCCESS;
     return dualvar( $changed, $directory);
+}
+
+
+=item _make_link
+
+This method is mainly a wrapper over C<LC::Check::link>
+returning the standard C<CAF::Path> return values. Every option
+supported by C<LC::Check::link> is supported. C<NoAction>
+flag is handled by C<LC::Check::link> and C<keeps_state> option
+is honored (overrides C<NoAction> if true). One important
+different is the order of the arguments: C<CAF::Path:_make_link>
+and the methods based on it are following the Perl C<symlink>
+(and C<ln> command) argument order.
+
+This is an internal method, not supposed to be called directly.
+Either call C<symlink> or C<hardlink> public methods instead.
+
+=cut
+
+sub _make_link
+{
+    my ($self, $target, $link_path, %opts) = @_;
+    my $link_type = $opts{hard} ? "hardlink" : "symlink";
+
+    $link_path = $self->_untaint_path($link_path, $link_type) || return;
+    $target = $self->_untaint_path($target, $link_type) || return;
+
+    $self->_reset_exception_fail($link_type);
+
+    my $status = $self->LC_Check('link', [$link_path, $target], \%opts);
+            
+    if ( defined($status) ) {
+        return ($status ? CHANGED : SUCCESS);
+    } else {
+        return;
+    }
+}
+
+=item hardlink
+
+Create a hardlink C<link_path> whose target is C<target>.
+
+On failure, returns undef and sets the fail attribute.
+If C<link_path> exists and is a file, it is updated. 
+C<target> must exist (C<check> flag available in symlink()
+is ignored for hardlinks) and it must reside in the same 
+filesystem as C<link_path>. If C<target_path> is a
+relative path, it is interpreted from the current directory.
+C<link_name> parent directory is created if it doesn't exist.
+
+Returns SUCCESS on sucess if the hardlink already existed
+with the same target, CHANGED if the hardlink was created
+or updated, undef otherwise.
+
+This method relies on C<_make_link> method to do the real work,
+after enforcing the option saying that it is a hardlink.
+
+=cut
+
+sub hardlink
+{
+    my ($self, $target, $link_path, %opts) = @_;
+
+    # Option passed to LC::Check::link to indicate a hardlink
+    $opts{hard} = 1;
+
+    return $self->_make_link($target, $link_path, %opts);
+}
+
+
+=item symlink
+
+Create a symlink C<link_path> whose target is C<target>.
+
+Returns undef and sets the fail attribute if C<link_path> 
+already exists and is not a symlink, except if this is a file and option C<force> is
+defined and true. If C<link_path> exists and is a symlink, it is updated.
+By default, the target is not required to exist. If you want to
+ensure that it exists, define option C<check> to true.
+Both C<link_path> and C<target> can be relative paths and are
+kept relative in this case. C<link_path> parent directory
+is created if it doesn't exist.
+
+Returns SUCCESS on sucess if the symlink already existed
+with the same target, CHANGED if the symlink was created
+or updated, undef otherwise.
+
+This method relies on C<_make_link> method to do the real work,
+after enforcing the option saying that it is a symlink.
+
+=cut
+
+sub symlink
+{
+    my ($self, $target, $link_path, %opts) = @_;
+
+    # Option passed to LC::Check::link to indicate a symlink
+    $opts{hard} = 0;
+    
+    # LC::Check::symlink() expects an option 'nocheck' but CAF::Path::symlink exposes
+    # an option 'check', as the default in CAF::Path::symlink is not to check the
+    # target existence. Convert it to 'nocheck'.
+    if ( defined($opts{check}) ) {
+        $opts{nocheck} = ! $opts{check};
+        delete $opts{check};
+    } else {
+        $opts{nocheck} = 1;
+    }
+
+    return $self->_make_link($target, $link_path, %opts);
 }
 
 

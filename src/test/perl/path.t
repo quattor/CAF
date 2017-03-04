@@ -11,6 +11,7 @@ use LC::Exception qw (throw_error);
 
 use Test::More;
 use Test::MockModule;
+use Cwd;
 
 use CAF::Object qw(SUCCESS CHANGED);
 use CAF::Path;
@@ -81,6 +82,11 @@ ok(! $mc->_get_noaction(1), "_get_noaction returns false with CAF::Object::NoAct
 
 my $exception_reset = 0;
 
+# init_exception() and verify_exception() functions work in pair. They allow to register a message
+# in 'fail' attribute at the beginning of a test section and to verify if new (unexpected) exceptions
+# where raised during the test section. To reset the 'fail' attribute after verify_exception(),
+# call _reset_exception_fail(). init_exception() implicitely resets the 'fail' attribute and also
+# reset to 0 the count of calls to _reset_exception_fail().
 sub init_exception
 {
     my ($msg) = @_;
@@ -135,6 +141,21 @@ $mock->mock('_reset_exception_fail', sub {
     return &$init(@_);
 });
 
+# Mocked symlink() and hardlink() to count calls
+my $symlink_call_count = 0;
+my $hardlink_call_count = 0;
+
+$mock->mock('symlink', sub {
+    $symlink_call_count += 1;
+    my $symlink_orig = $mock->original('symlink');
+    return &$symlink_orig(@_);
+});
+
+$mock->mock('hardlink', sub {
+    $hardlink_call_count += 1;
+    my $hardlink_orig = $mock->original('hardlink');
+    return &$hardlink_orig(@_);
+});
 
 =head2 _function_catch
 
@@ -279,11 +300,12 @@ $mc->{fail} = undef;
 is($mc->_untaint_path("abc", "ok"), "abc", "untaint ok");
 ok(! defined($mc->{fail}), "no fail attribute set with ok path");
 
-=head2 directory/file/any exists
+
+=head2 directory/file/any exists on files and directories
 
 =cut
 
-init_exception("existence tests");
+init_exception("existence tests (file/directory)");
 
 # Tests without NoAction
 $CAF::Object::NoAction = 0;
@@ -311,12 +333,113 @@ ok($mc->any_exists($basetestfile), "any_exists true on created file");
 ok($mc->file_exists($basetestfile), "file_exists true on created file");
 ok(! $mc->is_symlink($basetestfile), "is_symlink false on created file");
 
-# Test (broken) symlink and _exsists methods
+# noreset=1
+verify_exception("existence tests (file/directory)", undef, 0, 1);
+ok($mc->_reset_exception_fail(), "_reset_exception_fail after existence tests (file/directory)");
 
-ok(symlink("really_really_missing", $brokenlink), "broken symlink created");
-makefile("$basetest/tgtdir/tgtfile");
-ok(symlink("tgtdir", $dirlink), "directory symlink created");
-ok(symlink("tgtdir/tgtfile", $filelink), "file symlink created");
+
+=head2 symlink/hardlink creation/update/test
+
+=cut
+
+# Test symlink creation
+
+# Function to do the ok()/is() pair, taking into account NoAction flag
+sub check_symlink {
+    my ($mc, $target, $link_path, $expected_status) = @_;
+    my $noaction = $mc->_get_noaction();
+
+    my $ok_msg;
+    if ( $noaction ) {
+        $ok_msg = "$link_path symlink not created (NoAction set)";
+    } else {
+        $ok_msg = "$link_path is " . ($expected_status == CHANGED ? "" : "already ") . "a symlink";
+    }
+    my $target_msg = "$link_path symlink has the expected " . ($expected_status == CHANGED ? "changed " : "") . "target ($target)";
+
+    # Test if symlink was created or not according to NoAction flag
+    my $ok_condition;
+    if ( $noaction ) {
+        $ok_condition = ! $mc->any_exists($link_path);
+    } else {
+        $ok_condition = $mc->is_symlink($link_path);
+    }
+    ok($ok_condition, $ok_msg);
+
+    is(readlink($link_path), $target, $target_msg) unless $noaction;
+};
+
+init_exception("symlink tests");
+
+rmtree ($basetest) if -d $basetest;
+my $target_directory = "tgtdir";
+my $target_file1 = "tgtfile1";
+my $target_file2 = "$basetest/$target_directory/tgtfile2";
+makefile("$basetest/$target_file1");
+makefile($target_file2);
+my %opts;
+
+# Symlink creations
+for $CAF::Object::NoAction (1,0) {
+    is($mc->symlink($target_directory, $dirlink), CHANGED, "directory symlink created");
+    check_symlink($mc, $target_directory, $dirlink, CHANGED);
+    is($mc->symlink($target_file2, $filelink), CHANGED, "file symlink created");
+    check_symlink($mc, $target_file2, $filelink, CHANGED);
+}
+
+# Valid symlink updates
+# The following tests make no sens if NoAction is true (require the previous creations to occur)
+is($mc->symlink($target_file2, $filelink), SUCCESS, "file symlink already exists: nothing done");
+check_symlink($mc, $target_file2, $filelink, SUCCESS);
+is($mc->symlink($target_file1, $filelink), CHANGED, "file symlink updated");
+check_symlink($mc, $target_file1, $filelink, CHANGED);
+ok(! readlink($target_file1), "$target_file1 exists and is a file");
+my $link_status = $mc->symlink($target_file1, $target_file2);
+ok(! defined($link_status), "symlink failed: existing file not replaced by a symlink");
+is($mc->{fail},
+   "*** cannot symlink $target_file2: it is not an existing symlink",
+   "fail attribute set after symlink failure (existing file not replaced by a symlink)");
+ok($mc->file_exists($target_file2) && ! $mc->is_symlink($target_file2), "File $target_file2 has not be replaced by a symlink");
+$opts{force} = 1;
+$CAF::Object::NoAction = 1;
+is($mc->symlink($target_file1, $target_file2, %opts), CHANGED, "existing file replaced by a symlink (force option set)");
+ok($mc->file_exists($target_file2), "File $target_file2 not replaced by a symlink with 'force' option (NoAction set)");
+$CAF::Object::NoAction = 0;
+is($mc->symlink($target_file1, $target_file2, %opts), CHANGED, "existing file replaced by a symlink (force option set)");
+check_symlink($mc, $target_file1, $target_file2, CHANGED);
+
+# Invalid symlink updates
+my $test_directory = "$basetest/$target_directory";
+$link_status = $mc->symlink($target_file1, "$test_directory", %opts);
+ok (! defined($link_status), "directory not replaced by a symlink (force option set)");
+is($mc->{fail},
+   "*** cannot symlink $test_directory: it is not an existing symlink",
+   "fail attribute set after symlink failure (existing directory not replaced by a symlink)");
+ok($mc->directory_exists($test_directory) && ! $mc->is_symlink($test_directory),
+   "Directory $test_directory has not be replaced by a symlink");
+
+# Broken symlinks with and without 'check' option
+$opts{check} = 1;
+ok(! $mc->symlink("really_really_missing", $brokenlink, %opts), "broken symlink not created (target existence enforced)");
+ok(! -e $brokenlink && ! -l $brokenlink, "Broken link has not been created");
+$opts{check} = 0;
+is($mc->symlink("really_missing", $brokenlink), CHANGED, "broken symlink created");
+ok($mc->is_symlink($brokenlink), "Broken link has been created (target check disabled by check=0)");
+is(readlink($brokenlink), "really_missing", "Broken link has the expected target by check=0");
+delete $opts{check};
+is($mc->symlink("really_really_missing", $brokenlink), CHANGED, "broken symlink updated");
+ok($mc->is_symlink($brokenlink), "Broken link has been updated (target check disabled by 'check' undefined)");
+is(readlink($brokenlink), "really_really_missing", "Broken link has the expected target by 'check' undefined");
+
+# noreset=0
+verify_exception("symlink tests", "Failed to create symlink", $symlink_call_count * 2, 0);
+ok($mc->_reset_exception_fail(), "_reset_exception_fail after symlink tests");
+
+
+# Test xxx_exists methods with symlinks
+# Needs symlinks created in previous step (symlink creation/update)
+
+init_exception("existence tests (symlinks)");
 
 ok(! $mc->directory_exists($brokenlink), "directory_exists false on brokenlink");
 ok(! $mc->file_exists($brokenlink), "file_exists false on brokenlink");
@@ -333,16 +456,92 @@ ok($mc->file_exists($filelink), "file_exists true on filelink");
 ok($mc->any_exists($filelink), "any_exists true on filelink");
 ok($mc->is_symlink($filelink), "is_symlink true on filelink");
 
-
 # noreset=1
-verify_exception("existence tests do not reset exception/fail", "origfailure", 0, 1);
-ok($mc->_reset_exception_fail(), "_reset_exception_fail after existence tests");
+verify_exception("existence tests (symlinks)", undef, 0, 1);
+ok($mc->_reset_exception_fail(), "_reset_exception_fail after existence tests (symlinks)");
+
+
+# Test hardlink creation
+
+# Function to do the hardlink checks, taking into account NoAction flag
+sub check_hardlink {
+    my ($mc, $target, $link_path, $expected_status) = @_;
+    my $noaction = $mc->_get_noaction();
+
+    my $ok_msg;
+    if ( $noaction ) {
+        $ok_msg = "$link_path hardlink not created (NoAction set)";
+    } else {
+        $ok_msg = "$link_path is " . ($expected_status == CHANGED ? "" : "already ") . "a hardlink";
+    }
+    my $target_msg = "$link_path hardlink has the expected " . ($expected_status == CHANGED ? "changed " : "") . "target ($target)";
+
+    my ($link_inode, $nlink) = (stat($link_path))[1, 3];
+    my $target_inode = (stat($target))[1];
+
+    # Test if symlink was created or not according to NoAction flag
+    my $ok_condition;
+    if ( $noaction ) {
+        $ok_condition = ! $mc->any_exists($link_path);
+    }else {
+        $ok_condition = $nlink && ($nlink > 1);
+    }
+    ok($ok_condition, $ok_msg);
+
+    ok($link_inode == $target_inode, $target_msg) unless $noaction;
+};
+
+init_exception("hardlink tests");
+
+rmtree ($basetest) if -d $basetest;
+my $cwd = cwd();
+my $hardlink1 = "$basetest/$target_directory/hardlink1";
+my $hardlink2 = "$basetest/$target_directory/hardlink2";
+# hardlink target must be an absolute path or the link path directory is prepended
+$target_file1 = "$cwd/$basetest/tgtfile1";
+my $relative_target_file3 = "$basetest/$target_directory/tgtfile3";
+my $target_file3 = "$cwd/$relative_target_file3";
+makefile($target_file1);
+makefile($target_file3);
+
+for $CAF::Object::NoAction (1,0) {
+    is($mc->hardlink($target_file1, $hardlink1), CHANGED, "hardlink created");
+    check_hardlink($mc, $target_file1, $hardlink1, CHANGED);
+    if ( !$CAF::Object::NoAction ) {
+        is($mc->hardlink($target_file1, $hardlink1), SUCCESS, "hardlink already exists");
+        check_hardlink($mc, $target_file1, $hardlink1, SUCCESS);
+    }
+    is($mc->hardlink($target_file3, $hardlink1), CHANGED, "hardlink updated");
+    check_hardlink($mc, $target_file3, $hardlink1, CHANGED);
+}
+
+# The following tests are not affected by NoAction flag
+$link_status = $mc->hardlink("missing_file", $hardlink1);
+ok(! $link_status, "hardlink not created (target has to exist)");
+is($mc->{fail},
+   "*** invalid target (missing_file): stat($basetest/$target_directory/missing_file): No such file or directory",
+   "fail attribute set after hardlink error");
+$link_status = $mc->hardlink($target_file1, "$basetest/$target_directory");
+ok(! $link_status, "hardlink not created (do not replace an existing directory)");
+is($mc->{fail},
+   "*** cannot hard link $basetest/$target_directory: it is a directory",
+   "fail attribute set after hardlink error (existing directory not replaced)");
+$link_status = $mc->hardlink($relative_target_file3, $hardlink2);
+ok(! $link_status, "hardlink not created (relative target, link path directory prepended)");
+is($mc->{fail},
+   "*** invalid target ($relative_target_file3): stat(". dirname($hardlink2) . "/$relative_target_file3): No such file or directory",
+   "fail attribute set after hardlink error (relative target, link path directory prepended)");
+
+# noreset=0
+verify_exception("hardlink tests", "\\*\\*\\* invalid target", $hardlink_call_count * 2, 0);
+ok($mc->_reset_exception_fail(), "_reset_exception_fail after hardlink tests");
 
 
 =head2 directory
 
 =cut
 
+rmtree ($basetest) if -d $basetest;
 $mc->{fail} = undef;
 ok(! defined $mc->directory("\0"), "failing untaint directory returns undef");
 is($mc->{fail}, "Failed to untaint directory: path \0",
