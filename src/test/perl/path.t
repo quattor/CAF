@@ -102,19 +102,21 @@ sub verify_exception
 {
     my ($msg, $fail, $expected_reset, $noreset) = @_;
     $expected_reset = 1 if (! defined($expected_reset));
-    is($exception_reset, $expected_reset, "exception_reset called $expected_reset after $msg");
+    is($exception_reset, $expected_reset, "_reset_exception_fail called $expected_reset times after $msg");
     if ($noreset) {
         ok($ec_check->error(), "Error not reset after $msg");
     } else {
         ok(! $ec_check->error(), "Error reset after $msg");
     };
-    if ($noreset) {
+    if ($noreset && defined($mc->{fail})) {
         like($mc->{fail}, qr{^origfailure }, "Fail attribute matches originalfailure on noreset after $msg");
-    } elsif ($fail) {
+    } elsif ($fail && defined($mc->{fail})) {
         like($mc->{fail}, qr{$fail}, "Fail attribute matches $fail after $msg");
         unlike($mc->{fail}, qr{origfailure}, "original fail attribute reset");
-    } else {
+    } elsif ( ! $noreset ) {
         ok(! defined($mc->{fail}), "Fail attribute reset after $msg");
+    } else {
+        ok(0, "internal test error: unexpected undefined fail attribute") if (! defined($mc->{fail}));
     };
 };
 
