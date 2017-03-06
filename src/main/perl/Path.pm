@@ -196,8 +196,10 @@ sub _function_catch
 
 Run function reference C<funcref> with arrayref C<argsref> and hashref C<optsref>.
 
-Return and set fail attribute with C<failmsg> on die, verbose C<msg> on success
-(resp. $@ and stringified result are appended).
+Return and set fail attribute with C<failmsg> on die or an error (C<undef> returned
+by C<funcref>), or print (at verbose level) C<msg> on success (respectively $@ and 
+stringified result are appended). Note that C<_safe_eval> doesn't work with functions
+that don't return a defined value when they succeed.
 
 Resets previous exceptions and/or fail attribute
 
@@ -209,22 +211,26 @@ sub _safe_eval
 
     $self->_reset_exception_fail('_safe_eval');
 
-    my ($res, @args, %opts);
+    my (@args, %opts);
     @args = @$argsref if $argsref;
     %opts = %$optsref if $optsref;
 
     local $@;
-    eval {
-        $res = $funcref->(@args, %opts);
-    };
+    my $res = eval {
+                    $funcref->(@args, %opts);
+                   };
 
-    if ($@) {
-        chomp($@);
-        return $self->fail("$failmsg: $@");
-    } else {
-        my $res_txt = defined($res) ? "$res" : '<undef>';
-        chomp($res);
+    # $res is undef if there is a syntax or runtime error or if the evaluated
+    # function returns undef (interpreted as a function error).
+    if ( defined($res) ) {
         $self->verbose("$msg: $res");
+    } else {
+        my $err_msg = '';
+        if ($@) {
+            chomp($@);
+            $err_msg = ": $@";
+        }
+        return $self->fail("$failmsg$err_msg");
     }
 
     return $res;
