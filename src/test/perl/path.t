@@ -81,6 +81,9 @@ ok(! $mc->_get_noaction(1), "_get_noaction returns false with CAF::Object::NoAct
 =cut
 
 my $exception_reset = 0;
+my $symlink_call_count = 0;
+my $hardlink_call_count = 0;
+my $function_catch_call_count = 0;
 
 # init_exception() and verify_exception() functions work in pair. They allow to register a message
 # in 'fail' attribute at the beginning of a test section and to verify if new (unexpected) exceptions
@@ -91,6 +94,9 @@ sub init_exception
 {
     my ($msg) = @_;
     $exception_reset = 0;
+    $symlink_call_count = 0;
+    $hardlink_call_count = 0;
+    $function_catch_call_count = 0;
 
     # Set the fail attribute, it should be reset
     $mc->{fail} = "origfailure $msg";
@@ -142,8 +148,6 @@ $mock->mock('_reset_exception_fail', sub {
 });
 
 # Mocked symlink() and hardlink() to count calls
-my $symlink_call_count = 0;
-my $hardlink_call_count = 0;
 
 $mock->mock('symlink', sub {
     $symlink_call_count += 1;
@@ -181,8 +185,8 @@ init_exception("_function_catch success");
 
 is($mc->_function_catch($success_func, [qw(a b)], {c => 'd', e => 'f'}), 100,
    "_function_catch with success_func returns correct value");
-is_deeply($args, [qw(a b)], "_func_catch passes arg arrayref correctly");
-is_deeply($opts, {c => 'd', e => 'f'}, "_func_catch passes opt hashref correctly");
+is_deeply($args, [qw(a b)], "_function_catch passes arg arrayref correctly");
+is_deeply($opts, {c => 'd', e => 'f'}, "_function_catch passes opt hashref correctly");
 
 verify_exception("_function_catch success");
 
@@ -277,9 +281,17 @@ is($mc->{fail}, "Unsupported LC::Check function no_lc_check_function",
 is($exception_reset, 0, "exception reset is not called when handling unknown dispatch");
 ok($mc->_reset_exception_fail(), "_reset_exception_fail after unknown dispatch");
 
-# Done, unmock for further tests
+# Done, unmock _get_noaction and mock _function_catch differently for for further tests
 $mock->unmock('_get_noaction');
-$mock->unmock('_function_catch');
+
+# New mocked _function_catch() allow to count the number of calls to computing
+# the expected number of exception resets
+$mock->mock('_function_catch', sub {
+    $function_catch_call_count += 1;
+    my $function_catch_orig = $mock->original('_function_catch');
+    return &$function_catch_orig(@_);
+});
+
 
 =head2 _untaint_path
 
@@ -315,23 +327,34 @@ ok(! $mc->directory_exists($basetest), "directory_exists false on missing direct
 ok(! $mc->file_exists($basetest), "file_exists false on missing directory");
 ok(! $mc->any_exists($basetest), "any_exists false on missing directory");
 ok(! $mc->is_symlink($basetest), "is_symlink false on missing directory");
+ok(! $mc->has_hardlinks($basetest), "has_hardlinks false on missing directory");
+is($mc->is_hardlink($basetest, $basetest), undef, "is_hardlink false with missing directories");
 
 ok(! $mc->directory_exists($basetestfile), "directory_exists false on missing file");
 ok(! $mc->file_exists($basetestfile), "file_exists false on missing file");
 ok(! $mc->any_exists($basetestfile), "any_exists false on missing file");
 ok(! $mc->is_symlink($basetestfile), "is_symlink false on missing file");
+ok(! $mc->has_hardlinks($basetestfile), "has_hardlinks false on missing file");
+is($mc->is_hardlink($basetestfile, $basetestfile), undef, "is_hardlink false with missing files");
 
 makefile($basetestfile);
+my $basetestfile2 = $basetestfile . "_2";
+makefile($basetestfile2);
 
 ok($mc->directory_exists($basetest), "directory_exists true on created directory");
 ok($mc->any_exists($basetest), "any_exists true on created directory");
 ok(! $mc->file_exists($basetest), "file_exists false on created directory");
 ok(! $mc->is_symlink($basetest), "is_symlink false on created directory");
+ok(! $mc->has_hardlinks($basetest), "has_hardlinks false on created directory");
+is($mc->is_hardlink($basetest, $basetest), undef, "is_hardlink false with created directories");
 
 ok(! $mc->directory_exists($basetestfile), "directory_exists false on created file");
 ok($mc->any_exists($basetestfile), "any_exists true on created file");
 ok($mc->file_exists($basetestfile), "file_exists true on created file");
 ok(! $mc->is_symlink($basetestfile), "is_symlink false on created file");
+ok(! $mc->has_hardlinks($basetestfile), "has_hardlinks false on created file");
+is($mc->is_hardlink($basetestfile, $basetestfile), 0, "is_hardlink false (same file compared)");
+is($mc->is_hardlink($basetestfile, $basetestfile2), 0, "is_hardlink false with non-hardlinked files");
 
 # noreset=1
 verify_exception("existence tests (file/directory)", undef, 0, 1);
@@ -393,7 +416,8 @@ is($mc->symlink($target_file2, $filelink), SUCCESS, "file symlink already exists
 check_symlink($mc, $target_file2, $filelink, SUCCESS);
 is($mc->symlink($target_file1, $filelink), CHANGED, "file symlink updated");
 check_symlink($mc, $target_file1, $filelink, CHANGED);
-ok(! readlink($target_file1), "$target_file1 exists and is a file");
+# Check that the file to be redefined as a symlink really exists
+ok(! readlink($target_file2), "$target_file2 exists and is a file");
 my $link_status = $mc->symlink($target_file1, $target_file2);
 ok(! defined($link_status), "symlink failed: existing file not replaced by a symlink");
 is($mc->{fail},
@@ -402,7 +426,7 @@ is($mc->{fail},
 ok($mc->file_exists($target_file2) && ! $mc->is_symlink($target_file2), "File $target_file2 has not be replaced by a symlink");
 $opts{force} = 1;
 $CAF::Object::NoAction = 1;
-is($mc->symlink($target_file1, $target_file2, %opts), CHANGED, "existing file replaced by a symlink (force option set)");
+is($mc->symlink($target_file1, $target_file2, %opts), CHANGED, "existing file would be replaced by a symlink (force option and NoAction set)");
 ok($mc->file_exists($target_file2), "File $target_file2 not replaced by a symlink with 'force' option (NoAction set)");
 $CAF::Object::NoAction = 0;
 is($mc->symlink($target_file1, $target_file2, %opts), CHANGED, "existing file replaced by a symlink (force option set)");
@@ -432,38 +456,52 @@ ok($mc->is_symlink($brokenlink), "Broken link has been updated (target check dis
 is(readlink($brokenlink), "really_really_missing", "Broken link has the expected target by 'check' undefined");
 
 # noreset=0
-verify_exception("symlink tests", "Failed to create symlink", $symlink_call_count * 2, 0);
+diag ("symlink() calls: $symlink_call_count, _function_catch() calls: $function_catch_call_count");
+verify_exception("symlink tests", "Failed to create symlink", $symlink_call_count + $function_catch_call_count, 0);
 ok($mc->_reset_exception_fail(), "_reset_exception_fail after symlink tests");
 
 
-# Test xxx_exists methods with symlinks
+# Test xxx_exists, is_hardlink and has_hardlinks methods with symlinks
 # Needs symlinks created in previous step (symlink creation/update)
 
-init_exception("existence tests (symlinks)");
+init_exception("existence tests (symlinks and hardlinks)");
+my $hardlink = "$basetest/a_hardlink";
 
 ok(! $mc->directory_exists($brokenlink), "directory_exists false on brokenlink");
 ok(! $mc->file_exists($brokenlink), "file_exists false on brokenlink");
 ok($mc->any_exists($brokenlink), "any_exists true on brokenlink");
 ok($mc->is_symlink($brokenlink), "is_symlink true on brokenlink");
+is($mc->hardlink($brokenlink, $hardlink), CHANGED, "hardlink created on broken link");
+ok($mc->has_hardlinks($brokenlink), "broken link is a hard link");
+is($mc->is_hardlink($brokenlink, $hardlink), 1, "$brokenlink and $hardlink are hard linked");
 
 ok($mc->directory_exists($dirlink), "directory_exists true on dirlink");
 ok(! $mc->file_exists($dirlink), "file_exists false on dirlink");
 ok($mc->any_exists($dirlink), "any_exists true on dirlink");
 ok($mc->is_symlink($dirlink), "is_symlink true on dirlink");
+is($mc->hardlink($dirlink, $hardlink), CHANGED, "hardlink created on directory link");
+ok($mc->has_hardlinks($dirlink), "directory link is a hard link");
+is($mc->is_hardlink($dirlink, $hardlink), 1, "$dirlink and $hardlink are hard linked");
 
 ok(! $mc->directory_exists($filelink), "directory_exists false on filelink");
 ok($mc->file_exists($filelink), "file_exists true on filelink");
 ok($mc->any_exists($filelink), "any_exists true on filelink");
 ok($mc->is_symlink($filelink), "is_symlink true on filelink");
+is($mc->hardlink($filelink, $hardlink), CHANGED, "hardlink created on file link");
+ok($mc->has_hardlinks($filelink), "file link is a hard link");
+is($mc->is_hardlink($filelink, $hardlink), 1, "$filelink and $hardlink are hard linked");
 
-# noreset=1
-verify_exception("existence tests (symlinks)", undef, 0, 1);
-ok($mc->_reset_exception_fail(), "_reset_exception_fail after existence tests (symlinks)");
+is(! $mc->is_hardlink($filelink, $dirlink), 1, "$filelink and $dirlink are not hard linked (different hard links)");
+
+# noreset=0
+verify_exception("existence tests (symlinks and hardlinks)", undef, 6, 0);
+ok($mc->_reset_exception_fail(), "_reset_exception_fail after existence tests (symlinks and hardlinks)");
 
 
 # Test hardlink creation
 
 # Function to do the hardlink checks, taking into account NoAction flag
+# This function also acts a unit test for has_hardlinks() and is_hardlink() methods
 sub check_hardlink {
     my ($mc, $target, $link_path, $expected_status) = @_;
     my $noaction = $mc->_get_noaction();
@@ -476,19 +514,16 @@ sub check_hardlink {
     }
     my $target_msg = "$link_path hardlink has the expected " . ($expected_status == CHANGED ? "changed " : "") . "target ($target)";
 
-    my ($link_inode, $nlink) = (stat($link_path))[1, 3];
-    my $target_inode = (stat($target))[1];
-
     # Test if symlink was created or not according to NoAction flag
     my $ok_condition;
     if ( $noaction ) {
         $ok_condition = ! $mc->any_exists($link_path);
-    }else {
-        $ok_condition = $nlink && ($nlink > 1);
+    } else {
+        $ok_condition = $mc->has_hardlinks($link_path);
     }
     ok($ok_condition, $ok_msg);
 
-    ok($link_inode == $target_inode, $target_msg) unless $noaction;
+    ok($mc->is_hardlink($link_path, $target), $target_msg) unless $noaction;
 };
 
 init_exception("hardlink tests");
@@ -513,27 +548,27 @@ for $CAF::Object::NoAction (1,0) {
     }
     is($mc->hardlink($target_file3, $hardlink1), CHANGED, "hardlink updated");
     check_hardlink($mc, $target_file3, $hardlink1, CHANGED);
+    is($mc->hardlink($relative_target_file3, $hardlink2), CHANGED, "relative hardlink created");
+    check_hardlink($mc, $target_file3, $hardlink2, CHANGED);
 }
 
 # The following tests are not affected by NoAction flag
 $link_status = $mc->hardlink("missing_file", $hardlink1);
 ok(! $link_status, "hardlink not created (target has to exist)");
 is($mc->{fail},
-   "*** invalid target (missing_file): stat($basetest/$target_directory/missing_file): No such file or directory",
+   "*** invalid target (missing_file): lstat(missing_file): No such file or directory",
    "fail attribute set after hardlink error");
 $link_status = $mc->hardlink($target_file1, "$basetest/$target_directory");
 ok(! $link_status, "hardlink not created (do not replace an existing directory)");
 is($mc->{fail},
    "*** cannot hard link $basetest/$target_directory: it is a directory",
    "fail attribute set after hardlink error (existing directory not replaced)");
-$link_status = $mc->hardlink($relative_target_file3, $hardlink2);
-ok(! $link_status, "hardlink not created (relative target, link path directory prepended)");
-is($mc->{fail},
-   "*** invalid target ($relative_target_file3): stat(". dirname($hardlink2) . "/$relative_target_file3): No such file or directory",
-   "fail attribute set after hardlink error (relative target, link path directory prepended)");
+is($mc->hardlink($target_file1, $hardlink2), CHANGED, "hardlink2 created");
+is($mc->is_hardlink($hardlink1, $hardlink2), 0, "is_hardlink false (0) with 2 different hardlinks");
 
 # noreset=0
-verify_exception("hardlink tests", "\\*\\*\\* invalid target", $hardlink_call_count * 2, 0);
+diag ("hardlink() calls: $hardlink_call_count, _function_catch() calls: $function_catch_call_count");
+verify_exception("hardlink tests", "\\*\\*\\* invalid target", $hardlink_call_count + $function_catch_call_count, 0);
 ok($mc->_reset_exception_fail(), "_reset_exception_fail after hardlink tests");
 
 

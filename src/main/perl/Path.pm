@@ -1,7 +1,7 @@
 #${PMpre} CAF::Path${PMpost}
 
 use CAF::Object qw(SUCCESS CHANGED);
-use LC::Check;
+use LC::Check 1.22;
 use LC::Exception qw (throw_error);
 
 use Readonly;
@@ -357,7 +357,7 @@ sub any_exists
 
 Test if C<path> is a symlink.
 
-Returns true as long as C<path> is a symlink, even though the 
+Returns true as long as C<path> is a symlink, including when the 
 symlink target doesn't exist.
 
 =cut
@@ -573,7 +573,7 @@ returning the standard C<CAF::Path> return values. Every option
 supported by C<LC::Check::link> is supported. C<NoAction>
 flag is handled by C<LC::Check::link> and C<keeps_state> option
 is honored (overrides C<NoAction> if true). One important
-different is the order of the arguments: C<CAF::Path:_make_link>
+difference is the order of the arguments: C<CAF::Path:_make_link>
 and the methods based on it are following the Perl C<symlink>
 (and C<ln> command) argument order.
 
@@ -638,13 +638,14 @@ sub hardlink
 Create a symlink C<link_path> whose target is C<target>.
 
 Returns undef and sets the fail attribute if C<link_path> 
-already exists and is not a symlink, except if this is a file and option C<force> is
-defined and true. If C<link_path> exists and is a symlink, it is updated.
-By default, the target is not required to exist. If you want to
-ensure that it exists, define option C<check> to true.
-Both C<link_path> and C<target> can be relative paths and are
-kept relative in this case. C<link_path> parent directory
-is created if it doesn't exist.
+already exists and is not a symlink, except if this is a file
+and option C<force> is defined and true. If C<link_path> exists
+and is a symlink, it is updated. By default, the target is not 
+required to exist. If you want to ensure that it exists, 
+define option C<check> to true. Both C<link_path> and C<target>
+can be relative paths: C<link_path> is interpreted as relatif
+to the current directory and C<target> is kept relative. 
+C<link_path> parent directory is created if it doesn't exist.
 
 Returns SUCCESS on sucess if the symlink already existed
 with the same target, CHANGED if the symlink was created
@@ -673,6 +674,69 @@ sub symlink
     }
 
     return $self->_make_link($target, $link_path, %opts);
+}
+
+
+=item has_hardlinks
+
+Method that returns the number of hardlinks for C<file>. The number of
+hardlinks is the number of entries referring to the inodes minus 1. If
+C<file> has no hardlink, the return value is 0. If C<file> is not a file,
+the return value is C<undef>.
+
+=cut
+
+sub has_hardlinks
+{
+    my ($self, $file) = @_;
+    $file = $self->_untaint_path($file, "has_hardlinks") || return;
+    
+    if ( ! $self->file_exists($file) && ! $self->is_symlink($file) ) {
+        $self->debug(2, "has_hardlinks(): $file doesn't exist or is not a file");
+        return;
+    }
+    
+    my $nlinks = (lstat($file))[3];
+    $self->debug(2, "Number of links to $file: $nlinks (hardlink if > 2)");
+    return $nlinks ? $nlinks - 1 : 0;
+}
+
+
+=item is_hardlink
+
+This method returns SUCCESS if C<path1> and C<path2> refer to the same file (inode).
+It returns 0 if C<path1> and C<path2> both exist but are different files or are the same path
+and C<undef> if one of the paths doesn't exist or is not a file.
+
+Note: the result returned will be identical whatever is the order of C<path1> and C<path2>
+arguments.
+
+=cut
+
+sub is_hardlink
+{
+    my ($self, $path1, $path2) = @_;
+    $path1 = $self->_untaint_path($path1, "is_hardlink path1") || return;
+    $path2 = $self->_untaint_path($path2, "is_hardlink path2") || return;
+    
+    if ( ! $self->file_exists($path1) && ! $self->is_symlink($path1) ) {
+        $self->debug(2, "is_hardlink(): $path1 doesn't exist or is not a file");
+        return;
+    }
+    if ( ! $self->file_exists($path2) && ! $self->is_symlink($path2) ) {
+        $self->debug(2, "is_hardlink(): $path2 doesn't exist or is not a file");
+        return;
+    }
+    
+    my $link_inode = (lstat($path1))[1];
+    my $target_inode = (lstat($path2))[1];
+
+    $self->debug(2, "Comparing $path1 inode ($link_inode) and $path2 inode ($target_inode)");
+    if ( ($link_inode == $target_inode) && ($path1 ne $path2)  ) {
+        return SUCCESS;
+    } else {
+        return 0;
+    }
 }
 
 
