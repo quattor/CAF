@@ -288,7 +288,7 @@ init_exception("existence tests");
 # Tests without NoAction
 $CAF::Object::NoAction = 0;
 
-rmtree if -d $basetest;
+rmtree ($basetest) if -d $basetest;
 ok(! $mc->directory_exists($basetest), "directory_exists false on missing directory");
 ok(! $mc->file_exists($basetest), "file_exists false on missing directory");
 ok(! $mc->any_exists($basetest), "any_exists false on missing directory");
