@@ -13,7 +13,7 @@ $SIG{__WARN__} = sub {ok(0, "Perl warning: $_[0]");};
 use FindBin qw($Bin);
 use lib "$Bin/modules";
 use testapp;
-use filetools qw(makefile readfile);
+use Test::Quattor::Filetools qw(writefile readfile);;
 
 use File::Path qw(mkpath);
 use File::Temp qw(tempfile);
@@ -81,7 +81,7 @@ is((stat($fn))[9], 1234567, "mtime set to 1234567 forfile $fn");
 
 # test with existing file
 $fn = "$testdir/success/file2";
-makefile($fn, "garbage");
+writefile($fn, "garbage");
 $fh = CAF::FileWriter->open ($fn, log => $obj);
 print $fh $TEXT;
 $fh->close();

@@ -21,7 +21,7 @@ use Test::Quattor::Object;
 use FindBin qw($Bin);
 use lib "$Bin/modules";
 use mypath;
-use filetools qw(makefile readfile);
+use Test::Quattor::Filetools qw(writefile readfile);;
 
 use File::Path qw(mkpath rmtree);
 use File::Basename qw(dirname);
@@ -318,9 +318,9 @@ ok(! $mc->is_symlink($basetestfile), "is_symlink false on missing file");
 ok(! $mc->has_hardlinks($basetestfile), "has_hardlinks false on missing file");
 is($mc->is_hardlink($basetestfile, $basetestfile), undef, "is_hardlink false with missing files");
 
-makefile($basetestfile);
+writefile($basetestfile);
 my $basetestfile2 = $basetestfile . "_2";
-makefile($basetestfile2);
+writefile($basetestfile2);
 
 ok($mc->directory_exists($basetest), "directory_exists true on created directory");
 ok($mc->any_exists($basetest), "any_exists true on created directory");
@@ -379,8 +379,8 @@ rmtree ($basetest) if -d $basetest;
 my $target_directory = "tgtdir";
 my $target_file1 = "tgtfile1";
 my $target_file2 = "$basetest/$target_directory/tgtfile2";
-makefile("$basetest/$target_file1");
-makefile($target_file2);
+writefile("$basetest/$target_file1");
+writefile($target_file2);
 my %opts;
 
 # Symlink creations
@@ -517,8 +517,8 @@ my $hardlink2 = "$basetest/$target_directory/hardlink2";
 $target_file1 = "$cwd/$basetest/tgtfile1";
 my $relative_target_file3 = "$basetest/$target_directory/tgtfile3";
 my $target_file3 = "$cwd/$relative_target_file3";
-makefile($target_file1);
-makefile($target_file3);
+writefile($target_file1);
+writefile($target_file3);
 
 for $CAF::Object::NoAction (1,0) {
     is($mc->hardlink($target_file1, $hardlink1), CHANGED, "hardlink created");
@@ -663,7 +663,7 @@ my $cleanupfile1 = "$cleanupdir1/file";
 my $cleanupfile1b = "$cleanupfile1.old";
 
 rmtree($cleanupdir1) if -d $cleanupdir1;
-makefile($cleanupfile1);
+writefile($cleanupfile1);
 ok($mc->file_exists($cleanupfile1), "cleanup testfile exists");
 ok($mc->directory_exists($cleanupdir1), "cleanup testdir exists");
 
@@ -675,9 +675,9 @@ ok(! $mc->directory_exists($cleanupdir1), "cleanup testdir does not exist anymor
 
 # test with dir and file, without backup
 rmtree($cleanupdir1) if -d $cleanupdir1;
-makefile($cleanupfile1);
+writefile($cleanupfile1);
 is(readfile($cleanupfile1), 'ok', 'cleanupfile has expected content');
-makefile("$cleanupfile1b", "woohoo");
+writefile("$cleanupfile1b", "woohoo");
 is(readfile($cleanupfile1b), 'woohoo', 'backup cleanupfile has expected content');
 
 ok($mc->file_exists($cleanupfile1), "cleanup testfile exists w backup");
@@ -701,7 +701,7 @@ is($mc->cleanup($cleanupdir1, '.old'), SUCCESS, "cleanup missing testdir SUCCESS
 # Tests with NoAction
 $CAF::Object::NoAction = 1;
 rmtree($cleanupdir1) if -d $cleanupdir1;
-makefile($cleanupfile1);
+writefile($cleanupfile1);
 
 is($mc->cleanup($cleanupfile1, '.old'), CHANGED,"cleanup testfile, w backup ok and NoAction");
 ok($mc->file_exists($cleanupfile1), "cleanup testfile still exists w backup and NoAction");
@@ -739,7 +739,7 @@ verify_exception("directory creation NoAction=0", undef, 3);
 
 
 rmtree($basetest) if -d $basetest;
-makefile($basetestfile);
+writefile($basetestfile);
 
 #
 # Test failure
@@ -765,7 +765,7 @@ ok(! $mc->directory_exists($brokenlink), "brokenlink still not a directory");
 # reset original exception also in this case
 
 rmtree($basetest) if -d $basetest;
-makefile($basetestfile);
+writefile($basetestfile);
 
 # Try to create dir on top of existing broken symlink.
 ok(symlink("really_really_missing", $brokenlink), "broken symlink created 2");
@@ -786,7 +786,7 @@ ok(! $mc->directory_exists($brokenlink), "brokenlink still not a directory 2");
 # reset original exception also in this case
 
 rmtree($basetest) if -d $basetest;
-makefile($basetestfile);
+writefile($basetestfile);
 
 
 $tempdir = "$basetest/sub/exist-X";
@@ -862,7 +862,7 @@ ok(! $mc->file_exists($statusfile), "status testfile still does not exists missi
 
 rmtree($basetest) if -d $basetest;
 
-makefile($statusfile);
+writefile($statusfile);
 ok($mc->file_exists($statusfile), "status testfile exists");
 chmod(0755, $statusfile);
 # Stat returns type and permissions
@@ -875,7 +875,7 @@ $CAF::Object::NoAction = 1;
 
 rmtree($basetest) if -d $basetest;
 
-makefile($statusfile);
+writefile($statusfile);
 ok($mc->file_exists($statusfile), "status testfile exists");
 chmod(0755, $statusfile);
 # Stat returns type and permissions
@@ -894,7 +894,7 @@ $CAF::Object::NoAction = 0;
 
 rmtree($basetest) if -d $basetest;
 
-makefile($statusfile);
+writefile($statusfile);
 ok($mc->file_exists($statusfile), "status testfile exists");
 chmod(0755, $statusfile);
 # Stat returns type and permissions
@@ -943,9 +943,9 @@ my $movedest1b = "$movedest1.old";
 
 rmtree($movedir1) if -d $movedir1;
 rmtree($movedir2) if -d $movedir2;
-makefile($movesrc1, 'source');
-makefile($movedest1, 'dest');
-makefile($movedest1b, 'dest backup');
+writefile($movesrc1, 'source');
+writefile($movedest1, 'dest');
+writefile($movedest1b, 'dest backup');
 ok($mc->file_exists($movesrc1), "move src file exists");
 ok($mc->file_exists($movedest1), "move dest file exists");
 ok($mc->file_exists($movedest1b), "move dest backup file exists");
@@ -976,9 +976,9 @@ is($nrfiles, 2, "$nrfiles files in dest dir after move");
 
 rmtree($movedir1) if -d $movedir1;
 rmtree($movedir2) if -d $movedir2;
-makefile($movesrc1, 'source');
-makefile($movedest1, 'dest');
-makefile($movedest1b, 'dest backup');
+writefile($movesrc1, 'source');
+writefile($movedest1, 'dest');
+writefile($movedest1b, 'dest backup');
 ok($mc->file_exists($movesrc1), "move src file exists w/o backup");
 ok($mc->file_exists($movedest1), "move dest file exists w/o backup");
 ok($mc->file_exists($movedest1b), "move dest backup file exists w/o backup");
@@ -1001,7 +1001,7 @@ is($nrfiles, 2, "$nrfiles files in dest dir after move w/o backup");
 # same, but w/o backup, and destdir does not exists
 rmtree($movedir1) if -d $movedir1;
 rmtree($movedir2) if -d $movedir2;
-makefile($movesrc1, 'source');
+writefile($movesrc1, 'source');
 ok($mc->file_exists($movesrc1), "move src file exists w/o backup w/o destdir");
 ok(!$mc->file_exists($movedest1), "move dest file does not exist w/o backup w/o destdir");
 ok(!$mc->file_exists($movedest1b), "move dest backup file does not exists w/o backup w/o destdir");
@@ -1028,7 +1028,7 @@ is($nrfiles, 1, "$nrfiles files in dest dir after move w/o backup w/o destdir");
 # trigger failure
 #   subbir on broken symlink, cannot make parent dir of dest
 rmtree($movedir1) if -d $movedir1;
-makefile($movesrc1, 'source');
+writefile($movesrc1, 'source');
 
 my $movedest2 = "$brokenlink/sub/dst";
 ok(symlink("really_really_missing", $brokenlink), "broken symlink created 1");
@@ -1051,7 +1051,7 @@ verify_exception("move failure to move source",
                  '^Failed to move target/test/check/move1/src to target/test/check/move2/dst: Permission denied', 3);
 
 chmod(0700, $movedir2);
-makefile($movedest1, 'dest');
+writefile($movedest1, 'dest');
 
 # do not set 0000, or else Path cannot detect that dest exists
 # and thus no backup is taken, and we get different failure
@@ -1072,9 +1072,9 @@ $CAF::Object::NoAction = 1;
 
 rmtree($movedir1) if -d $movedir1;
 rmtree($movedir2) if -d $movedir2;
-makefile($movesrc1, 'source');
-makefile($movedest1, 'dest');
-makefile($movedest1b, 'dest backup');
+writefile($movesrc1, 'source');
+writefile($movedest1, 'dest');
+writefile($movedest1b, 'dest backup');
 ok($mc->file_exists($movesrc1), "move src file exists NoAction=1");
 ok($mc->file_exists($movedest1), "move dest file exists NoAction=1");
 ok($mc->file_exists($movedest1b), "move dest backup file exists NoAction=1");
