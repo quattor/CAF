@@ -1,7 +1,7 @@
 #${PMpre} CAF::Path${PMpost}
 
 use CAF::Object qw(SUCCESS CHANGED);
-use LC::Check;
+use LC::Check 1.22;
 use LC::Exception qw (throw_error);
 
 use Readonly;
@@ -28,6 +28,7 @@ Readonly::Hash my %CLEANUP_DISPATCH => {
 # Use dispatch table instead of non-strict function by variable call
 Readonly::Hash my %LC_CHECK_DISPATCH => {
     directory => \&LC::Check::directory,
+    link => \&LC::Check::link,
     status => \&LC::Check::status,
 };
 
@@ -196,8 +197,10 @@ sub _function_catch
 
 Run function reference C<funcref> with arrayref C<argsref> and hashref C<optsref>.
 
-Return and set fail attribute with C<failmsg> on die, verbose C<msg> on success
-(resp. $@ and stringified result are appended).
+Return and set fail attribute with C<failmsg> on die or an error (C<undef> returned
+by C<funcref>), or print (at verbose level) C<msg> on success (respectively $@ and 
+stringified result are appended). Note that C<_safe_eval> doesn't work with functions
+that don't return a defined value when they succeed.
 
 Resets previous exceptions and/or fail attribute
 
@@ -209,22 +212,26 @@ sub _safe_eval
 
     $self->_reset_exception_fail('_safe_eval');
 
-    my ($res, @args, %opts);
+    my (@args, %opts);
     @args = @$argsref if $argsref;
     %opts = %$optsref if $optsref;
 
     local $@;
-    eval {
-        $res = $funcref->(@args, %opts);
-    };
+    my $res = eval {
+                    $funcref->(@args, %opts);
+                   };
 
-    if ($@) {
-        chomp($@);
-        return $self->fail("$failmsg: $@");
-    } else {
-        my $res_txt = defined($res) ? "$res" : '<undef>';
-        chomp($res);
+    # $res is undef if there is a syntax or runtime error or if the evaluated
+    # function returns undef (interpreted as a function error).
+    if ( defined($res) ) {
         $self->verbose("$msg: $res");
+    } else {
+        my $err_msg = '';
+        if ($@) {
+            chomp($@);
+            $err_msg = ": $@";
+        }
+        return $self->fail("$failmsg$err_msg");
     }
 
     return $res;
@@ -344,6 +351,21 @@ sub any_exists
 {
     my ($self, $path) = @_;
     return $path && (-e $path || -l $path);
+}
+
+=item is_symlink
+
+Test if C<path> is a symlink.
+
+Returns true as long as C<path> is a symlink, including when the 
+symlink target doesn't exist.
+
+=cut
+
+sub is_symlink
+{
+    my ($self, $path) = @_;
+    return $path && -l $path;
 }
 
 =item cleanup
@@ -541,6 +563,180 @@ sub directory
     # A new directory always implies something changed
     my $changed = ($newdir || $status == CHANGED) ? CHANGED : SUCCESS;
     return dualvar( $changed, $directory);
+}
+
+
+=item _make_link
+
+This method is mainly a wrapper over C<LC::Check::link>
+returning the standard C<CAF::Path> return values. Every option
+supported by C<LC::Check::link> is supported. C<NoAction>
+flag is handled by C<LC::Check::link> and C<keeps_state> option
+is honored (overrides C<NoAction> if true). One important
+difference is the order of the arguments: C<CAF::Path:_make_link>
+and the methods based on it are following the Perl C<symlink>
+(and C<ln> command) argument order.
+
+This is an internal method, not supposed to be called directly.
+Either call C<symlink> or C<hardlink> public methods instead.
+
+=cut
+
+sub _make_link
+{
+    my ($self, $target, $link_path, %opts) = @_;
+    my $link_type = $opts{hard} ? "hardlink" : "symlink";
+
+    $link_path = $self->_untaint_path($link_path, $link_type) || return;
+    $target = $self->_untaint_path($target, $link_type) || return;
+
+    $self->_reset_exception_fail($link_type);
+
+    my $status = $self->LC_Check('link', [$link_path, $target], \%opts);
+            
+    if ( defined($status) ) {
+        return ($status ? CHANGED : SUCCESS);
+    } else {
+        return;
+    }
+}
+
+=item hardlink
+
+Create a hardlink C<link_path> whose target is C<target>.
+
+On failure, returns undef and sets the fail attribute.
+If C<link_path> exists and is a file, it is updated. 
+C<target> must exist (C<check> flag available in symlink()
+is ignored for hardlinks) and it must reside in the same 
+filesystem as C<link_path>. If C<target_path> is a
+relative path, it is interpreted from the current directory.
+C<link_name> parent directory is created if it doesn't exist.
+
+Returns SUCCESS on sucess if the hardlink already existed
+with the same target, CHANGED if the hardlink was created
+or updated, undef otherwise.
+
+This method relies on C<_make_link> method to do the real work,
+after enforcing the option saying that it is a hardlink.
+
+=cut
+
+sub hardlink
+{
+    my ($self, $target, $link_path, %opts) = @_;
+
+    # Option passed to LC::Check::link to indicate a hardlink
+    $opts{hard} = 1;
+
+    return $self->_make_link($target, $link_path, %opts);
+}
+
+
+=item symlink
+
+Create a symlink C<link_path> whose target is C<target>.
+
+Returns undef and sets the fail attribute if C<link_path> 
+already exists and is not a symlink, except if this is a file
+and option C<force> is defined and true. If C<link_path> exists
+and is a symlink, it is updated. By default, the target is not 
+required to exist. If you want to ensure that it exists, 
+define option C<check> to true. Both C<link_path> and C<target>
+can be relative paths: C<link_path> is interpreted as relatif
+to the current directory and C<target> is kept relative. 
+C<link_path> parent directory is created if it doesn't exist.
+
+Returns SUCCESS on sucess if the symlink already existed
+with the same target, CHANGED if the symlink was created
+or updated, undef otherwise.
+
+This method relies on C<_make_link> method to do the real work,
+after enforcing the option saying that it is a symlink.
+
+=cut
+
+sub symlink
+{
+    my ($self, $target, $link_path, %opts) = @_;
+
+    # Option passed to LC::Check::link to indicate a symlink
+    $opts{hard} = 0;
+    
+    # LC::Check::symlink() expects an option 'nocheck' but CAF::Path::symlink exposes
+    # an option 'check', as the default in CAF::Path::symlink is not to check the
+    # target existence. Convert it to 'nocheck'.
+    if ( defined($opts{check}) ) {
+        $opts{nocheck} = ! $opts{check};
+        delete $opts{check};
+    } else {
+        $opts{nocheck} = 1;
+    }
+
+    return $self->_make_link($target, $link_path, %opts);
+}
+
+
+=item has_hardlinks
+
+Method that returns the number of hardlinks for C<file>. The number of
+hardlinks is the number of entries referring to the inodes minus 1. If
+C<file> has no hardlink, the return value is 0. If C<file> is not a file,
+the return value is C<undef>.
+
+=cut
+
+sub has_hardlinks
+{
+    my ($self, $file) = @_;
+    $file = $self->_untaint_path($file, "has_hardlinks") || return;
+    
+    if ( ! $self->file_exists($file) && ! $self->is_symlink($file) ) {
+        $self->debug(2, "has_hardlinks(): $file doesn't exist or is not a file");
+        return;
+    }
+    
+    my $nlinks = (lstat($file))[3];
+    $self->debug(2, "Number of links to $file: $nlinks (hardlink if > 2)");
+    return $nlinks ? $nlinks - 1 : 0;
+}
+
+
+=item is_hardlink
+
+This method returns SUCCESS if C<path1> and C<path2> refer to the same file (inode).
+It returns 0 if C<path1> and C<path2> both exist but are different files or are the same path
+and C<undef> if one of the paths doesn't exist or is not a file.
+
+Note: the result returned will be identical whatever is the order of C<path1> and C<path2>
+arguments.
+
+=cut
+
+sub is_hardlink
+{
+    my ($self, $path1, $path2) = @_;
+    $path1 = $self->_untaint_path($path1, "is_hardlink path1") || return;
+    $path2 = $self->_untaint_path($path2, "is_hardlink path2") || return;
+    
+    if ( ! $self->file_exists($path1) && ! $self->is_symlink($path1) ) {
+        $self->debug(2, "is_hardlink(): $path1 doesn't exist or is not a file");
+        return;
+    }
+    if ( ! $self->file_exists($path2) && ! $self->is_symlink($path2) ) {
+        $self->debug(2, "is_hardlink(): $path2 doesn't exist or is not a file");
+        return;
+    }
+    
+    my $link_inode = (lstat($path1))[1];
+    my $target_inode = (lstat($path2))[1];
+
+    $self->debug(2, "Comparing $path1 inode ($link_inode) and $path2 inode ($target_inode)");
+    if ( ($link_inode == $target_inode) && ($path1 ne $path2)  ) {
+        return SUCCESS;
+    } else {
+        return 0;
+    }
 }
 
 

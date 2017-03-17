@@ -20,6 +20,8 @@ tests.
 
 package LC::Check;
 
+our $VERSION = '1.22';
+
 sub file
 {
     my ($path, %opts) = @_;
