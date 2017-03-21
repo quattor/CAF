@@ -375,7 +375,7 @@ sub is_verbose
             $log = $log->{log};
         };
 
-        if($log->can('is_verbose')) {
+        if(UNIVERSAL::can($log, 'can') && $log->can('is_verbose')) {
             $res = $log->is_verbose();
         } else {
             # Fallback to CAF::Reporter
