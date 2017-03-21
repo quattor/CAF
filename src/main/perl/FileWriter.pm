@@ -115,7 +115,7 @@ File's modification time.
 
 Path for the backup file, if this one has to be re-written.
 
-=item keeps_state
+=item C<keeps_state>
 
 A boolean specifying whether a file change respects the current system
 state or not. A file with C<keeps_state> will be created/modified,
@@ -124,6 +124,13 @@ This is useful when creating temporary files that are required for a NoAction ru
 
 By default, file changes modify the state and thus C<keeps_state> is
 false.
+
+=item C<sensitive>
+
+A boolean specifying whether a file contains sensitive information
+(like passwords). When the content of the file is modified, the changes
+(either the diff or the whole content in case of a new file) themself
+are not reported and not added to the event history.
 
 =back
 
@@ -144,6 +151,7 @@ sub new
     *$self->{options}->{group} = $opts{group} if exists ($opts{group});
     *$self->{options}->{mtime} = $opts{mtime} if exists ($opts{mtime});
     *$self->{options}->{backup} = $opts{backup} if exists ($opts{backup});
+    *$self->{options}->{sensitive} = $opts{sensitive} if exists ($opts{sensitive});
 
     *$self->{save} = 1;
     bless ($self, $class);
@@ -155,6 +163,7 @@ sub new
         # (in particular, you cannot use keeps_state to set noaction to 1)
         $noaction = 0;
     }
+    # This garantees that *$self->{options} is a non-empty hashref
     *$self->{options}->{noaction} = $noaction;
 
     # Tracking on new() when CAF::History is setup to track INSTANCES
@@ -228,14 +237,20 @@ sub close
 
         # Update event metadata with diff
         $event{changed} = $changed;
-        $event{diff} = $diff if $changed;
+        if ($changed && ! *$self->{options}->{sensitive}) {
+            $event{diff} = $diff
+        }
 
         my $msg = 'was';
 
         if ($changed) {
             if($self->is_verbose()) {
-                $self->verbose ("Changes to $filename:");
-                $self->report ($diff);
+                if(*$self->{options}->{sensitive}) {
+                    $self->verbose("Changes to $filename are not reported due to sensitive content");
+                } else {
+                    $self->verbose ("Changes to $filename:");
+                    $self->report ($diff);
+                }
             }
 
             if ($options->{noaction}) {
