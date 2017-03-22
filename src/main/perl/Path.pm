@@ -590,6 +590,8 @@ sub _make_link
     $link_path = $self->_untaint_path($link_path, $link_type) || return;
     $target = $self->_untaint_path($target, $link_type) || return;
 
+    $self->debug(2, "Creating $link_type $link_path to target $target");
+
     $self->_reset_exception_fail($link_type);
 
     my $status = $self->LC_Check('link', [$link_path, $target], \%opts);
