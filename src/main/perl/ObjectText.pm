@@ -225,10 +225,10 @@ and/or close the instance.
 
 All C<CAF::FileWriter> initialisation options are supported
 and passed on. (If no C<log> option is provided,
- the one from the current instance is passed).
+the one from the current instance is passed).
 
 Two new options C<header> and C<footer> are supported
- to respectively prepend and append to the text.
+to respectively prepend and append to the text.
 
 If C<eol> was set during initialisation, the header and footer
 will also be checked for EOL.
