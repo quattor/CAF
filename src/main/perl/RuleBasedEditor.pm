@@ -131,38 +131,28 @@ There is a different group of constants for each part of the rule.
 
 =over
 
-=item *
+=item LINE_FORMAT_KW_VAL
 
-LINE_FORMAT_KW_VAL:        keyword value (e.g. Xrootd, Apache)
-
-keywork/value separator can be customized with C<LINE_VALUE_OPT_SEP_xxx>. No coment is added
-to the line.
-
+Keyword value (e.g. Xrootd, Apache) keywork/value separator can be customized with C<LINE_VALUE_OPT_SEP_xxx>. No coment is added to the line.
 This is the default line format.
 
-=item *
+=item LINE_FORMAT_KW_VAL_SET
 
-LINE_FORMAT_KW_VAL_SET:    set keyword value
+Set keyword value. Same remarks as for LINE_FORMAT_KW_VAL.
 
-Same remarks as for LINE_FORMAT_KW_VAL.
+=item LINE_FORMAT_KW_VAL_SETENV
 
-=item *
+Setenv keyword value Same remarks as for LINE_FORMAT_KW_VAL.
 
-LINE_FORMAT_KW_VAL_SETENV:    setenv keyword value
+=item LINE_FORMAT_ENV_VAR
 
-Same remarks as for LINE_FORMAT_KW_VAL.
+Export keyword=value (e.g. SH shell family). A comment is added at the end of the line if it
+is modified by B<CAF::RuleBasedEditor>. If the value contains whitespaces, it is quoted.
 
-=item *
+=item LINE_FORMAT_SH_VAR
 
-LINE_FORMAT_ENV_VAR:        export keyword=value (e.g. SH shell family). A comment is added at the
-end of the line if it is modified by B<CAF::RuleBasedEditor>. If the value contains whitespaces, it
-is quoted.
-
-=item *
-
-LINE_FORMAT_SH_VAR:         keyword=value (e.g. SH shell family). A comment is added at the
-end of the line if it is modified by B<CAF::RuleBasedEditor>. If the value contains whitespaces, it
-is quoted.
+keyword=value (e.g. SH shell family). A comment is added at the end of the line if it is modified by B<CAF::RuleBasedEditor>.
+If the value contains whitespaces, it is quoted.
 
 =back
 
@@ -184,32 +174,30 @@ use enum qw(
 
 =over
 
-=item
+=item LINE_VALUE_AS_IS
 
-LINE_VALUE_AS_IS: take the value as it is, do not attempt any conversion.
+Take the value as it is, do not attempt any conversion. This is the default value type.
 
-This is the default value type.
+=item LINE_VALUE_BOOLEAN
 
-=item
+Interpret the value as a boolean rendered as C<yes> or C<no>.
 
-LINE_VALUE_BOOLEAN: interpret the value as a boolean rendered as C<yes> or C<no>.
+=item LINE_VALUE_ARRAY
 
-=item
+The value is an array. Rendering controlled by LINE_OPT_xxx constants.
 
-LINE_VALUE_ARRAY: the value is an array. Rendering controlled by LINE_OPT_xxx constants.
+=item LINE_VALUE_HASH
 
-=item
+The value is a hash of strings. Rendering controlled by LINE_OPT_xxx constants.
 
-LINE_VALUE_HASH: the value is a hash of strings. Rendering controlled by LINE_OPT_xxx constants.
+=item LINE_VALUE_HASH_KEYS
 
-=item
-
-LINE_VALUE_HASH_KEYS: the value is a hash whose keys are the value. Rendering similar to arrays with 
+The value is a hash whose keys are the value. Rendering similar to arrays with 
 C<LINE_VALUE_ARRAY> (the key list is treated as an array).
 
-=item
+=item LINE_VALUE_INSTANCE_PARAMS
 
-LINE_VALUE_INSTANCE_PARAMS: specific to B<ncm-xrootd>
+specific to B<ncm-xrootd>
 
 =back
 
@@ -232,39 +220,38 @@ These options mainly apply to lists and hashes and are interpreted as a bitmask.
 
 =over
 
-=item
+=item LINE_OPT_KEY_PREFIX_DASH
 
-LINE_OPT_KEY_PREFIX_DASH: if set, add a C<-> before the keyword when writing it in the configuration file.
+If set, add a C<-> before the keyword when writing it in the configuration file.
 
-=item
+=item LINE_OPT_VALUE_ONELINE
 
-LINE_OPT_VALUE_ONELINE: each value in an array or keyword/value pair in a hash must be on a separate line. This results in
+Each value in an array or keyword/value pair in a hash must be on a separate line. This results in
 several instances of the same keyword (multiple lines) in the configuration file.
 
-=item
+=item LINE_OPT_VALUE_UNIQUE
 
-LINE_OPT_VALUE_UNIQUE: each values are concatenated as a space-separated string
+Each values are concatenated as a space-separated string
 
-=item
+=item LINE_OPT_VALUE_SORTED
 
-LINE_OPT_VALUE_SORTED: values are sorted
+Values are sorted
 
-=item
+=item LINE_OPT_HASH_SEP_COLON
 
-LINE_OPT_HASH_SEP_COLON: when LINE_VALUE_HASH, use a colon between each hash key and value.
+When LINE_VALUE_HASH, use a colon between each hash key and value.
 
-=item
+=item LINE_OPT_SEP_COLON
 
-LINE_OPT_SEP_COLON: use a colon between keyword and value.
+Use a colon between keyword and value.
 
-=item
+=item LINE_OPT_SEP_EQUAL
 
-LINE_OPT_SEP_EQUAL: use an equal sign between keyword and value.
+Use an equal sign between keyword and value.
 
-=item
+=item LINE_VALUE_OPT_SPACE_AROUND_SEP
 
-LINE_VALUE_OPT_SPACE_AROUND_SEP: when updating the value, put a space around the 
-keyword/value separator.
+When updating the value, put a space around the keyword/value separator.
 
 =back
 
@@ -343,16 +330,19 @@ Readonly my $BACKUP_FILE_EXT => ".old";
 Update configuration file contents,  applying configuration rules.
 
 Arguments :
+
     config_rules: a hashref containing config rules corresponding to the file to build
     config_options: a hashref for configuration parameters used to build actual configuration
     options: a hashref defining options to modify the behaviour of this function
 
 Supported entries for options hash:
+
     always_rules_only: if true, apply only rules with ALWAYS condition (D: false). See introduction
                        about the ALWAYS condition.
     remove_if_undef: if true, remove matching configuration line if rule condition is not met (D: false)
 
 Return value
+
     sucess: 1
     error processing of one or more rules: 0
     argument error or error duing rule processing: undef
@@ -409,12 +399,14 @@ sub updateFile
 This function formats an attribute value based on the value format specified.
 
 Arguments:
+
     attr_value : attribute value (type interpreted based on C<value_fmt>)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
     value_fmt : value format (see LINE_VALUE_xxx constants)
     line_opt: line rendering options
 
 Return value:
+
     A string corresponding to the value formatted according to the format specified by arguments
     or undef in case of an internal error (missing arguments)
 
@@ -545,12 +537,14 @@ according to the line format requested. Values containing spaces are
 quoted if the line format is not LINE_FORMAT_KW_VAL.
 
 Arguments :
+
     keyword : line keyword
     value : keyword value (can be an empty string)
     line_fmt : line format (see LINE_FORMAT_xxx constants)
     line_opt: line rendering options
 
 Return value:
+
     A string corresponding to the line formatted according to line_fmt
     or undef in case of an internal error (missing arguments)
 
@@ -630,9 +624,11 @@ Help method to escape all characters with a special interpretation in the contex
 of a regexp.
 
 Arguments:
+
     regexp_str: initial regexp string (characters not escaped)
 
 Return value:
+
     string: regexp with all specail characters escaped
 
 =cut
@@ -659,6 +655,7 @@ imposed at the end of the pattern, as this format can be used to write a configu
 directive as a keyword with no value.
 
 Arguments :
+
     config_param: parameter to update
     line_fmt: line format (see LINE_FORMAT_xxx constants)
     line_opt: line rendering options
@@ -666,6 +663,7 @@ Arguments :
                   with the same keyword are allowed)
 
 Return value:
+
     A string containing the pattern to use to match the line in the file or undef
     in case of an internal error (missing argument or an invalid line format).
 
@@ -746,11 +744,13 @@ This function comments out a configuration line matching the configuration param
 Match operation takes into account the line format.
 
 Arguments :
+
     config_param: parameter to update
     line_fmt : line format (see LINE_FORMAT_xxx constants)
     line_opt: line rendering options
 
 Return value:
+
     success: 1
     error during processing: 0
     internal error (missing argument): undef
@@ -820,6 +820,7 @@ This function does the actual update of a configuration line after doing the fin
 line formatting based on the line format.
 
 Arguments :
+
     config_param: parameter to update
     config_value: parameter value (can be an empty string)
     line_fmt: line format (see LINE_FORMAT_xxx constants)
@@ -827,6 +828,7 @@ Arguments :
     multiple: if true, multiple lines with the same keyword can exist (D: false)
 
 Return value:
+
     undef or 1 in case of an internal error (missing argument)
 
 =cut
@@ -922,16 +924,19 @@ condition is not met, undef is returned. If an error occured, the hash contains 
 information about the error.
 
 Arguments :
+
     rule: rule to parse
     config_options: configuration parameters used to build actual configuration
     parser_options: a hashref defining options to modify the behaviour of this function
 
 Supported entries for options hash:
+
     always_rules_only: if true, apply only rules with ALWAYS condition (D: false). See introduction
                        about the ALWAYS condition.
     remove_if_undef: if true, remove matching configuration line if rule condition is not met (D: false)
 
 Return value: undef if the rule condition is not met or a hash with the following information:
+
     error_msg: a non empty string if an error happened during parsing
     remove_matching_lines: a boolean indicating that the matching lines must be removed
     option_sets: a list of option sets containing the attribute to use in the updated line
@@ -1059,6 +1064,7 @@ sub _parse_rule
 Apply configuration rules. This method is the real workhorse of the rule-based editor.
 
 Arguments :
+
     config_rules: config rules corresponding to the file to build
     config_options: configuration parameters used to build actual configuration. Note that keys in the
                     config_options hash are interpreted as escaped (generally harmless if they are not as the
@@ -1067,10 +1073,12 @@ Arguments :
     parser_options: a hash setting options to modify the behaviour of this function
 
 Supported entries for options hash:
+
     always_rules_only: if true, apply only rules with ALWAYS condition (D: false)
     remove_if_undef: if true, remove matching configuration line if rule condition is not met (D: false)
 
 Return value:
+
     success: 1
     error processing one or more rules: 0
     undef in case of an internal error (missing argument)

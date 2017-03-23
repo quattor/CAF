@@ -180,11 +180,13 @@ from the C<ENV> attribute hashref.
 Returns the C<env> hashref.
 
 To be used as
+
     # Setup local environment
     local %ENV = %ENV;
     $self->update_env(\%ENV);
 
 Example:
+
     # some method_1 that prepares a shared environment
     sub method_1
     {
