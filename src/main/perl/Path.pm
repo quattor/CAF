@@ -903,6 +903,117 @@ sub move
     return CHANGED;
 }
 
+# private method doing the actual readdir
+# this is the method to mock
+# 2 args: directory name and test function
+# they are not checked, and are supposed to be directory and CODE-ref
+# (i.e. do not use this _listdir directly; use listdir instead)
+# return arayref or undef on failure (fail attribute is set)
+sub _listdir
+{
+    my ($self, $dir, $test) = @_;
+
+    if (opendir(my $dh, $dir)) {
+        local $@;
+        my @res;
+        eval {
+            @res = grep { &$test($_, $dir) } readdir($dh);
+        };
+        closedir($dh);
+        if ($@) {
+            return $self->fail("_listdir: readdir grep $dir failed: $@");
+        } else {
+            return \@res;
+        }
+    } else {
+        return $self->fail("_listdir: opendir $dir failed: $!");
+    }
+}
+
+=item listdir
+
+Return an arrayref of sorted directory entry names or undef on failure.
+(The C<.> and C<..> are removed).
+
+Options
+
+=over
+
+=item test
+
+An (anonymous) sub used for testing.
+The return value is interpreted as boolean value for filtering the
+directory entry names (true value means the name is kept).
+
+Accepts 2 arguments: first argument the directory entry name,
+2nd argument the directory.
+
+=item filter
+
+A pattern or compiled pattern to filter directory entry names.
+Matching names are kept.
+
+=item inverse
+
+Apply inverse test (or filter) logic.
+
+=item adddir
+
+Prefix the directory to the returned filenames (default false).
+
+=back
+
+=cut
+
+
+sub listdir
+{
+    my ($self, $dir, %opts) = @_;
+
+    $dir = $self->_untaint_path($dir, "listdir directory") || return;
+    $dir =~ s#/*$##;
+
+    $self->_reset_exception_fail('listdir');
+
+    if (! $self->directory_exists($dir)) {
+        return $self->fail("listdir: directory $dir is not a directory");
+    }
+
+    my $test = sub {return 1;}; # noop
+
+    my $filter = $opts{filter};
+
+    if (exists($opts{test})) {
+        $test = $opts{test};
+        if (ref($test) ne 'CODE') {
+            return $self->fail("listdir: test option must be a CODE reference");
+        }
+    } elsif (defined($filter)) {
+        if (ref($filter) eq '') {
+            # string is a pattern
+            $filter = qr{$filter};
+        }
+        $test = sub { return $_[0] =~ m/$filter/; };
+    };
+
+    my $newtest = sub {
+        # ^ bitwise xor; so force $inverse and test result to 0/1
+        return ($opts{inverse} ? 1 : 0) ^ (&$test(@_) ? 1 : 0)
+    };
+
+    my $res_ref = $self->_listdir($dir, $newtest);
+    # fail attribute set in _listdir
+    return if ! defined($res_ref);
+
+    my @res = grep {$_ ne '.' and $_ ne '..'} sort @$res_ref;
+
+    if ($opts{adddir}) {
+        @res = map {"$dir/$_"} @res;
+    }
+
+    return \@res;
+}
+
 =pod
 
 =back

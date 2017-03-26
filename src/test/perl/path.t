@@ -1105,4 +1105,90 @@ isa_ok($inst, 'CAF::Object', "mkcafpath returns CAF::Object instance");
 isa_ok($inst, 'CAF::Path', "mkcafpath returns CAF::Path instance");
 is($inst->{log}, $obj, "log attribute set");
 
+=head2 listdir
+
+=cut
+
+# _listdir
+my $listdir = "target/test/list";
+my @files = qw(filea afile bbb);
+foreach my $fn (@files) {
+    writefile("$listdir/$fn");
+}
+my @directories = qw(somedir adir ccc);
+foreach my $dn (@directories) {
+    writefile("$listdir/$dn/test");
+}
+
+# do not try to mock readdir/opendir/closedir
+$res = $mc->_listdir($listdir, sub {return 1;});
+is_deeply([sort @$res],
+          [sort (@files, @directories, '..', '.')],
+          "_listdir returns all directory entry names");
+# failure: pass file as dir. this is not checked,
+# old fail attribute is not reset
+$mc->{fail} = undef;
+ok(! defined($mc->_listdir("$listdir/filea", sub {return 1;})),
+   "_listdir failure when filename passed");
+is($mc->{fail},
+   "_listdir: opendir target/test/list/filea failed: Not a directory",
+   "_listdir failure sets fail attribute");
+
+# test failing method
+$mc->{fail} = undef;
+ok(! defined($mc->_listdir($listdir, sub {die("test dieing test function");})),
+   "_listdir failure when test function dies");
+like($mc->{fail},
+   qr{^_listdir: readdir grep target/test/list failed: test dieing test function},
+   "_listdir test function dies sets fail attribute");
+
+# input arrayref, w/o . and .. (added in mocked method)
+my $readdir;
+$mock->mock('_listdir', sub {
+    my ($self, $dir, $test) = @_;
+    if (defined($readdir)) {
+        return [grep {&$test($_, $dir)} ('.', '..', @$readdir)];
+    } else {
+        return;
+    }
+});
+
+# return undef on _listdir failure
+$readdir = undef;
+ok(! defined($mc->listdir($listdir)), "listdir returns undef when _listdir returns undef");
+
+# listdir with mocked _listdir
+init_exception("listdir");
+$readdir = [qw(x A a B b)];
+is_deeply($mc->listdir($listdir), [qw(A B a b x)],
+          "listdir w/o options returns sorted list of all files without . and ..");
+verify_exception("listdir", undef, 1);
+
+# test
+is_deeply($mc->listdir($listdir, test => sub {return $_[0] eq 'A';}),
+          [qw(A)], "listdir with test function");
+
+# test as non-CODE
+$mc->{fail} = undef;
+ok(! defined($mc->listdir($listdir, test => 'string')),
+   "listdir returns undef on test CODE failure");
+is($mc->{fail}, "listdir: test option must be a CODE reference",
+   "listdir sets fail attribute when test CODE failure");
+
+# filter as pattern
+is_deeply($mc->listdir($listdir, filter => '[AB]'),
+          [qw(A B)], "listdir with filter=pattern");
+
+# filter as regexp
+is_deeply($mc->listdir($listdir, filter => qr{a}i),
+          [qw(A a)], "listdir with filter=regexp");
+
+# adddir + strip trailing /
+is_deeply($mc->listdir("$listdir/", filter => '[AB]', adddir => 1),
+          ["$listdir/A", "$listdir/B"], "listdir with filter=pattern adddir=1");
+
+# inverse
+is_deeply($mc->listdir($listdir, filter => '[AB]', inverse => 1),
+          [qw(a b x)], "listdir with filter=pattern inverse=1");
+
 done_testing();
