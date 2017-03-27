@@ -819,10 +819,15 @@ sub move
 
     return SUCCESS if (! $self->any_exists($src));
 
-    # Cleanup dest, use backup
-    if (! $self->cleanup($dest, $backup, %opts)) {
-        return $self->fail("move: cleanup of dest $dest failed: $self->{fail}");
-    };
+    # Make backup if needed using hardlink
+    # File::Copy::move can handle existing destination
+    if (defined($backup) and $backup ne '') {
+        $backup = $self->_untaint_path($backup, "move backup") || return;
+        my $old = $dest.$backup;
+        if (! $self->hardlink($dest, $old, %opts)) {
+            return $self->fail("move: backup of dest $dest to $old failed: $self->{fail}");
+        };
+    }
 
     if($self->_get_noaction($opts{$KEEPS_STATE}, "move: ")) {
         $self->verbose("move: NoAction set, not going to move $src to $dest");
@@ -835,6 +840,8 @@ sub move
         }
 
         # Move src to dest
+        # File::Copy::move will try to use rename as much as possible,
+        # (in which case operation is atomic).
         my $res = $self->_safe_eval(
             $CLEANUP_DISPATCH{move}, [$src, $dest], undef,
             "Failed to move $src to $dest",

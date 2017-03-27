@@ -972,13 +972,11 @@ is($nrfiles, 2, "$nrfiles files in dest dir before move");
 
 init_exception("move NoAction=0");
 is($mc->move($movesrc1, $movedest1, '.old'), CHANGED, "move src $movesrc1 to dest $movedest1 with backup '.old'");
-# 7 calls,
-#   once from move,
-#     once from cleanup w backup
-#       move without backup -> cleanup without backup -> safe_eval unlink
-#       move to backup -> safe_eval FPmove
-#     safe_eval FPmove
-verify_exception("move NoAction=0", undef, 7);
+# 4 calls,
+#   one from init move
+#   two from hardlink from backup (init hardlink and function_catch)
+#   one from safe_eval FCmove
+verify_exception("move NoAction=0", undef, 4);
 
 ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved");
 ok($mc->file_exists($movedest1), "move dest file exists after move");
@@ -1005,7 +1003,7 @@ is($nrfiles, 2, "$nrfiles files in dest dir before move w/o backup");
 
 init_exception("move w/o backup NoAction=0");
 is($mc->move($movesrc1, $movedest1, ''), CHANGED, "move src $movesrc1 to dest $movedest1 w/o backup");
-verify_exception("move w/o backup NoAction=0", undef, 4); # move, cleanup w/o backup + safe eval unlink, safe eval FPmove
+verify_exception("move w/o backup NoAction=0", undef, 2); # move init, safe eval FCmove
 ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved w/o backup");
 ok($mc->file_exists($movedest1), "move dest file exists after move w/o backup");
 is(readfile($movedest1), 'source', 'dest file has source content w/o backup');
@@ -1028,10 +1026,9 @@ ok(!$mc->directory_exists($movedir2), "move dest testdir does not exists w/o bac
 init_exception("move w/o backup  w/o destdir NoAction=0");
 is($mc->move($movesrc1, $movedest1, ''), CHANGED, "move src $movesrc1 to dest $movedest1 w/o backup w/o destdir");
 # move,
-#  cleanup w/o backup
 #  directory + func_catch + status/LC_Chekc/func_catch
-#  safe eval FPmove
-verify_exception("move w/o backup w/o destdir NoAction=0", undef, 6);
+#  safe eval FCmove
+verify_exception("move w/o backup w/o destdir NoAction=0", undef, 5);
 ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved w/o backup w/o destdir");
 ok($mc->directory_exists($movedir2), "move dest testdir does exists after move w/o backup w/o destdir");
 ok($mc->file_exists($movedest1), "move dest file exists after move w/o backup w/o destdir");
@@ -1055,7 +1052,7 @@ init_exception("move failure to create destdir");
 ok(! defined($mc->move($movesrc1, $movedest2, '')),
    "move src $movesrc1 to dest $movedest1 w/o backup failed no permission to create destdir");
 verify_exception("move failure to create destdir",
-                 '^Failed to create basedir for dest target/test/check/broken_symlink/sub/dst: \*\*\* mkdir\(target/test/check/broken_symlink, 0755\): File exists', 4);
+                 '^Failed to create basedir for dest target/test/check/broken_symlink/sub/dst: \*\*\* mkdir\(target/test/check/broken_symlink, 0755\): File exists', 3);
 
 # make destdir and remove all permissions
 mkpath $movedir2;
@@ -1065,7 +1062,7 @@ init_exception("move failure to move source");
 ok(! defined($mc->move($movesrc1, $movedest1, '')),
    "move src $movesrc1 to dest $movedest1 w/o backup failed no permission to move src to dest (destdor exists)");
 verify_exception("move failure to move source",
-                 '^Failed to move target/test/check/move1/src to target/test/check/move2/dst: Permission denied', 3);
+                 '^Failed to move target/test/check/move1/src to target/test/check/move2/dst: Permission denied', 2);
 
 chmod(0700, $movedir2);
 makefile($movedest1, 'dest');
@@ -1077,7 +1074,7 @@ init_exception("move failure to cleanup dest with backup");
 ok(! defined($mc->move($movesrc1, $movedest1, '.old')),
    "move src $movesrc1 to dest $movedest1 with backup '.old' failed no permission to make backup of dest");
 verify_exception("move failure to cleanup dest with backup",
-                 '^move: cleanup of dest target/test/check/move2/dst failed: cleanup: move to backup failed: Failed to move target/test/check/move2/dst to target/test/check/move2/dst.old: Permission denied', 5);
+                 '^move: backup of dest target/test/check/move2/dst to target/test/check/move2/dst.old failed: \*\*\* link\(target/test/check/move2/dst, target/test/check/move2/dst.old\): Permission denied', 3);
 
 # Restore sufficient permissions
 chmod(0700, $movedir2);
