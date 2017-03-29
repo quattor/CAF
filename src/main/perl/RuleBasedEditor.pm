@@ -46,7 +46,7 @@ parameters in the rule as this is the default behaviour to apply the rule only i
 they exist. One option set only is allowed and only its existence (not its value) is tested.
 
 C<option_set> can be either an actual option set as defined below or a subset of an option set
-(a subhash of the option set hash). To specify a subset, use C</> as a level separator, 
+(a subhash of the option set hash). To specify a subset, use C</> as a level separator,
 e.g. C<xroot/securityProtocol/gsi> (C<gsi> subet of C<securityProtocol> subset of C<xroot> option set).
 
 It is possible to negate the condition (option or option_set must not exist)
@@ -192,7 +192,7 @@ The value is a hash of strings. Rendering controlled by LINE_OPT_xxx constants.
 
 =item LINE_VALUE_HASH_KEYS
 
-The value is a hash whose keys are the value. Rendering similar to arrays with 
+The value is a hash whose keys are the value. Rendering similar to arrays with
 C<LINE_VALUE_ARRAY> (the key list is treated as an array).
 
 =item LINE_VALUE_INSTANCE_PARAMS
@@ -257,7 +257,7 @@ When updating the value, put a space around the keyword/value separator.
 
 =cut
 
-use enum qw(BITMASK: 
+use enum qw(BITMASK:
     LINE_OPT_KEY_PREFIX_DASH
     LINE_OPT_VALUE_ONELINE
     LINE_OPT_VALUE_UNIQUE
@@ -494,8 +494,8 @@ sub _formatAttributeValue
         $formatted_value = join " ", sort keys %$attr_value;
 
     } elsif ( ($value_fmt == LINE_VALUE_AS_IS) || ($value_fmt == LINE_VALUE_HASH) || ($value_fmt == LINE_VALUE_ARRAY) ) {
-        # In addition to LINE_VALUE_AS_IS, do nothing when either LINE_VALUE_HASH or LINE_VALUE_ARRAY and 
-        # LINE_OPT_VALUE_ONELINE (if it is not set, this is processed before so no need to test it again). 
+        # In addition to LINE_VALUE_AS_IS, do nothing when either LINE_VALUE_HASH or LINE_VALUE_ARRAY and
+        # LINE_OPT_VALUE_ONELINE (if it is not set, this is processed before so no need to test it again).
         # Just ensure that the value can be interpolated as a string (it is a scalar).
         if ( ref($attr_value) eq '' ) {
             $formatted_value = $attr_value;
@@ -576,7 +576,7 @@ sub _formatConfigLine
 
     # Set the separator to use for LINE_FORMAT_KW_VAL_xxx formats.
     # Default separator is a space.
-    # When a non default separator is used, LINE_OPT_SEP_SPACE_AROUND means that 
+    # When a non default separator is used, LINE_OPT_SEP_SPACE_AROUND means that
     # a space must be added before and after the separator.
     my $kw_val_sep = ' ';
     if ( $line_opt & LINE_OPT_SEP_EQUAL ) {
@@ -588,7 +588,7 @@ sub _formatConfigLine
         $kw_val_sep = " $kw_val_sep ";
     }
 
-    # Set the line contents according to the line format    
+    # Set the line contents according to the line format
     if ($line_fmt == LINE_FORMAT_SH_VAR) {
         $config_line = "$keyword=$value";
     } elsif ($line_fmt == LINE_FORMAT_ENV_VAR) {
@@ -705,7 +705,7 @@ sub _buildLinePattern
     # Consider all the separator to be equivalent in term of matching
     # This allows to update the separator used on a given line
     my $kw_val_sep = '(?:\\s|=|:)';
-    
+
     # Build config line pattern according to the selected format
     my $config_param_pattern;
     if ($line_fmt == LINE_FORMAT_SH_VAR) {
@@ -889,7 +889,7 @@ sub _updateConfigLine
           return;
         }
         if (($line_fmt == LINE_FORMAT_KW_VAL) && $config_value) {
-            # For this format, if the value is defined impose one of the possible separators at the end to prevent matching a 
+            # For this format, if the value is defined impose one of the possible separators at the end to prevent matching a
             # keyword starting with the same letters.
             $config_param_pattern .= "\\s*(?:\\s|=|:)";
         }
@@ -1030,11 +1030,11 @@ sub _parse_rule
         if ($cond_attribute) {
             # Due to Perl autovivification, testing directly exists($config_options->{$cond_option_set}->{$cond_attribute}) will spring
             # $config_options->{$cond_option_set} into existence if it doesn't exist.
-            $cond_true = $cond_true && exists($tmp_options->{$cond_attribute});          
+            $cond_true = $cond_true && exists($tmp_options->{$cond_attribute});
         }
         if ( $negate ) {
             $cond_satisfied = 0 if $cond_true;
-        } else {          
+        } else {
             $cond_satisfied = 0 unless $cond_true;
         }
         if (!$cond_satisfied) {
@@ -1285,10 +1285,10 @@ sub _apply_rules
                         $self->_updateConfigLine($config_param, $config_value, $line_fmt, $line_opt);
                     }
                     $config_updated = 1;
-          
+
                 } elsif ( $value_fmt == LINE_VALUE_HASH ) {
                     # Hashes are not processed immediately. First, all the values from all the options sets
-                    # are collected into one hash that will be processed later according to LINE_OPT_xxx 
+                    # are collected into one hash that will be processed later according to LINE_OPT_xxx
                     # options specified (if any).
                     %hash_values = (%hash_values, %$attr_value)
                 } elsif ($value_fmt == LINE_VALUE_ARRAY) {
@@ -1348,7 +1348,7 @@ sub _apply_rules
                                                              $line_opt,
                                                             );
             }
-        
+
         } elsif ( $value_fmt == LINE_VALUE_HASH ) {
             # With this value format, either several lines with the same keyword are generated,
             # one for each key/value pair if LINE_OPT_VALUE_ONELINE is set or all the key/value
