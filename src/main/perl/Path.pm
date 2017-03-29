@@ -198,7 +198,7 @@ sub _function_catch
 Run function reference C<funcref> with arrayref C<argsref> and hashref C<optsref>.
 
 Return and set fail attribute with C<failmsg> on die or an error (C<undef> returned
-by C<funcref>), or print (at verbose level) C<msg> on success (respectively $@ and 
+by C<funcref>), or print (at verbose level) C<msg> on success (respectively $@ and
 stringified result are appended). Note that C<_safe_eval> doesn't work with functions
 that don't return a defined value when they succeed.
 
@@ -303,7 +303,7 @@ This is basically the perl builtin C<-d>,
 wrapped in a method to allow unittesting.
 
 If  C<directory> is a symlink, the symlink target
-is tested. If the symlink is broken (no target), 
+is tested. If the symlink is broken (no target),
 C<directory_exists> returns false.
 
 =cut
@@ -322,7 +322,7 @@ This is basically the perl builtin C<-f>,
 wrapped in a method to allow unittesting.
 
 If  C<filename> is a symlink, the symlink target
-is tested. If the symlink is broken (no target), 
+is tested. If the symlink is broken (no target),
 C<file_exists> returns false.
 
 =cut
@@ -357,7 +357,7 @@ sub any_exists
 
 Test if C<path> is a symlink.
 
-Returns true as long as C<path> is a symlink, including when the 
+Returns true as long as C<path> is a symlink, including when the
 symlink target doesn't exist.
 
 =cut
@@ -595,7 +595,7 @@ sub _make_link
     $self->_reset_exception_fail($link_type);
 
     my $status = $self->LC_Check('link', [$link_path, $target], \%opts);
-            
+
     if ( defined($status) ) {
         return ($status ? CHANGED : SUCCESS);
     } else {
@@ -608,9 +608,9 @@ sub _make_link
 Create a hardlink C<link_path> whose target is C<target>.
 
 On failure, returns undef and sets the fail attribute.
-If C<link_path> exists and is a file, it is updated. 
+If C<link_path> exists and is a file, it is updated.
 C<target> must exist (C<check> flag available in symlink()
-is ignored for hardlinks) and it must reside in the same 
+is ignored for hardlinks) and it must reside in the same
 filesystem as C<link_path>. If C<target_path> is a
 relative path, it is interpreted from the current directory.
 C<link_name> parent directory is created if it doesn't exist.
@@ -639,14 +639,14 @@ sub hardlink
 
 Create a symlink C<link_path> whose target is C<target>.
 
-Returns undef and sets the fail attribute if C<link_path> 
+Returns undef and sets the fail attribute if C<link_path>
 already exists and is not a symlink, except if this is a file
 and option C<force> is defined and true. If C<link_path> exists
-and is a symlink, it is updated. By default, the target is not 
-required to exist. If you want to ensure that it exists, 
+and is a symlink, it is updated. By default, the target is not
+required to exist. If you want to ensure that it exists,
 define option C<check> to true. Both C<link_path> and C<target>
 can be relative paths: C<link_path> is interpreted as relatif
-to the current directory and C<target> is kept relative. 
+to the current directory and C<target> is kept relative.
 C<link_path> parent directory is created if it doesn't exist.
 
 Returns SUCCESS on sucess if the symlink already existed
@@ -664,7 +664,7 @@ sub symlink
 
     # Option passed to LC::Check::link to indicate a symlink
     $opts{hard} = 0;
-    
+
     # LC::Check::symlink() expects an option 'nocheck' but CAF::Path::symlink exposes
     # an option 'check', as the default in CAF::Path::symlink is not to check the
     # target existence. Convert it to 'nocheck'.
@@ -692,12 +692,12 @@ sub has_hardlinks
 {
     my ($self, $file) = @_;
     $file = $self->_untaint_path($file, "has_hardlinks") || return;
-    
+
     if ( ! $self->file_exists($file) && ! $self->is_symlink($file) ) {
         $self->debug(2, "has_hardlinks(): $file doesn't exist or is not a file");
         return;
     }
-    
+
     my $nlinks = (lstat($file))[3];
     $self->debug(2, "Number of links to $file: $nlinks (hardlink if > 2)");
     return $nlinks ? $nlinks - 1 : 0;
@@ -720,7 +720,7 @@ sub is_hardlink
     my ($self, $path1, $path2) = @_;
     $path1 = $self->_untaint_path($path1, "is_hardlink path1") || return;
     $path2 = $self->_untaint_path($path2, "is_hardlink path2") || return;
-    
+
     if ( ! $self->file_exists($path1) && ! $self->is_symlink($path1) ) {
         $self->debug(2, "is_hardlink(): $path1 doesn't exist or is not a file");
         return;
@@ -729,7 +729,7 @@ sub is_hardlink
         $self->debug(2, "is_hardlink(): $path2 doesn't exist or is not a file");
         return;
     }
-    
+
     my $link_inode = (lstat($path1))[1];
     my $target_inode = (lstat($path2))[1];
 
@@ -819,10 +819,15 @@ sub move
 
     return SUCCESS if (! $self->any_exists($src));
 
-    # Cleanup dest, use backup
-    if (! $self->cleanup($dest, $backup, %opts)) {
-        return $self->fail("move: cleanup of dest $dest failed: $self->{fail}");
-    };
+    # Make backup if needed using hardlink
+    # File::Copy::move can handle existing destination
+    if (defined($backup) and $backup ne '') {
+        $backup = $self->_untaint_path($backup, "move backup") || return;
+        my $old = $dest.$backup;
+        if (! $self->hardlink($dest, $old, %opts)) {
+            return $self->fail("move: backup of dest $dest to $old failed: $self->{fail}");
+        };
+    }
 
     if($self->_get_noaction($opts{$KEEPS_STATE}, "move: ")) {
         $self->verbose("move: NoAction set, not going to move $src to $dest");
@@ -835,6 +840,8 @@ sub move
         }
 
         # Move src to dest
+        # File::Copy::move will try to use rename as much as possible,
+        # (in which case operation is atomic).
         my $res = $self->_safe_eval(
             $CLEANUP_DISPATCH{move}, [$src, $dest], undef,
             "Failed to move $src to $dest",
