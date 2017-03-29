@@ -255,8 +255,17 @@ $report = 0;
 $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
 print $fh "hello, world\n";
 $fh->close();
-like($str, qr{Changes to \S+:}, "Diff is reported");
-ok($report, "Diff will be shown/reported even with noaction");
+like($str, qr{Changes to \S+:}, "Diff is reported (sensitive default false)");
+ok($report, "Diff will be shown/reported even with noaction (sensitive default false)");
+
+# sensitive
+init_test();
+$report = 0;
+$fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app, sensitive => 1);
+print $fh "hello, world with sensitive data\n";
+$fh->close();
+like($str, qr{Changes to \S+ are not reported due to sensitive content}, "Diff is not reported with sensitive=1");
+ok(! $report, "Diff will not be shown/reported with sensitive=1");
 
 # No diffs if no contents
 init_test();
@@ -291,12 +300,21 @@ $fh->close();
 
 my $fhid = 'CAF::FileWriter '.refaddr($fh);
 
-#diag explain $this_app->{$HISTORY}->{$EVENTS};
+# sensitive
+init_test();
+my $sfh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app, sensitive => 1);
+print $sfh "weeeee\n";
+$sfh->close();
+
+my $sfhid = 'CAF::FileWriter '.refaddr($sfh);
+
+diag explain $this_app->{$HISTORY}->{$EVENTS};
 
 # events since History enabled
 #   new one initialised
 #   on assignment to fh, old one destroyed, triggers close
 #   close on new one
+#   close on sensitive new one
 is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
     {
         IDX => 0,
@@ -324,12 +342,34 @@ is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
         ID => $fhid,
         REF => 'CAF::FileWriter',
         TS => 0,
-        filename =>  $INC{"CAF/FileWriter.pm"},
+        filename => $INC{"CAF/FileWriter.pm"},
         WHOAMI => 'testapp',
         backup => undef,
         modified => 0,
         changed => 1,
         diff => '',
+        noaction => 1,
+        save => 1,
+    },
+    {
+        ID => $sfhid,
+        IDX => 3,
+        REF => 'CAF::FileWriter',
+        TS => 0,
+        WHOAMI => 'testapp',
+        filename => $INC{"CAF/FileWriter.pm"},
+        init => 1,
+    },
+    {
+        IDX => 4,
+        ID => $sfhid,
+        REF => 'CAF::FileWriter',
+        TS => 0,
+        filename =>  $INC{"CAF/FileWriter.pm"},
+        WHOAMI => 'testapp',
+        backup => undef,
+        modified => 0,
+        changed => 1,
         noaction => 1,
         save => 1,
     },
