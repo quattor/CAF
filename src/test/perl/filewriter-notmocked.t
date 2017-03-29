@@ -107,7 +107,7 @@ print $fh $TEXT;
 is ("$fh", $TEXT, "Stringify works");
 $fh->close();
 ok($EC->error(), "old-style exception thrown");
-like($EC->error->text, qr{^close AtomicWrite failed filename target/test/writer-notmocked/fail/file: Error in tempfile\(\) using template target/test/writer-notmocked/fail/.tmp.XXXXXXXXXX: Could not create temp file target/test/writer-notmocked/fail/.tmp.\w+: Permission denied at },
+like($EC->error->text, qr{^close AtomicWrite failed filename target/test/writer-notmocked/fail/file: Error in tempfile\(\) using (?:template )?target/test/writer-notmocked/fail/.tmp.XXXXXXXXXX: Could not create temp file target/test/writer-notmocked/fail/.tmp.\w+: Permission denied at },
      "message from die converted in exception");
 $EC->ignore_error();
 
