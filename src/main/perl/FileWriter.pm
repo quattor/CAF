@@ -1,5 +1,10 @@
 #${PMpre} CAF::FileWriter${PMpost}
-use LC::Check;
+
+use LC::Exception qw(throw_error);
+use LC::File;
+use Text::Diff qw(diff);
+use File::AtomicWrite 1.18;
+use Errno qw(ENOENT);
 use IO::String;
 use CAF::Process;
 use CAF::Object;
@@ -7,6 +12,7 @@ use overload '""' => "stringify";
 
 our @ISA = qw (IO::String);
 
+our $_EC = LC::Exception::Context->new()->will_store_errors();
 
 # This code makes sense only in Linux with SELinux enabled.  Other
 # platforms might require other adjustments after files are written.
@@ -71,7 +77,8 @@ level.
 
 =head2 Gory details
 
-This is just a wrapper class for C<LC::Check::file>
+This is a wrapper class for C<IO::String> with customised close based on
+C<File::AtomicWrite>.
 
 =head2 Public methods
 
@@ -131,11 +138,13 @@ sub new
     *$self->{filename} = $path;
     *$self->{LOG} = $opts{log} if exists ($opts{log});
     *$self->{LOG}->verbose ("Opening file $path") if exists (*$self->{LOG});
+
     *$self->{options}->{mode} = $opts{mode} if exists ($opts{mode});
     *$self->{options}->{owner} = $opts{owner} if exists ($opts{owner});
     *$self->{options}->{group} = $opts{group} if exists ($opts{group});
     *$self->{options}->{mtime} = $opts{mtime} if exists ($opts{mtime});
     *$self->{options}->{backup} = $opts{backup} if exists ($opts{backup});
+
     *$self->{save} = 1;
     bless ($self, $class);
 
@@ -154,8 +163,6 @@ sub new
     return $self;
 }
 
-=pod
-
 =item open
 
 Synonym for C<new()>
@@ -167,7 +174,6 @@ no warnings 'redefine';
 *open = \&new;
 use warnings;
 
-
 =item close
 
 Closes the file. If it has not been saved and it has not been
@@ -176,58 +182,106 @@ secure way (not following symlinks, etc).
 
 Under a verbose level, it will show in the standard output a diff of
 the old and the newly-generated contents for this file before actually
-saving to disk. This diff will B<not> be stored in any logs to prevent
-any leakages of confidential information (f.i. when writing to
-/etc/shadow).
+saving to disk.
 
 =cut
 
 sub close
 {
     my $self = shift;
-    my ($str, $ret, $cmd, $diff);
 
-    # We have to do this because Text::Diff is not present in SL5. :(
-    if ($self->is_verbose() && -e *$self->{filename} && *$self->{buf}) {
-        $cmd = CAF::Process->new (["diff", "-u", *$self->{filename}, "-"],
-                                  stdin => "$self", stdout => \$diff,
-                                  keeps_state => 1);
-        $cmd->execute();
-        if ($diff) {
-            $self->verbose ("Changes to ", *$self->{filename}, ":");
-            $self->report ($diff);
-        } else {
-            $self->debug(1, "No changes to make to ", *$self->{filename});
-        }
-    }
+    my ($changed, $diff);
+    my $filename = *$self->{filename};
+    my $options = *$self->{options};
+
+    my $modified = 0;
+
+    my %event = (
+        noaction => $options->{noaction},
+        save => *$self->{save},
+        backup => $options->{backup},
+    );
 
     if (*$self->{save}) {
         *$self->{save} = 0;
-        $str = *$self->{buf};
-        *$self->{options}->{contents} = $$str;
+        my $content_ref = *$self->{buf};
 
-        my %cf_opts = %{*$self->{options}};
-        if(! exists($cf_opts{silent})) {
-            # make sure LC::Check::file is silent unless in noaction mode
-            # (or when explicitly set via silent option)
-            $cf_opts{silent} = *$self->{options}->{noaction} ? 0 : 1
+        # Always read and (try to) determine the diff
+        my $content_orig;
+        if (defined(*$self->{content_orig})) {
+            $self->debug(2, "Using original contents from $filename");
+            $content_orig = *$self->{content_orig};
+        } else {
+            # missing_ok=1 mimics original LC::Check::file behaviour
+            $content_orig = $self->_read_contents($filename, event => \%event, missing_ok => 1);
         }
 
-        $ret = LC::Check::file (*$self->{filename}, %cf_opts);
-        # Restore the SELinux context in case of modifications.
-        if ($ret) {
-            $self->change_hook();
+        if (defined($content_orig)) {
+            $diff = diff(\$content_orig, $content_ref, { STYLE => "Unified" });
+            $changed = $diff ? 1 : 0;
+        } else {
+            $self->verbose("No original file content for $filename; new content is the diff");
+
+            $diff = $$content_ref;
+            $changed = 1;
         }
-        $self->verbose("File ", *$self->{filename}, " was", ($ret ? '' : ' not')," modified");
+
+        # Update event metadata with diff
+        $event{changed} = $changed;
+        $event{diff} = $diff if $changed;
+
+        my $msg = 'was';
+
+        if ($changed) {
+            if($self->is_verbose()) {
+                $self->verbose ("Changes to $filename:");
+                $self->report ($diff);
+            }
+
+            if ($options->{noaction}) {
+                $msg = 'would have been';
+                $self->debug(1, "File $filename with NoAction=1");
+            } else {
+                my $opts = {
+                    file => $filename,
+                    input => $content_ref,
+                    MKPATH => 1, # create missing parent directory
+                };
+                # group is handled separately
+                foreach my $name (qw(mode mtime backup owner)) {
+                    $opts->{$name} = $options->{$name} if exists($options->{$name});
+                };
+                # No need to check if owner exists. :groupname is supported
+                $opts->{owner} .= ":$options->{group}" if exists($options->{group});
+
+                eval {
+                    File::AtomicWrite->write_file($opts);
+                    $modified = 1;
+                };
+                if ($@) {
+                    $self->warn("AtomicWrite gave error: $@");
+                    # Make an oldstyle exception
+                    throw_error("close AtomicWrite failed filename $filename: $@");
+                }
+
+                # Restore the SELinux context in case of modifications.
+                $self->change_hook();
+            }
+        } else {
+            $msg = 'was not';
+        }
+
+        $self->verbose("File $filename $msg modified");
+    } else {
+        $self->verbose("Not saving file $filename");
     }
 
-    $self->event(modified => $ret,
-                 noaction => *$self->{options}->{noaction}, # TODO: useful to track?
-                 backup => *$self->{options}->{backup},
-                 );
+    # Always keep the modified state, even with save==0
+    $event{modified} = $modified;
+    $self->event(%event);
 
     $self->SUPER::close();
-    return $ret;
+    return $changed;
 }
 
 =item cancel
@@ -246,8 +300,6 @@ sub cancel
     *$self->{save} = 0;
 }
 
-=pod
-
 =item noAction
 
 Returns the NoAction flag value (boolean)
@@ -259,8 +311,6 @@ sub noAction
     my $self = shift;
     return *$self->{options}->{noaction};
 }
-
-=pod
 
 =item stringify
 
@@ -325,7 +375,7 @@ sub is_verbose
             $log = $log->{log};
         };
 
-        if($log->can('is_verbose')) {
+        if(UNIVERSAL::can($log, 'can') && $log->can('is_verbose')) {
             $res = $log->is_verbose();
         } else {
             # Fallback to CAF::Reporter
@@ -374,6 +424,59 @@ sub event
 =head2 Private methods
 
 =over
+
+=item _read_contents
+
+Read the contents from file C<filename> using C<LC::File::file_contents>
+and return it.
+
+Optional named arguments
+
+=over
+
+=item event
+
+A hashref that will be updated in place if an error occured. The C<error>
+attribute is set to the exception text.
+
+=item missing_ok
+
+When true and C<LC::File::file_contents> fails with C<ENOENT>
+(i.e. when C<filename> is missing),
+the exception is ignored and no warning is reported.
+
+=back
+
+By default, a warning is reported in case of an error and the exception is (re)thrown.
+
+=cut
+
+sub _read_contents
+{
+    my ($self, $filename, %opts) = @_;
+
+    $self->debug(2, "Reading initial contents from $filename");
+    my $content_orig = LC::File::file_contents($filename);
+    if ($_EC->error) {
+        if ($opts{missing_ok} and $_EC->error()->reason() == ENOENT) {
+            # the filename does not exist (yet), and this is ok
+            $self->verbose("No contents from missing $filename");
+            $_EC->ignore_error();
+	    } else {
+            my $errtxt = $_EC->error->text();
+
+            $opts{event}->{error} = $errtxt if defined $opts{event};
+            $self->warn("Reading contents from $filename gave error: $errtxt");
+
+            # Keep legacy exception behaviour
+            $_EC->rethrow_error();
+            return();
+        }
+    };
+
+    return $content_orig;
+}
+
 
 =item DESTROY
 

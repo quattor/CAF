@@ -11,10 +11,11 @@ BEGIN {
 
 use Test::More;
 use Test::Quattor::Object;
+use Test::Quattor::Filetools qw(writefile readfile);
 use Test::MockModule;
 use CAF::Lock qw(FORCE_ALWAYS FORCE_NONE FORCE_IF_STALE);
 
-use constant LOCK_TEST_DIR => "target/tests";
+use constant LOCK_TEST_DIR => "target/test";
 use constant LOCK_TEST => LOCK_TEST_DIR . "/lock-caf";
 
 my $obj = Test::Quattor::Object->new();
@@ -71,30 +72,13 @@ ok(!$lock1->is_set(), "lock1 unlocked when lock2 unlocked");
 =cut
 
 
-sub makefile
-{
-    my $fn = shift;
-    open(FH, ">$fn");
-    my $txt = shift;
-    print FH (defined($txt) ? $txt : "ok");
-    close(FH);
-}
-
-sub readfile
-{
-    open(FH, shift);
-    my $txt = join('', <FH>);
-    close(FH);
-    return $txt;
-}
-
 # Make oldstyle non-stale lock
 $lock1 = undef;
 unlink(LOCK_TEST);
 
 my $pid = 0;
 ok(kill(0, $pid), "PID $pid exists");
-makefile(LOCK_TEST, "$pid");
+writefile(LOCK_TEST, "$pid\n");
 
 $lock1 = CAF::Lock->new(LOCK_TEST, log => $obj);
 ok($lock1->_is_locked_oldstyle(),
@@ -113,7 +97,7 @@ unlink(LOCK_TEST);
 $pid = 2**31;
 like("$pid", qr{^\d+$}, "too high pid $pid should still be integer");
 ok(! kill(0, "$pid"), "no such PID $pid");
-makefile(LOCK_TEST, "$pid");
+writefile(LOCK_TEST, "$pid");
 
 $lock1 = CAF::Lock->new(LOCK_TEST, log => $obj);
 ok($lock1->_is_locked_oldstyle(),

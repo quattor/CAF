@@ -51,7 +51,7 @@ sub verbose
     my ($self, @lines) = @_;
     my $text = join ("", @lines);
     my $fh = $CAF::Reporter::_REP_SETUP->{LOGFILE};
-    print $fh $text if defined($fh);
+    print $fh "$text\n" if defined($fh);
     diag "[VERB] $text\n";
 }
 
@@ -61,7 +61,5 @@ sub debug
     my $text = join ("", @lines);
     diag "[DEBUG] $lvl $text\n";
 }
-
-
 
 1;

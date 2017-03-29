@@ -2,19 +2,10 @@
 
 =head1 SYNOPSIS
 
-Backup module emulating LC::Check, for CAF::Tests
+Old mock module emulating LC::Check::file, for CAF:: tests.
+It is now replaced by mocked File::AtomicWrite module.
 
-=head1 DESCRIPTION
-
-When testing CAF modules, we don't care about files being created or
-not. All CAF wrappers do is to call the appropriate LC::* function,
-with a set of arguments, and we just need to be sure that the correct
-arguments are passed.
-
-Functions on this module just save their arguments on some global
-variable on main package. This way, tests can check the correctness of
-the calls, without worrying to set up any special environment for
-tests.
+This module should not be used in CAF anymore.
 
 =cut
 
@@ -24,11 +15,7 @@ our $VERSION = '1.22';
 
 sub file
 {
-    my ($path, %opts) = @_;
-    $main::path = $path;
-    %main::opts = %opts;
-    $main::lc_check_file++ if defined $main::lc_check_file;
-    return $main::file_changed;
+    die "Mocked LC::Check::file from resources/LC should not be used anymore";
 }
 
 1;

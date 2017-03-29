@@ -1,6 +1,7 @@
 # -*- perl -*-
 use strict;
 use warnings;
+
 use Test::More;
 use Test::Quattor;
 use CAF::TextRender qw($YAML_BOOL $YAML_BOOL_PREFIX get_template_instance);
