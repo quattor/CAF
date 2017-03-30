@@ -53,7 +53,8 @@ use constant FILENAME => "/my/test";
 our ($path, $text, $text_throw, $text_from_file, $faw_die);
 our %opts = ();
 
-my ($log, $str);
+my $log;
+my $str = '';
 open ($log, ">", \$str);
 
 my $report;
@@ -69,6 +70,7 @@ sub init_test
     %opts = ();
     $report = 0;
     close($log);
+    $str = '';
     open ($log, ">", \$str);
 }
 

@@ -52,7 +52,8 @@ our $text = TEXT;
 our $path;
 our %opts = ();
 
-my ($log, $str);
+my $log;
+my $str = '';
 open ($log, ">", \$str);
 
 sub init_test
@@ -60,6 +61,7 @@ sub init_test
     $path = "";
     %opts = ();
     close($log);
+    $str = '';
     open ($log, ">", \$str);
 }
 
