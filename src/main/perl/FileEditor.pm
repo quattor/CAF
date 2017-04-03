@@ -52,11 +52,6 @@ the file contents based on a new version of the reference file.
 The C<source> can be a pipe: in this case, it is always considered more recent
 than the edited file.
 
-Caveat: the C<source> is used to set the C<original_content> atribute, which in
-its turn is used to determine change in file contents. It is thus possible that
-the file that not seen as changed (compared to C<source>),
-and also not written, on C<close>, even if the actual file did change.
-
 =back
 
 =cut
@@ -115,16 +110,20 @@ sub new
 
     *$self->{options}->{source} = $opts{source} if exists ($opts{source});
     if ( $self->_is_reference_newer() ) {
-        # As this is a non reproducible event, be sure to log it when it happens
-        $self->info("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.");
+        $self->verbose("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.");
         $src_file = *$self->{options}->{source};
+        *$self->{original_from_source} = 1;
     } elsif ($self->_is_valid_file(*$self->{filename})) {
         $src_file = *$self->{filename};
     }
 
     if ( $src_file ) {
-        *$self->{original_content} = $self->_read_contents($src_file);
-        $self->IO::String::open (*$self->{original_content});
+        my $txt = $self->_read_contents($src_file);
+        # must store a copy as original content
+        # string passed to IO::String is used for read and write
+        *$self->{original_content} = "$txt" if defined($txt);
+
+        $self->IO::String::open ($txt);
         $self->seek(IO_SEEK_END);
     }
 
