@@ -52,6 +52,11 @@ the file contents based on a new version of the reference file.
 The C<source> can be a pipe: in this case, it is always considered more recent
 than the edited file.
 
+Caveat: the C<source> is used to set the C<original_content> atribute, which in
+its turn is used to determine change in file contents. It is thus possible that
+the file that not seen as changed (compared to C<source>),
+and also not written, on C<close>, even if the actual file did change.
+
 =back
 
 =cut
@@ -118,8 +123,8 @@ sub new
     }
 
     if ( $src_file ) {
-        *$self->{orig_contents} = $self->_read_contents($src_file);
-        $self->IO::String::open (*$self->{orig_contents});
+        *$self->{original_content} = $self->_read_contents($src_file);
+        $self->IO::String::open (*$self->{original_content});
         $self->seek(IO_SEEK_END);
     }
 

@@ -187,11 +187,15 @@ use warnings;
 
 Closes the file. If it has not been saved and it has not been
 cancelled, it checks its contents and perhaps re-writes it, in a
-secure way (not following symlinks, etc).
+secure way (not following symlinks, etc). The (re)write only occurs
+if there was a change in content and this change (or not) is returned.
+(If the C<original_content> atttribute exists, it is used to determine
+whether or not there was a change, e.g. in case of C<CAF::FileEditor>).
 
 Under a verbose level, it will show in the standard output a diff of
 the old and the newly-generated contents for this file before actually
 saving to disk.
+
 
 =cut
 
@@ -216,20 +220,20 @@ sub close
         my $content_ref = *$self->{buf};
 
         # Always read and (try to) determine the diff
-        my $content_orig;
-        if (defined(*$self->{content_orig})) {
-            $self->debug(2, "Using original contents from $filename");
-            $content_orig = *$self->{content_orig};
+        my $original_content;
+        if (defined(*$self->{original_content})) {
+            $self->debug(2, "Using existing original content for $filename");
+            $original_content = *$self->{content_orig};
         } else {
             # missing_ok=1 mimics original LC::Check::file behaviour
-            $content_orig = $self->_read_contents($filename, event => \%event, missing_ok => 1);
+            $original_content = $self->_read_contents($filename, event => \%event, missing_ok => 1);
         }
 
-        if (defined($content_orig)) {
-            $diff = diff(\$content_orig, $content_ref, { STYLE => "Unified" });
+        if (defined($original_content)) {
+            $diff = diff(\$original_content, $content_ref, { STYLE => "Unified" });
             $changed = $diff ? 1 : 0;
         } else {
-            $self->verbose("No original file content for $filename; new content is the diff");
+            $self->verbose("No original content for $filename; new content is the diff");
 
             $diff = $$content_ref;
             $changed = 1;
@@ -475,7 +479,7 @@ sub _read_contents
     my ($self, $filename, %opts) = @_;
 
     $self->debug(2, "Reading initial contents from $filename");
-    my $content_orig = LC::File::file_contents($filename);
+    my $original_content = LC::File::file_contents($filename);
     if ($_EC->error) {
         if ($opts{missing_ok} and $_EC->error()->reason() == ENOENT) {
             # the filename does not exist (yet), and this is ok
@@ -493,7 +497,7 @@ sub _read_contents
         }
     };
 
-    return $content_orig;
+    return $original_content;
 }
 
 
