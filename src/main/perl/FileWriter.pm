@@ -310,7 +310,7 @@ sub cancel
 {
     my $self = shift;
 
-    $self->verbose("Not saving file ", *$self->{filename});
+    $self->verbose("Will not save file ", *$self->{filename}, " (cancelled)");
 
     *$self->{save} = 0;
 }
