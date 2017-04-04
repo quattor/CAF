@@ -304,13 +304,17 @@ sub close
 Marks the printed contents as invalid. The existing file will not be
 altered.
 
+Option C<msg> to add custom message to verbose reporting.
+
 =cut
 
 sub cancel
 {
-    my $self = shift;
+    my ($self, %opts) = @_;
 
-    $self->verbose("Will not save file ", *$self->{filename}, " (cancelled)");
+    my $msg = defined($opts{msg}) ? $opts{msg} : 'cancelled';
+
+    $self->verbose("Will not save file ", *$self->{filename}, " ($msg)");
 
     *$self->{save} = 0;
 }
