@@ -31,4 +31,12 @@ ok("$fh", "Contents are read");
 is("$fh", TEXT, "Expected contents are read");
 is(*$fh->{save}, 0, "Modifications to the file won't be saved");
 
+ok(!defined($fh->close()), "close returns undef");
+is(*$fh->{original_content}, TEXT, "latest content saved as (new) original_content after close");
+
+$fh->reopen();
+ok($fh->opened(), "file is open again after reopen");
+is("$fh", TEXT, "Expected contents after reopen");
+
+
 done_testing();

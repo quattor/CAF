@@ -52,8 +52,6 @@ sub new
     return $self;
 }
 
-=pod
-
 =item open
 
 Synonym for C<new()>
@@ -65,7 +63,16 @@ no warnings 'redefine';
 *open = \&new;
 use warnings;
 
-=pod
+sub reopen
+{
+    my $self = shift;
+
+    $self->SUPER::reopen();
+
+    $self->seek_begin();
+
+    $self->cancel(msg => 'reading with '.ref($self));
+}
 
 =back
 
