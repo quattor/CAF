@@ -117,6 +117,7 @@ is($CAF::Reporter::_REP_SETUP, $myrep->_rep_setup(), "_rep_setup returns ref to 
 is($myrep->get_debuglevel(), 0, "Returned debug level 0");
 ok($myrep->is_quiet(), "is quiet");
 ok($myrep->is_verbose(), "is verbose");
+ok($myrep->is_verbose(verbose_logfile => 1), "is verbose with verbose_logfile");
 
 $myrep->init_reporter();
 is_deeply($CAF::Reporter::_REP_SETUP, $init, "_REP_SETUP re-initialsed");
@@ -157,6 +158,7 @@ $myrep->config_reporter(debuglvl => 2, quiet => 1, verbose => 1, facility => 'fa
 is($myrep->get_debuglevel(), 2, "Returned debug level 2");
 ok($myrep->is_quiet(), "is quiet");
 ok($myrep->is_verbose(), "is verbose");
+ok(!$myrep->is_verbose(verbose_logfile => 1), "is not verbose with verbose_logfile");
 
 
 $myrep->config_reporter(logfile => 'whatever');
@@ -465,6 +467,8 @@ is_deeply($syslogged, ['notice', 'hello', 'verbose', 'enabled'],
 $myrep->config_reporter(debuglvl => 0, quiet => 0, verbose => 0, facility => 'whatever', verbose_logfile => 1);
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE}, 0, "Verbose disabled (verbose_logfile)");
 is($CAF::Reporter::_REP_SETUP->{$VERBOSE_LOGFILE}, 1, "Verbose logfile enabled");
+ok(!$myrep->is_verbose(), "is not verbose");
+ok($myrep->is_verbose(verbose_logfile => 1), "is verbose with verbose_logfile");
 $reported = undef;
 $syslogged = undef;
 $logged = undef;

@@ -229,21 +229,29 @@ sub close
 
     if (*$self->{save}) {
         *$self->{save} = 0;
-        my $content_ref = *$self->{buf};
+        my $content_ref = $self->string_ref();
+
+        my $report_diff = sub {
+            my ($diff, $msg) = @_;
+            if(*$self->{options}->{sensitive}) {
+                $self->verbose("Changes $msg $filename are not reported due to sensitive content");
+            } else {
+                $self->verbose("Changes $msg $filename:");
+                if ($self->is_verbose()) {
+                    $self->report($diff);
+                } elsif ($self->is_verbose(verbose_logfile => 1)) {
+                    $self->log($diff);
+                }
+            }
+        };
 
         if (*$self->{original_from_source}) {
             # Report changes compared to source
             my $src_original_content = *$self->{original_content};
             if (defined($src_original_content)) {
                 my $src_diff = diff(\$src_original_content, $content_ref, { STYLE => "Unified" });
-                my $src_changed = $src_diff ? 1 : 0;
-                if ($src_changed) {
-                    if(*$self->{options}->{sensitive}) {
-                        $self->verbose("Changes compared to source for $filename are not reported due to sensitive content");
-                    } else {
-                        $self->verbose("Changes compared to source for $filename:");
-                        $self->report($src_diff) if $self->is_verbose();
-                    }
+                if ($src_diff) {
+                    $report_diff->($src_diff, 'compared to source for');
                 } else {
                     $self->verbose("No changes compared to source for $filename");
                 }
@@ -287,12 +295,7 @@ sub close
         my $msg = 'was';
 
         if ($changed) {
-            if(*$self->{options}->{sensitive}) {
-                $self->verbose("Changes to $filename are not reported due to sensitive content");
-            } else {
-                $self->verbose("Changes to $filename:");
-                $self->report($diff) if $self->is_verbose();
-            }
+            $report_diff->($diff, 'to');
 
             if ($self->noAction()) {
                 $msg = 'would have been';
@@ -390,7 +393,7 @@ sub stringify
 # Compatibility with CAF::Object
 # event is handled differently (as opposed to CAF::Object).
 
-=item error, warn, info, verbose, debug, report, OK
+=item error, warn, info, verbose, debug, report, log, OK
 
 Convenience methods to access the log/reporter instance that might
 be passed during initialisation and set to C<*$self->{LOG}>.
@@ -399,7 +402,7 @@ be passed during initialisation and set to C<*$self->{LOG}>.
 
 
 no strict 'refs';
-foreach my $i (qw(error warn info verbose debug report OK)) {
+foreach my $i (qw(error warn info verbose debug report log OK)) {
     *{$i} = sub {
         my ($self, @args) = @_;
         if (*$self->{LOG}) {
@@ -417,11 +420,14 @@ Determine if the reporter level is verbose.
 If it can't be determined from the reporter instance,
 use the global C<CAF::Reporter> state.
 
+Supports boolean option C<verbose_logfile> to check if
+reporting to logfile is verbose.
+
 =cut
 
 sub is_verbose
 {
-    my $self = shift;
+    my ($self, %opts) = @_;
 
     my $res;
     if (*$self->{LOG}) {
@@ -436,13 +442,14 @@ sub is_verbose
         };
 
         if(UNIVERSAL::can($log, 'can') && $log->can('is_verbose')) {
-            $res = $log->is_verbose();
+            $res = $log->is_verbose(%opts);
         } else {
             # Fallback to CAF::Reporter
             # must use 'require' for evaluation at runtime
             # ('use' is evaluated at compile time and might trigger a cyclic dependency eg in TextRender).
             require CAF::Reporter;
-            $res = $CAF::Reporter::_REP_SETUP->{VERBOSE};
+            my $attr = $opts{verbose_logfile} ? 'VERBOSE_LOGFILE' : 'VERBOSE';
+            $res = $CAF::Reporter::_REP_SETUP->{$attr};
         };
     }
     return $res;
