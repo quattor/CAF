@@ -347,13 +347,17 @@ sub is_quiet
 
 Return true if reporter is verbose, false otherwise
 
+Supports boolean option C<verbose_logfile> to check if
+reporting to logfile is verbose.
+
 =cut
 
 sub is_verbose
 {
-    my $self = shift;
+    my ($self, %opts) = @_;
 
-    return $self->_rep_setup()->{$VERBOSE} ? 1 : 0;
+    my $attr = $opts{verbose_logfile} ? $VERBOSE_LOGFILE : $VERBOSE;
+    return $self->_rep_setup()->{$attr} ? 1 : 0;
 }
 
 =pod

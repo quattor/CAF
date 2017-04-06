@@ -1,10 +1,12 @@
-#!/usr/bin/perl
 use strict;
 use warnings;
+
 use FindBin qw($Bin);
 use lib "$Bin/modules";
+
 use CAF::FileEditor;
-use Test::More tests => 7;
+
+use Test::More tests => 10;
 use Test::MockModule;
 use Test::Quattor::Object;
 use Carp qw(confess);
@@ -29,7 +31,7 @@ sub read_file_contents {
 $lcfile->mock("file_contents", \&read_file_contents);
 
 
-my $testdir = 'target/test/test_caffileeditor_source';
+my $testdir = 'target/test/fileeditor_source';
 mkpath($testdir);
 (undef, my $filename) = tempfile(DIR => $testdir);
 
@@ -47,8 +49,8 @@ my $obj = Test::Quattor::Object->new();
 ($fh, $filename) = tempfile(DIR => $testdir);
 $fh->close();
 $fh = CAF::FileEditor->new($filename, log => $obj);
-is("$fh","","Existing file ($filename) empty");
-$fh->close();
+is("$fh", "", "Existing file ($filename) empty");
+ok(!$fh->close(), "No changes to empty file");
 
 # Check that reference file contents is used as the initial contents when it
 # is newer than the file edited.
@@ -57,11 +59,12 @@ utime($time, $time - 10, $filename); # make filename old enough
 my ($ref_fh, $ref_filename) = tempfile(DIR => $testdir);
 print $ref_fh $TEXT;
 $ref_fh->close();
+
 $fh = CAF::FileEditor->new($filename, log => $obj, source => $ref_filename);
-is(*$fh->{options}->{source},$ref_filename,"File source is correctly defined");
-ok($fh->_is_reference_newer(),"Source file ($ref_filename) is newer than actual file ($filename)");
-is("$fh",$TEXT,"Reference file ($filename) contents used");
-$fh->close();
+is(*$fh->{options}->{source}, $ref_filename, "File source is correctly defined");
+ok($fh->_is_reference_newer(), "Source file ($ref_filename) is newer than actual file ($filename)");
+is("$fh", $TEXT, "Reference file ($filename) contents used");
+ok($fh->close(), "change on close (nothing was printed to filehandle, but source is different from original file)");
 
 # Check that reference file contents is not used as the initial contents when it
 # is older than the file edited.
@@ -70,10 +73,11 @@ utime($time, $time - 10, $ref_filename); # make ref_filename old enough
 my ($new_fh, $new_filename) = tempfile(DIR => $testdir);
 print $new_fh $ANOTHER_TEXT;
 $new_fh->close();
+
 $new_fh = CAF::FileEditor->new($new_filename, log => $obj, source => $ref_filename);
-is(*$new_fh->{options}->{source},$ref_filename,"File source is correctly defined");
-ok(!$new_fh->_is_reference_newer(),"Source file ($ref_filename) is older than actual file ($filename)");
-is("$new_fh",$ANOTHER_TEXT,"Existing file ($new_filename) contents used");
-$fh->close();
+is(*$new_fh->{options}->{source}, $ref_filename, "File source is correctly defined");
+ok(!$new_fh->_is_reference_newer(), "Source file ($ref_filename) is older than actual file ($filename)");
+is("$new_fh", $ANOTHER_TEXT, "Existing file ($new_filename) contents used");
+ok(!$fh->close(), "no change on close (source is too old)");
 
 done_testing();

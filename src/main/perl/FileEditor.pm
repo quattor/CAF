@@ -110,16 +110,20 @@ sub new
 
     *$self->{options}->{source} = $opts{source} if exists ($opts{source});
     if ( $self->_is_reference_newer() ) {
-        # As this is a non reproducible event, be sure to log it when it happens
-        $self->info("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.");
+        $self->verbose("File ", *$self->{filename}, " contents reset to reference file (", *$self->{options}->{source}, ") contents.");
         $src_file = *$self->{options}->{source};
+        *$self->{original_from_source} = 1;
     } elsif ($self->_is_valid_file(*$self->{filename})) {
         $src_file = *$self->{filename};
     }
 
     if ( $src_file ) {
-        *$self->{orig_contents} = $self->_read_contents($src_file);
-        $self->IO::String::open (*$self->{orig_contents});
+        my $txt = $self->_read_contents($src_file);
+        # must store a copy as original content
+        # string passed to IO::String is used for read and write
+        *$self->{original_content} = "$txt" if defined($txt);
+
+        $self->IO::String::open ($txt);
         $self->seek(IO_SEEK_END);
     }
 
