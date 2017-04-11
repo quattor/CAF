@@ -1092,4 +1092,13 @@ is($nrfiles, 2, "$nrfiles files in dest dir after move NoAction=1");
 # reenable NoAction
 $CAF::Object::NoAction = 1;
 
+=head2 mkcafpath
+
+=cut
+
+my $inst = CAF::Path::mkcafpath(log => $obj);
+isa_ok($inst, 'CAF::Object', "mkcafpath returns CAF::Object instance");
+isa_ok($inst, 'CAF::Path', "mkcafpath returns CAF::Path instance");
+is($inst->{log}, $obj, "log attribute set");
+
 done_testing();

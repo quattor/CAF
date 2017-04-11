@@ -83,6 +83,50 @@ undef on failure and store the error message in the C<fail> attribute.
 
 =back
 
+=head2 Functions
+
+=over
+
+=item mkcafpath
+
+Returns an instance of C<CAF::Object> and C<CAF::Path>.
+This instance is a simple way to use C<CAF::Path> when
+subclassing is not possible. Allowed options are
+C<<log => $logger>> and C<<NoAction => $noaction>>.
+
+This function is not exported, to be used as e.g.
+    use CAF::Path;
+    ...
+    my $cafpath = CAF::Path::mkcafpath(log => $logger);
+    if(! defined($cafpath->directory($name)) {
+        $logger->error("Failed to make directory $name: $cafpath->{fail}");
+    };
+
+=cut
+
+sub mkcafpath
+{
+    # Internal class/package/namespace; limited to the scope of the block
+    {
+        package __caf_path_object;
+        use parent qw(CAF::Object CAF::Path);
+        sub _initialize ## no critic (Subroutines::ProhibitNestedSubs)
+        {
+            my ($self, %opts) = @_;
+            foreach my $optname (qw(log NoAction)) {
+                $self->{$optname} = $opts{$optname} if exists $opts{$optname};
+            };
+            return CAF::Object::SUCCESS;
+        };
+    }
+
+    return __caf_path_object->new(@_);
+}
+
+=pod
+
+=back
+
 =head2 Methods
 
 =over
@@ -860,5 +904,6 @@ sub move
 =back
 
 =cut
+
 
 1;
