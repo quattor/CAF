@@ -8,9 +8,11 @@ use Errno qw(ENOENT);
 use IO::String;
 use CAF::Process;
 use CAF::Object;
+use CAF::Path;
+use File::Basename qw(dirname);
 use overload '""' => "stringify";
 
-our @ISA = qw (IO::String);
+use parent qw(IO::String);
 
 our $_EC = LC::Exception::Context->new()->will_store_errors();
 
@@ -146,7 +148,7 @@ sub new
     *$self->{LOG} = $opts{log} if exists ($opts{log});
     *$self->{LOG}->verbose ("Opening file $path") if exists (*$self->{LOG});
 
-    *$self->{options}->{mode} = $opts{mode} if exists ($opts{mode});
+    *$self->{options}->{mode} = exists($opts{mode}) ? $opts{mode} : oct(644);
     *$self->{options}->{owner} = $opts{owner} if exists ($opts{owner});
     *$self->{options}->{group} = $opts{group} if exists ($opts{group});
     *$self->{options}->{mtime} = $opts{mtime} if exists ($opts{mtime});
@@ -288,7 +290,7 @@ sub close
 
         # Update event metadata with diff
         $event{changed} = $changed;
-        if ($changed && ! *$self->{options}->{sensitive}) {
+        if ($changed && ! $options->{sensitive}) {
             $event{diff} = $diff
         }
 
@@ -301,10 +303,21 @@ sub close
                 $msg = 'would have been';
                 $self->debug(1, "File $filename with NoAction=1");
             } else {
+                my $parent_dir = dirname($filename);
+                # Pass NoAction here, as it keeps track of the NoAction value during initialisation and/or keeps_state
+                my $cafpath = CAF::Path::mkcafpath(log => *$self->{LOG}, NoAction => $options->{noaction});
+                # only create the directory if it didn't exist yet
+                # if not, this would for the directory mode on existing directories
+                if (!$cafpath->directory_exists($parent_dir) &&
+                    !$cafpath->directory($parent_dir, mode => oct(755))) {
+                    my $msg = "Failed to make parent directory $parent_dir:$cafpath->{fail}";
+                    $self->warn($msg);
+                    throw_error("close AtomicWrite failed filename $filename: $msg");
+                }
+
                 my $opts = {
                     file => $filename,
                     input => $content_ref,
-                    MKPATH => 1, # create missing parent directory
                 };
                 # group is handled separately
                 foreach my $name (qw(mode mtime backup owner)) {

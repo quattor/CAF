@@ -206,5 +206,6 @@ $formatted_value = $rbe_fh->_formatAttributeValue(\%STRING_HASH,
 # if the value cannot be interpolated as a string
 ok(! defined($formatted_value), "A hash passed as value cannot be interpolated as a string");
 
+$rbe_fh->close();
 
 Test::NoWarnings::had_no_warnings();
