@@ -31,6 +31,10 @@ my $ec_check = $CAF::Path::EC;
 my $obj = Test::Quattor::Object->new();
 
 my $mock = Test::MockModule->new('CAF::Path');
+my $mockobj = Test::MockModule->new('CAF::Object');
+
+# return global value instead of the one set during init
+$mockobj->mock('noAction', sub {return $CAF::Object::NoAction});
 
 
 my $basetest = 'target/test/check';
