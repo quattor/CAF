@@ -420,5 +420,12 @@ like($EC->error->text, qr{^close AtomicWrite failed filename /my/test: Failed to
      "fail attribute from directory converted in exception");
 $EC->ignore_error();
 
+init_test();
+ok(! $EC->error(), "No previous error before failure check");
+$dir_ec = 0;
+is($this_app->err_mkfile(FILENAME, 'something'),
+   'close AtomicWrite failed filename /my/test: Failed to make parent directory /my:directory failed',
+   'err_mkfile handles error throwing');
+ok(! $EC->error(), "No error before err_mkfile");
 
 done_testing();

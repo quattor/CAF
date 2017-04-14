@@ -307,12 +307,13 @@ sub close
                 # Pass NoAction here, as it keeps track of the NoAction value during initialisation and/or keeps_state
                 my $cafpath = CAF::Path::mkcafpath(log => *$self->{LOG}, NoAction => $options->{noaction});
                 # only create the directory if it didn't exist yet
-                # if not, this would for the directory mode on existing directories
+                # if not, this would change the directory mode on existing directories
                 if (!$cafpath->directory_exists($parent_dir) &&
                     !$cafpath->directory($parent_dir, mode => oct(755))) {
                     my $msg = "Failed to make parent directory $parent_dir:$cafpath->{fail}";
                     $self->warn($msg);
                     throw_error("close AtomicWrite failed filename $filename: $msg");
+                    return;
                 }
 
                 my $opts = {
@@ -334,6 +335,7 @@ sub close
                     $self->warn("AtomicWrite gave error: $@");
                     # Make an oldstyle exception
                     throw_error("close AtomicWrite failed filename $filename: $@");
+                    return;
                 }
 
                 # Restore the SELinux context in case of modifications.

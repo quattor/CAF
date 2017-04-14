@@ -18,6 +18,9 @@ use CAF::Application;
 use LC::Exception qw (SUCCESS);
 
 use CAF::History;
+use CAF::FileWriter;
+
+our $EC = LC::Exception::Context->new()->will_store_errors();
 
 our @ISA = qw(CAF::Application);
 
@@ -60,6 +63,22 @@ sub debug
     my ($self, $lvl, @lines) = @_;
     my $text = join ("", @lines);
     diag "[DEBUG] $lvl $text\n";
+}
+
+# Test old-style error throwing/catching
+sub err_mkfile
+{
+    my ($self, $filename, $txt) = @_;
+    my $fh = CAF::FileWriter->new($filename);
+    print $fh $txt;
+    $fh->close();
+
+    my $ret;
+    if ($EC->error()) {
+        $ret = $EC->error->text;
+        $EC->ignore_error;
+    }
+    return $ret
 }
 
 1;
