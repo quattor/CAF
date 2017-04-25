@@ -53,7 +53,7 @@ use constant FILENAME => "/my/test";
 our ($path, $text, $text_throw, $text_from_file, $faw_die);
 our %opts = ();
 
-my $log;
+my ($log, $dir_exists, $dir_args, $dir_ec);
 my $str = '';
 open ($log, ">", \$str);
 
@@ -72,9 +72,20 @@ sub init_test
     close($log);
     $str = '';
     open ($log, ">", \$str);
+    $dir_exists = 0;
+    $dir_args = undef;
+    $dir_ec = 1;
 }
 
 my $mock_history = Test::MockModule->new('CAF::History');
+my $mock_path = Test::MockModule->new('CAF::Path');
+$mock_path->mock('directory', sub {
+    my $self = shift;
+    $dir_args = \@_;
+    $self->{fail} = "directory failed" if !$dir_ec;
+    return $dir_ec;
+});
+$mock_path->mock('directory_exists', sub {$dir_exists++; return 0;});
 
 use CAF::FileWriter;
 
@@ -91,8 +102,11 @@ ok (*$fh->{save}, "File marked to be saved");
 $fh->close();
 is ($opts{contents}, TEXT, "The file has the correct contents");
 is ($opts{mode}, 0600, "The file is created with the correct permissions");
+ok (!defined($opts{MKPATH}), "The file is created without MKPATH");
 ok (!*$fh->{save},  "File marked not to be saved after closing");
 is ($path, FILENAME, "The correct file is opened");
+is($dir_exists, 1, "directory exists called once");
+is_deeply($dir_args, ['/my', 'mode', 0755], "directory creation called with parent dir args");
 
 my @methods = qw(info verbose report debug warn error event is_verbose);
 foreach my $method (@methods) {
@@ -214,6 +228,7 @@ $text = TEXT;
 $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
 print $fh TEXT;
 $fh->close();
+is_deeply(\%opts, {}, "no modification, no call to file_write");
 $re = "File " . FILENAME . " was not modified";
 like($str, qr{^$re}m, "Writing same contents correctly reported");
 
@@ -225,6 +240,7 @@ $fh->close();
 $re = "File " . FILENAME . " was modified";
 like($str, qr{^$re}m, "Open/close file correctly reported");
 is($opts{contents}, '', "Open/close file resets content");
+is ($opts{mode}, 0644, "Checking options: correct default mode passed");
 
 
 $CAF::Object::NoAction = 1;
@@ -392,5 +408,24 @@ ok($EC->error(), "old-style exception thrown");
 like($EC->error->text, qr{^close AtomicWrite failed filename /my/test: File::AtomicWrite special problem at },
      "message from die converted in exception");
 $EC->ignore_error();
+
+init_test();
+ok(! $EC->error(), "No previous error before failure check");
+$dir_ec = 0;
+$fh = CAF::FileWriter->open (FILENAME, log => $obj);
+print $fh TEXT;
+$fh->close();
+ok($EC->error(), "old-style exception thrown on directory failure");
+like($EC->error->text, qr{^close AtomicWrite failed filename /my/test: Failed to make parent directory /my:directory failed},
+     "fail attribute from directory converted in exception");
+$EC->ignore_error();
+
+init_test();
+ok(! $EC->error(), "No previous error before failure check");
+$dir_ec = 0;
+is($this_app->err_mkfile(FILENAME, 'something'),
+   'close AtomicWrite failed filename /my/test: Failed to make parent directory /my:directory failed',
+   'err_mkfile handles error throwing');
+ok(! $EC->error(), "No error before err_mkfile");
 
 done_testing();

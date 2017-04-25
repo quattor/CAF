@@ -25,6 +25,10 @@ $mockapp->mock('error', sub {
     diag "[ERROR] $text\n";
 });
 
+my $mock_path = Test::MockModule->new('CAF::Path');
+# parent dir always exists
+$mock_path->mock('directory_exists', sub {return 1;});
+
 use Test::Quattor::Object;
 
 my $obj = Test::Quattor::Object->new();
@@ -105,7 +109,6 @@ is_deeply(\%opts, {
     mtime => 1234567,
     contents => TEXT."another line\n",
     file => $filename,
-    MKPATH => 1,
 }, "options set in new() and current contents are passed to File::AtomicWrite");
 
 is(*$fh->{filename}, $filename, "The object stores its parent's attributes");
@@ -121,7 +124,7 @@ isa_ok ($fh, "CAF::FileEditor", "Correct class after open method");
 isa_ok ($fh, "CAF::FileWriter", "Correct class inheritance after open method");
 $fh->close();
 diag "keeps_state + noaction=1 ", explain \%opts;
-is_deeply([sort keys %opts], [qw(MKPATH contents file input)], "noaction=1 with keeps_state calls File::AtomicWrite::write_file");
+is_deeply([sort keys %opts], [qw(contents file input mode)], "noaction=1 with keeps_state calls File::AtomicWrite::write_file");
 
 
 $fh = CAF::FileEditor->open($filename);

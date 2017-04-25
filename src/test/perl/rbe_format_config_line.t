@@ -123,3 +123,5 @@ $line = $rbe_fh->_formatConfigLine($KEYWORD_SIMPLE, $VALUE_STR, LINE_FORMAT_ENV_
 is($line, 'export '.$EXPECTED_SH_VAR_SIMPLE, 'Environment variable: LINE_OPT_SEP ignored');
 $line = $rbe_fh->_formatConfigLine($KEYWORD_SIMPLE, '', LINE_FORMAT_ENV_VAR, 0);
 is($line, 'export '.$EXPECTED_SH_VAR_EMPTY, 'Environment variable with empty value properly formatted');
+
+$rbe_fh->close();

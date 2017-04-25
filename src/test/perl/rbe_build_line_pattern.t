@@ -160,6 +160,7 @@ $escaped_pattern = $fh->_buildLinePattern($KEYWORD,
                                           $VALUE_1);
 is($escaped_pattern, $EXPECTED_PATTERN_SETENV_EQUAL, "'setenv=keyword value': pattern ok");
 
+$fh->close();
 
 # Test::NoWarnings::had_no_warnings();
 
