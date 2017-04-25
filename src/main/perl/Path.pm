@@ -124,11 +124,15 @@ sub _get_noaction
         $self->debug(1, $msg, "keeps_state set, noaction is false");
         $noaction = 0;
     } else {
-        $noaction = $CAF::Object::NoAction ? 1 : 0;
+        if ($self->can('noAction')) {
+            $noaction = $self->noAction();
+        } else {
+            $noaction = $CAF::Object::NoAction;
+        }
         $self->debug(1, $msg, "noaction is ", ($noaction ? 'true' : 'false'));
     }
 
-    return $noaction;
+    return $noaction ? 1 : 0;
 }
 
 =item _reset_exception_fail
@@ -252,7 +256,7 @@ sub LC_Check
 {
     my ($self, $function, $args, $opts) = @_;
 
-    my $noaction = $self->_get_noaction($opts->{$KEEPS_STATE});
+    my $noaction = $self->_get_noaction($opts->{$KEEPS_STATE}, $function);
     delete $opts->{$KEEPS_STATE};
 
     # Override noaction passed via opts
