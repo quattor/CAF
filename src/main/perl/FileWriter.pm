@@ -306,8 +306,10 @@ sub close
                 my $parent_dir = dirname($filename);
                 # Pass NoAction here, as it keeps track of the NoAction value during initialisation and/or keeps_state
                 my $cafpath = CAF::Path::mkcafpath(log => *$self->{LOG}, NoAction => $options->{noaction});
-                # only create the directory if it didn't exist yet
-                # if not, this would change the directory mode on existing directories
+                # only create the directory (by calling directory method) if the directory doesn't exist yet
+                # the directory method can be called on an existing directory without problem,
+                # but a mode is specified here; and this call here could possibly change
+                # the directory mode of an existing directory
                 if (!$cafpath->directory_exists($parent_dir) &&
                     !$cafpath->directory($parent_dir, mode => oct(755))) {
                     my $msg = "Failed to make parent directory $parent_dir:$cafpath->{fail}";
