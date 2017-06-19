@@ -1140,7 +1140,22 @@ ok(! defined($mc->_listdir($listdir, sub {die("test dieing test function");})),
    "_listdir failure when test function dies");
 like($mc->{fail},
    qr{^_listdir: readdir grep target/test/list failed: test dieing test function},
-   "_listdir test function dies sets fail attribute");
+     "_listdir test function dies sets fail attribute");
+
+# test file_exists sub
+$res = $mc->listdir($listdir, file_exists => 1);
+is_deeply($res, [sort @files], "real listdir with file_exists returns only files");
+
+# filter + file_exists (filter can also match directories)
+$res = $mc->listdir($listdir, file_exists => 1, filter => qr{[ae]});
+is_deeply($res, [grep {m/a/} sort @files],
+          "real listdir with file_exists and filter returns only files with filter");
+
+# filter + file_exists + test (filter and test can alos match diretcories)
+$res = $mc->listdir($listdir, file_exists => 1, filter => qr{[ae]}, test => sub {return $_[0] =~ m/^a/});
+is_deeply($res, ['afile'],
+          "real listdir with file_exists, filter and test returns only files with filter and test");
+
 
 # input arrayref, w/o . and .. (added in mocked method)
 my $readdir;

@@ -945,8 +945,8 @@ An (anonymous) sub used for testing.
 The return value is interpreted as boolean value for filtering the
 directory entry names (true value means the name is kept).
 
-Accepts 2 arguments: first argument the directory entry name,
-2nd argument the directory.
+Accepts 2 arguments: first argument (C<< $_[0] >>) the directory entry name,
+2nd argument (C<< $_[1] >>) the directory.
 
 =item filter
 
@@ -960,6 +960,10 @@ Apply inverse test (or filter) logic.
 =item adddir
 
 Prefix the directory to the returned filenames (default false).
+
+=item file_exists
+
+Shortcut for test function that uses C<CAF::Path::file_exists> as test function.
 
 =back
 
@@ -979,33 +983,54 @@ sub listdir
         return $self->fail("listdir: directory $dir is not a directory");
     }
 
-    my $test = sub {return 1;}; # noop
-
-    my $filter = $opts{filter};
+    my @tests = ();
 
     if (exists($opts{test})) {
-        $test = $opts{test};
-        if (ref($test) ne 'CODE') {
+        my $test = $opts{test};
+        if (ref($test) eq 'CODE') {
+            push(@tests, $test);
+        } else {
             return $self->fail("listdir: test option must be a CODE reference");
         }
-    } elsif (defined($filter)) {
+    }
+
+    my $filter = $opts{filter};
+    if (defined($filter)) {
         if (ref($filter) eq '') {
             # string is a pattern
             $filter = qr{$filter};
         }
-        $test = sub { return $_[0] =~ m/$filter/; };
+        push(@tests, sub { return $_[0] =~ m/$filter/; });
     };
 
-    my $newtest = sub {
-        # ^ bitwise xor; so force $inverse and test result to 0/1
-        return ($opts{inverse} ? 1 : 0) ^ (&$test(@_) ? 1 : 0)
-    };
+    if ($opts{file_exists}) {
+        push(@tests, sub {return $self->file_exists("$_[1]/$_[0]")});
+    }
 
-    my $res_ref = $self->_listdir($dir, $newtest);
+    # apply any inverse logic
+    # and force all functions to return 1 or 0
+    my @newtests;
+    foreach my $test (@tests) {
+        push(@newtests, sub {
+            # ^ bitwise xor; so force $inverse and test result to 0/1
+            return ($opts{inverse} ? 1 : 0) ^ (&$test(@_) ? 1 : 0)
+        });
+    }
+
+    # filter . and ..
+    # add after inverse is applied!
+    push(@newtests, sub {return ($_[0] ne '.' and $_[0] ne '..') ? 1 : 0});
+
+    # run _listdir with first test function
+    my $res_ref = $self->_listdir($dir, shift @newtests);
     # fail attribute set in _listdir
     return if ! defined($res_ref);
 
-    my @res = grep {$_ ne '.' and $_ ne '..'} sort @$res_ref;
+    my @res = sort @$res_ref;
+    foreach my $test (@newtests) {
+        # apply all remaining tests
+        @res = grep { &$test($_, $dir) } @res;
+    }
 
     if ($opts{adddir}) {
         @res = map {"$dir/$_"} @res;
