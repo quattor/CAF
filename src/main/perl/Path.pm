@@ -903,6 +903,142 @@ sub move
     return CHANGED;
 }
 
+# private method doing the actual readdir
+# this is the method to mock
+# 2 args: directory name and test function
+# they are not checked, and are supposed to be directory and CODE-ref
+# (i.e. do not use this _listdir directly; use listdir instead)
+# return arayref or undef on failure (fail attribute is set)
+sub _listdir
+{
+    my ($self, $dir, $test) = @_;
+
+    if (opendir(my $dh, $dir)) {
+        local $@;
+        my @res;
+        eval {
+            @res = grep { &$test($_, $dir) } readdir($dh);
+        };
+        closedir($dh);
+        if ($@) {
+            return $self->fail("_listdir: readdir grep $dir failed: $@");
+        } else {
+            return \@res;
+        }
+    } else {
+        return $self->fail("_listdir: opendir $dir failed: $!");
+    }
+}
+
+=item listdir
+
+Return an arrayref of sorted directory entry names or undef on failure.
+(The C<.> and C<..> are removed).
+
+Options
+
+=over
+
+=item test
+
+An (anonymous) sub used for testing.
+The return value is interpreted as boolean value for filtering the
+directory entry names (true value means the name is kept).
+
+Accepts 2 arguments: first argument (C<< $_[0] >>) the directory entry name,
+2nd argument (C<< $_[1] >>) the directory.
+
+=item filter
+
+A pattern or compiled pattern to filter directory entry names.
+Matching names are kept.
+
+=item inverse
+
+Apply inverse test (or filter) logic.
+
+=item adddir
+
+Prefix the directory to the returned filenames (default false).
+
+=item file_exists
+
+Shortcut for test function that uses C<CAF::Path::file_exists> as test function.
+
+=back
+
+=cut
+
+
+sub listdir
+{
+    my ($self, $dir, %opts) = @_;
+
+    $dir = $self->_untaint_path($dir, "listdir directory") || return;
+    $dir =~ s#/*$##;
+
+    $self->_reset_exception_fail('listdir');
+
+    if (! $self->directory_exists($dir)) {
+        return $self->fail("listdir: directory $dir is not a directory");
+    }
+
+    my @tests = ();
+
+    if (exists($opts{test})) {
+        my $test = $opts{test};
+        if (ref($test) eq 'CODE') {
+            push(@tests, $test);
+        } else {
+            return $self->fail("listdir: test option must be a CODE reference");
+        }
+    }
+
+    my $filter = $opts{filter};
+    if (defined($filter)) {
+        if (ref($filter) eq '') {
+            # string is a pattern
+            $filter = qr{$filter};
+        }
+        push(@tests, sub { return $_[0] =~ m/$filter/; });
+    };
+
+    if ($opts{file_exists}) {
+        push(@tests, sub {return $self->file_exists("$_[1]/$_[0]")});
+    }
+
+    # apply any inverse logic
+    # and force all functions to return 1 or 0
+    my @newtests;
+    foreach my $test (@tests) {
+        push(@newtests, sub {
+            # ^ bitwise xor; so force $inverse and test result to 0/1
+            return ($opts{inverse} ? 1 : 0) ^ (&$test(@_) ? 1 : 0)
+        });
+    }
+
+    # filter . and ..
+    # add after inverse is applied!
+    push(@newtests, sub {return ($_[0] ne '.' and $_[0] ne '..') ? 1 : 0});
+
+    # run _listdir with first test function
+    my $res_ref = $self->_listdir($dir, shift @newtests);
+    # fail attribute set in _listdir
+    return if ! defined($res_ref);
+
+    my @res = sort @$res_ref;
+    foreach my $test (@newtests) {
+        # apply all remaining tests
+        @res = grep { &$test($_, $dir) } @res;
+    }
+
+    if ($opts{adddir}) {
+        @res = map {"$dir/$_"} @res;
+    }
+
+    return \@res;
+}
+
 =pod
 
 =back
