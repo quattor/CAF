@@ -435,23 +435,20 @@ my $all_options = {%$dpm_options, %$dmlite_options};
 
 sub test_rule_parsing {
     my ($obj, $fn, $initial_data, $args, $expected, $test_info) = @_;
-    
+
     set_file_contents($fn, $initial_data);
     my $fh = CAF::RuleBasedEditor->open($fn, log => $obj);
     ok(defined($fh), "$fn was opened $test_info");
     $fh->updateFile(@$args);
     is("$fh", $expected, "$fn has expected contents $test_info");
     my $changes = $fh->close();
-    
-    return $changes;    
+
+    return $changes;
 }
 
 #############
 # Main code #
 #############
-
-$CAF::Object::NoAction = 1;
-set_caf_file_close_diff(1);
 
 my $obj = Test::Quattor::Object->new();
 
