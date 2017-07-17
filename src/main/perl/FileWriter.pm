@@ -229,7 +229,7 @@ sub close
         backup => $options->{backup},
     );
 
-    if (*$self->{save}) {
+    if ($self->opened() && *$self->{save}) {
         *$self->{save} = 0;
         my $content_ref = $self->string_ref();
 
@@ -343,11 +343,19 @@ sub close
                 # Restore the SELinux context in case of modifications.
                 $self->change_hook();
             }
+
+            # the SUPER::close will delete current content
+            # keep it around for possible reopen
+            *$self->{original_content} = $$content_ref;
+            # whatever the previous, the new original_content is not from source
+            delete *$self->{original_from_source};
         } else {
             $msg = 'was not';
         }
 
         $self->verbose("File $filename $msg modified");
+    } elsif (!$self->opened()) {
+        $self->verbose("Cannot close an already closed file $filename");
     } else {
         $self->verbose("Not saving file $filename");
     }
@@ -358,6 +366,28 @@ sub close
 
     $self->SUPER::close();
     return $changed;
+}
+
+=item reopen
+
+Prepare to write again to the current file (after close).
+Starts with empty file.
+
+(This is not the inverse of cancel).
+
+=cut
+
+sub reopen
+{
+    my $self = shift;
+
+    $self->verbose("Reopening ", *$self->{filename});
+    # This is a FileWriter, no initial content
+    $self->IO::String::open();
+
+    *$self->{save} = 1;
+
+    $self->event(reopen => 1);
 }
 
 =item cancel
@@ -398,13 +428,15 @@ Returns a string with the contents of the file, so far. It overloads
 C<"">, so it's now possible to do "$fh" and get the contents of the
 file so far.
 
+(Returns empty string on an already closed file.)
+
 =cut
 
 sub stringify
 {
      my $self = shift;
      my $str = $self->string_ref;
-     return $$str;
+     return defined($str) ? $$str : '';
 }
 
 # Compatibility with CAF::Object

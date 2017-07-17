@@ -43,6 +43,8 @@ En un lugar de La Mancha, de cuyo nombre no quiero acordarme
 no ha tiempo que vivía un hidalgo de los de lanza en astillero...
 EOF
 
+use constant TEXT2 => TEXT."another line\n";
+
 use constant HEADTEXT => <<'EOF';
 ... adarga antigua, rocín flaco y galgo corredor.
 EOF
@@ -107,12 +109,30 @@ is_deeply(\%opts, {
     owner => "100:200",
     mode => 0123,
     mtime => 1234567,
-    contents => TEXT."another line\n",
+    contents => TEXT2,
     file => $filename,
 }, "options set in new() and current contents are passed to File::AtomicWrite");
 
 is(*$fh->{filename}, $filename, "The object stores its parent's attributes");
-is($opts{contents}, TEXT."another line\n", "Attempted to write the file with the correct contents");
+is($opts{contents}, TEXT2, "Attempted to write the file with the correct contents");
+
+# handle manual hacking of save
+*$fh->{save} = 1;
+ok(!defined($fh->close()), "close returns undef after forced save=1 and close");
+is(*$fh->{original_content}, TEXT2, "latest content still saved as (new) original_content after close with forced save=1");
+
+$fh->reopen();
+ok($fh->opened(), "file is open again after reopen");
+is ("$fh", TEXT2, "Stringify gives latest content after reopen");
+print $fh " more";
+is ("$fh", TEXT2." more", "Stringify works after reopen with print (and new text added at the end of previous");
+ok($fh->close(), "close returns something changed after reopen with print");
+
+$fh->reopen();
+ok($fh->opened(), "file is open again after reopen 2");
+ok(! $fh->close(), "close returns no change (same content) after reopen 2");
+
+
 
 
 $CAF::Object::NoAction = 1;

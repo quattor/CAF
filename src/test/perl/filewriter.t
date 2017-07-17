@@ -108,6 +108,7 @@ is ($path, FILENAME, "The correct file is opened");
 is($dir_exists, 1, "directory exists called once");
 is_deeply($dir_args, ['/my', 'mode', 0755], "directory creation called with parent dir args");
 
+
 my @methods = qw(info verbose report debug warn error event is_verbose);
 foreach my $method (@methods) {
     ok($fh->can($method), "FileWriter instance has $method method");
@@ -191,6 +192,7 @@ $fh = CAF::FileWriter->new (
 print $fh TEXT;
 is ($str, "Opening file " . FILENAME . "\n",
     "Correct log message when creating the object");
+$str = '';
 $fh->close;
 is ($opts{contents}, TEXT, "Correct contents written to the logged file");
 is ($path, FILENAME, "Correct file opened with log");
@@ -198,9 +200,11 @@ my $re =  ".*File " . FILENAME . " was modified"; #
 like($str, qr{$re},
      "Modified file correctly reported");
 ok (!exists ($opts{LOG}), "No log information passed to File::atomicWrite::write_file");
+
 $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
+$str = '';
 $fh->cancel();
-like ($str, qr{Not saving file /}, "Cancel operation correctly logged");
+like ($str, qr{Will not save file /\S+ \(cancelled\)}, "Cancel operation correctly logged");
 $fh->close();
 
 init_test;
@@ -253,6 +257,29 @@ like ($fh, qr(En un lugar), "Regexp also works");
 $fh->close();
 is($CAF::Object::NoAction, 1, "NoAction is set to 1");
 is(scalar keys %opts, 0, "NoAction=1: File::AtomicWrite file_write is not called");
+
+# actions on closed file
+ok(!$fh->opened(), "file is not opened anymore");
+is($fh->stringify(), '', "stringify after close is empty string");
+is("$fh", "", "stringification after close is empty string");
+is(*$fh->{original_content}, TEXT, "latest content saved as (new) original_content after close");
+
+# handle manual hacking of save
+*$fh->{save} = 1;
+ok(!defined($fh->close()), "close returns undef after forced save=1 and close");
+is(*$fh->{original_content}, TEXT, "latest content still saved as (new) original_content after close with forced save=1");
+
+$fh->reopen();
+ok($fh->opened(), "file is open again after reopen");
+is ("$fh", "", "Stringify gives empty file after reopen");
+print $fh TEXT;
+is ("$fh", TEXT, "Stringify works after reopen with print");
+ok(!$fh->close(), "close returns nothing changed (same content) after reopen with print");
+
+$fh->reopen();
+ok($fh->opened(), "file is open again after reopen 2");
+ok($fh->close(), "close returns change (empty (initial) content) after reopen 2");
+
 
 init_test;
 is($CAF::Object::NoAction, 1, "NoAction is set to 1 before keeps_state true");
