@@ -935,6 +935,19 @@ sub _listdir
 Return an arrayref of sorted directory entry names or undef on failure.
 (The C<.> and C<..> are removed).
 
+Can be used to replace C<glob()> as follows:
+
+    ...
+    foreach my $file (glob('/path/*.ext')) {
+    ...
+
+    replace by
+
+    ...
+    foreach my $file (@{$self->listdir('/path', filter => '\.ext$', adddir => 1)}) {
+    ...
+
+
 Options
 
 =over
