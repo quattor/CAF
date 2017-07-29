@@ -199,8 +199,9 @@ like($str, qr{$re},
      "Modified file correctly reported");
 ok (!exists ($opts{LOG}), "No log information passed to File::atomicWrite::write_file");
 $fh = CAF::FileWriter->new (FILENAME, log => $this_app);
+$str = '';
 $fh->cancel();
-like ($str, qr{Not saving file /}, "Cancel operation correctly logged");
+like ($str, qr{Will not save file /\S+ \(cancelled\)}, "Cancel operation correctly logged");
 $fh->close();
 
 init_test;
@@ -253,6 +254,13 @@ like ($fh, qr(En un lugar), "Regexp also works");
 $fh->close();
 is($CAF::Object::NoAction, 1, "NoAction is set to 1");
 is(scalar keys %opts, 0, "NoAction=1: File::AtomicWrite file_write is not called");
+
+# actions on closed file
+ok(!$fh->opened(), "file is not opened anymore");
+is($fh->stringify(), '', "stringify after close is empty string");
+is("$fh", "", "stringification after close is empty string");
+ok(! defined($fh->close()), "closing an already closed file returns undef");
+
 
 init_test;
 is($CAF::Object::NoAction, 1, "NoAction is set to 1 before keeps_state true");
