@@ -229,7 +229,9 @@ sub close
         backup => $options->{backup},
     );
 
-    if (*$self->{save}) {
+    if (!$self->opened()) {
+        $self->verbose("Cannot close an already closed file $filename");
+    } elsif (*$self->{save}) {
         *$self->{save} = 0;
         my $content_ref = $self->string_ref();
 
@@ -398,13 +400,15 @@ Returns a string with the contents of the file, so far. It overloads
 C<"">, so it's now possible to do "$fh" and get the contents of the
 file so far.
 
+(Returns empty string on an already closed file.)
+
 =cut
 
 sub stringify
 {
      my $self = shift;
      my $str = $self->string_ref;
-     return $$str;
+     return defined($str) ? $$str : '';
 }
 
 # Compatibility with CAF::Object
