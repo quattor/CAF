@@ -1156,6 +1156,10 @@ $res = $mc->listdir($listdir, file_exists => 1, filter => qr{[ae]}, test => sub 
 is_deeply($res, ['afile'],
           "real listdir with file_exists, filter and test returns only files with filter and test");
 
+# glob example
+$res = $mc->listdir($listdir, filter => '^a', adddir => 1);
+is_deeply($res, [glob("$listdir/a*")], "listdir to replace glob");
+
 
 # input arrayref, w/o . and .. (added in mocked method)
 my $readdir;
