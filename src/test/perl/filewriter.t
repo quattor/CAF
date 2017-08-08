@@ -317,8 +317,12 @@ ok(! defined($this_app->{$HISTORY}), 'No history tracked this far');
 $this_app->init_history(); # no instance tracking
 ok(defined($this_app->{$HISTORY}), 'history tracked enabled');
 
-# there's a previous $fh not destroyed
-my $ofhid = 'CAF::FileWriter '.refaddr($fh);
+# there's a previous closed $fh not destroyed
+my $ofhidclosed = 'CAF::FileWriter '.refaddr($fh);
+
+# destroy $fh
+$fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
+my $ofhidnotclosed = 'CAF::FileWriter '.refaddr($fh);
 
 init_test();
 $fh = CAF::FileWriter->open ($INC{"CAF/FileWriter.pm"}, log => $this_app);
@@ -338,13 +342,15 @@ diag explain $this_app->{$HISTORY}->{$EVENTS};
 
 # events since History enabled
 #   new one initialised
+#   --> on assignment to fh, old closed one destroyed, does not trigger close
+#   new one initialised
 #   on assignment to fh, old one destroyed, triggers close
 #   close on new one
 #   close on sensitive new one
 is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
     {
         IDX => 0,
-        ID => $fhid,
+        ID => $ofhidnotclosed,
         REF => 'CAF::FileWriter',
         TS => 0,
         WHOAMI => 'testapp',
@@ -353,18 +359,29 @@ is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
     },
     {
         IDX => 1,
-        ID => $ofhid,
+        ID => $fhid,
         REF => 'CAF::FileWriter',
         TS => 0,
         WHOAMI => 'testapp',
         filename =>  $INC{"CAF/FileWriter.pm"},
-        backup => undef,
-        modified => 0,
-        noaction => 1,
-        save => 0,
+        init => 1,
     },
     {
         IDX => 2,
+        ID => $ofhidnotclosed,
+        REF => 'CAF::FileWriter',
+        TS => 0,
+        WHOAMI => 'testapp',
+        changed => 1,
+        diff => '',
+        filename =>  $INC{"CAF/FileWriter.pm"},
+        backup => undef,
+        modified => 0,
+        noaction => 1,
+        save => 1,
+    },
+    {
+        IDX => 3,
         ID => $fhid,
         REF => 'CAF::FileWriter',
         TS => 0,
@@ -378,8 +395,8 @@ is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
         save => 1,
     },
     {
+        IDX => 4,
         ID => $sfhid,
-        IDX => 3,
         REF => 'CAF::FileWriter',
         TS => 0,
         WHOAMI => 'testapp',
@@ -387,7 +404,7 @@ is_deeply($this_app->{$HISTORY}->{$EVENTS}, [
         init => 1,
     },
     {
-        IDX => 4,
+        IDX => 5,
         ID => $sfhid,
         REF => 'CAF::FileWriter',
         TS => 0,

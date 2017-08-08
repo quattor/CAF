@@ -578,7 +578,7 @@ Class destructor. Closes the file, perhaps saving it to disk.
 sub DESTROY
 {
     my $self = shift;
-    $self->close();
+    $self->close() if $self->opened();
     $self->SUPER::DESTROY();
 }
 
