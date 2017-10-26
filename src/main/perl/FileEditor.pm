@@ -583,7 +583,7 @@ matches:
 
 =head1 SEE ALSO
 
-This class inherits from L<CAF::FileWriter>, and thus from
-L<IO::String>.
+This class inherits from C<CAF::FileWriter>, and thus from
+C<IO::String>.
 
 =cut

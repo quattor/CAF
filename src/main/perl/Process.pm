@@ -640,6 +640,6 @@ It will only work with the C<execute> method.
 
 =head1 SEE ALSO
 
-L<LC::Process(8)>
+C<LC::Process>
 
 =cut
