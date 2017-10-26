@@ -651,7 +651,7 @@ will be closed automatically when it is destroyed:
 
 =head1 SEE ALSO
 
-This package inherits from L<IO::String(3pm)>. Check its man page to
+This package inherits from C<IO::String>. Check its man page to
 do powerful things with the already printed contents.
 
 =head1 TODO
