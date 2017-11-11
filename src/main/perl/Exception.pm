@@ -141,7 +141,8 @@ at verbose level.
 Note that C<_safe_eval> doesn't work with functions
 that don't return a defined value when they succeed.
 
-Resets previous fail attribute and or exceptions (via the C<LC::Exception::Context> instance C<EC>).
+Resets previous fail attribute and or exceptions
+(via the C<LC::Exception::Context> instance C<EC>).
 
 =cut
 
@@ -156,9 +157,16 @@ sub _safe_eval
     %opts = %$optsref if $optsref;
 
     local $@;
-    my $res = eval {
-        $funcref->(@args, %opts);
-    };
+    my @res;
+    my $res;
+    # TODO: is there a cleaner way to avoid the copy/paste of the right hand side?
+    if (wantarray) {
+        @res = eval { $funcref->(@args, %opts);};
+        # set $res, even in wantarray; it's used below
+        $res = "@res";
+    } else {
+        $res = eval { $funcref->(@args, %opts);};
+    }
 
     # $res is undef if there is a syntax or runtime error or if the evaluated
     # function returns undef (interpreted as a function error).
@@ -173,7 +181,7 @@ sub _safe_eval
         return $self->fail("$failmsg$err_msg");
     }
 
-    return $res;
+    return wantarray ? @res : $res;
 }
 
 

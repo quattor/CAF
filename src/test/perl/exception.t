@@ -164,7 +164,7 @@ verify_exception($tco, "_function_catch fail", '\*\*\* failure_func failed: no r
 my $funcref = sub {
     my ($ok, %opts) = @_;
     if ($ok) {
-        return "hooray $opts{test}";
+        return wantarray ? ("ARRAY", "hooray", $opts{test}) : "hooray $opts{test}";
     } else {
         die "bad day today $opts{test}";
     }
@@ -177,16 +177,24 @@ $mockobj->mock('verbose', sub {shift; push(@$verbose, \@_);});
 init_exception($tco, "_safe_eval ok");
 
 $verbose = [];
-is($tco->_safe_eval($funcref, [1], {test => 123}, "eval fail", "eval ok", $ec), "hooray 123",
-   "_safe_eval with non-die function returns returnvalue");
+my $res = $tco->_safe_eval($funcref, [1], {test => 123}, "eval fail", "eval ok", $ec);
+is($res, "hooray 123",
+   "_safe_eval with non-die function returns returnvalue SCALAR context");
 is_deeply($verbose, [['eval ok: ', 'hooray 123']], "_safe_eval reports result verbose");
 
 init_exception($tco, "_safe_eval ok pt2");
 
 $verbose = [];
+my @res = $tco->_safe_eval($funcref, [1], {test => 456}, "eval fail", "eval ok", $ec);
+is_deeply(\@res, ["ARRAY", "hooray", 456],
+          "_safe_eval with non-die function returns returnvalue ARRAY context");
+
+init_exception($tco, "_safe_eval ok pt3");
+
+$verbose = [];
 $tco->{sensitive} = 1;
 is($tco->_safe_eval($funcref, [1], {test => 123}, "eval fail", "eval ok", $ec), "hooray 123",
-   "_safe_eval with non-die function returns returnvalue pt2");
+   "_safe_eval with non-die function returns returnvalue pt3");
 is_deeply($verbose, [['eval ok: ', '<sensitive>']],
           "_safe_eval does not report result verbose with sensitive=1");
 
