@@ -84,6 +84,7 @@ like ($str, qr/Executing.*ls a random command.*stdin.*Something/,
       "execute_if_exists does the same as execute");
 is ($opts{stdin}, "Something", "execute_if_exists does the same thing as execute");
 
+
 $str = "";
 open ($fh, ">", \$str);
 $this_app->config_reporter(logfile => $fh);
@@ -109,6 +110,17 @@ $p->toutput (10);
 is ($toutput, 2, "Logged toutput correctly run");
 like ($str, qr/Getting output of command: ls a random command.* with 10 seconds/,
       "toutput logged");
+
+$str = "";
+open ($fh, ">", \$str);
+$this_app->config_reporter(logfile => $fh);
+my $ps = CAF::Process->new ($command, log => $this_app,
+			stdin => "Something", sensitive => 1);
+$ps->run ();
+like ($str, qr/Running the command: ls <sensitive>/,
+      "run logged with sensitive mode (command not in log)");
+
+
 init_test();
 # Let's test the rest of the commands
 $p->pushargs (qw (this does not matter at all));
@@ -156,15 +168,15 @@ is($p->get_executable, "ls", "get_executable returns executable");
 my $ls = $p->is_executable;
 like($ls, qr{^/.*ls$}, "Test ls basename resolved to absolute path");
 
-$p = CAF::Process->new([$ls]); 
+$p = CAF::Process->new([$ls]);
 is($p->is_executable, $ls, "Test absolute path");
 
-$p = CAF::Process->new([qw(doesnotexists)]); 
+$p = CAF::Process->new([qw(doesnotexists)]);
 ok(! defined($p->is_executable), "Test can't resolve basename");
 is($p->execute_if_exists, 1, "Fails to execute non-existing executable, returns 1");
 
 # empty command process
-$p = CAF::Process->new([]); 
+$p = CAF::Process->new([]);
 is("$p", "", "Empty command process is empty string");
 ok(! $p, "Empty process is logical false (autogeneration of overloaded bool via new stringify)");
 
