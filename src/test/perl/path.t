@@ -26,11 +26,16 @@ use Test::Quattor::Filetools qw(writefile readfile);;
 use File::Path qw(mkpath rmtree);
 use File::Basename qw(dirname);
 
-my $ec_check = $CAF::Path::EC;
+use exception_helper;
+
+set_ec_check($CAF::Path::EC);
+mock_reset_exception_fail();
+
 
 my $obj = Test::Quattor::Object->new();
 
 my $mock = Test::MockModule->new('CAF::Path');
+my $mockexc = Test::MockModule->new('CAF::Exception');
 my $mockobj = Test::MockModule->new('CAF::Object');
 
 # return global value instead of the one set during init
@@ -45,177 +50,20 @@ my $dirlink = "$basetest/directory_symlink";
 
 my $mc = mypath->new(log => $obj);
 
-=head2 _get_noaction
-
-=cut
-
-$CAF::Object::NoAction = 0;
-
-ok(! $mc->_get_noaction(), "_get_noaction returns false with CAF::Object::NoAction=0 and no keeps_state");
-ok(! $mc->_get_noaction(0), "_get_noaction returns false with CAF::Object::NoAction=0 and keeps_state false");
-ok(! $mc->_get_noaction(1), "_get_noaction returns false with CAF::Object::NoAction=0 and keeps_state true");
-
-$CAF::Object::NoAction = 1;
-
-ok($mc->_get_noaction(), "_get_noaction returns true with CAF::Object::NoAction=1 and no keeps_state");
-ok($mc->_get_noaction(0), "_get_noaction returns true with CAF::Object::NoAction=1 and keeps_state false");
-ok(! $mc->_get_noaction(1), "_get_noaction returns false with CAF::Object::NoAction=1 and keeps_state true");
-
-=head2 _reset_exception_fail
-
-=cut
-
-my $exception_reset = 0;
-my $symlink_call_count = 0;
-my $hardlink_call_count = 0;
-my $function_catch_call_count = 0;
-
-# init_exception() and verify_exception() functions work in pair. They allow to register a message
-# in 'fail' attribute at the beginning of a test section and to verify if new (unexpected) exceptions
-# where raised during the test section. To reset the 'fail' attribute after verify_exception(),
-# call _reset_exception_fail(). init_exception() implicitely resets the 'fail' attribute and also
-# reset to 0 the count of calls to _reset_exception_fail().
-sub init_exception
-{
-    my ($msg) = @_;
-    $exception_reset = 0;
-    $symlink_call_count = 0;
-    $hardlink_call_count = 0;
-    $function_catch_call_count = 0;
-
-    # Set the fail attribute, it should be reset
-    $mc->{fail} = "origfailure $msg";
-
-    # Inject an error, _function_catch should handle it gracefully (i.e. ignore it)
-    my $myerror = LC::Exception->new();
-    $myerror->reason("origexception $msg");
-    $myerror->is_error(1);
-    $ec_check->error($myerror);
-
-    ok($ec_check->error(), "Error before $msg");
-}
-
-sub verify_exception
-{
-    my ($msg, $fail, $expected_reset, $noreset) = @_;
-    $expected_reset = 1 if (! defined($expected_reset));
-    is($exception_reset, $expected_reset, "_reset_exception_fail called $expected_reset times after $msg");
-    if ($noreset) {
-        ok($ec_check->error(), "Error not reset after $msg");
-    } else {
-        ok(! $ec_check->error(), "Error reset after $msg");
-    };
-    if ($noreset && defined($mc->{fail})) {
-        like($mc->{fail}, qr{^origfailure }, "Fail attribute matches originalfailure on noreset after $msg");
-    } elsif ($fail && defined($mc->{fail})) {
-        like($mc->{fail}, qr{$fail}, "Fail attribute matches $fail after $msg");
-        unlike($mc->{fail}, qr{origfailure}, "original fail attribute reset");
-    } elsif ( ! $noreset ) {
-        ok(! defined($mc->{fail}), "Fail attribute reset after $msg");
-    } else {
-        ok(0, "internal test error: unexpected undefined fail attribute") if (! defined($mc->{fail}));
-    };
-};
-
-init_exception("test _reset_exception_fail");
-
-ok($mc->_reset_exception_fail(), "_reset_exception_fail returns SUCCESS");
-
-# expected_reset is 0 here, because it's not mocked yet
-verify_exception("test _reset_exception_fail", 0, 0);
-
-# Continue with mocking _reset_exception_fail
-$mock->mock('_reset_exception_fail', sub {
-    $exception_reset += 1;
-    diag "mocked _reset_exception_fail $exception_reset times ".(scalar @_ == 2 ? $_[1] : '');
-    my $init = $mock->original("_reset_exception_fail");
-    return &$init(@_);
-});
-
 # Mocked symlink() and hardlink() to count calls
 
 $mock->mock('symlink', sub {
-    $symlink_call_count += 1;
+    $exception_helper::symlink_call_count += 1;
     my $symlink_orig = $mock->original('symlink');
     return &$symlink_orig(@_);
 });
 
 $mock->mock('hardlink', sub {
-    $hardlink_call_count += 1;
+    $exception_helper::hardlink_call_count += 1;
     my $hardlink_orig = $mock->original('hardlink');
     return &$hardlink_orig(@_);
 });
 
-=head2 _function_catch
-
-=cut
-
-my $args = [];
-my $opts = {};
-
-my $success_func = sub {
-    my ($arg1, $arg2, %opts) = @_;
-    push(@$args, $arg1, $arg2);
-    while (my ($k, $v) = each %opts) {
-        $opts->{$k} = $v;
-    };
-    return 100;
-};
-
-# Empty args and opts refs
-$args = [];
-$opts = {};
-
-init_exception("_function_catch success");
-
-is($mc->_function_catch($success_func, [qw(a b)], {c => 'd', e => 'f'}), 100,
-   "_function_catch with success_func returns correct value");
-is_deeply($args, [qw(a b)], "_function_catch passes arg arrayref correctly");
-is_deeply($opts, {c => 'd', e => 'f'}, "_function_catch passes opt hashref correctly");
-
-verify_exception("_function_catch success");
-
-# Test failures/exception
-# Not going to check args/opts
-my $failure_func = sub {
-    throw_error('failure_func failed', 'no real reason');
-    return 200;
-};
-
-init_exception("_function_catch fail");
-
-ok(! defined($mc->_function_catch($failure_func)),
-   "_function_catch with failure_func returns undef");
-
-verify_exception("_function_catch fail", '\*\*\* failure_func failed: no real reason');
-
-=head2 _safe_eval
-
-=cut
-
-my $funcref = sub {
-    my ($ok, %opts) = @_;
-    if ($ok) {
-        return "hooray $opts{test}";
-    } else {
-        die "bad day today $opts{test}";
-    }
-};
-
-
-init_exception("_safe_eval ok");
-
-is($mc->_safe_eval($funcref, [1], {test => 123}, "eval fail", "eval ok"), "hooray 123",
-   "_safe_eval with non-die function returns returnvalue");
-
-verify_exception("_safe_eval ok");
-
-init_exception("_safe_eval fail");
-
-ok(! defined($mc->_safe_eval($funcref, [0], {test => 123}, "eval fail", "eval ok")),
-   "_safe_eval with die function returns undef");
-
-verify_exception("_safe_eval fail", '^eval fail: bad day today 123');
 
 =head2 LC_Check
 
@@ -226,19 +74,19 @@ verify_exception("_safe_eval fail", '^eval fail: bad day today 123');
 my $noaction_args = [];
 my $func_catch_args = [];
 my $fc_val;
-$mock->mock('_get_noaction', sub {
+$mockexc->mock('_get_noaction', sub {
     shift;
     push (@$noaction_args, shift);
     return 20; # non-sensical value; but clear return value for testing
 });
-$mock->mock('_function_catch', sub {
+$mockexc->mock('_function_catch', sub {
     my $self = shift;
-    $self->_reset_exception_fail();
+    $self->_reset_exception_fail(undef, $CAF::Path::EC);
     push(@$func_catch_args, @_);
     return 100; # more nonsensical stuff but very usefull for testing
 });
 
-init_exception("LC_Check mocked directory dispatch");
+init_exception($mc, "LC_Check mocked directory dispatch");
 
 is($mc->LC_Check('directory', [qw(a b c)], {optX => 'x', 'noaction' => 5, 'keeps_state' => 30}),
    100, "LC_Check returns value from _func_catch on known LC::Check dispatch");
@@ -246,15 +94,14 @@ is_deeply($noaction_args, [30], "keeps_state option passed to _get_noaction");
 is_deeply($func_catch_args, [
               \&LC::Check::directory, # coderef to from the dispatch table
               [qw(a b c)],
-              {optX => 'x', 'noaction' => 20, silent => 0} # keeps_state is removed; noaction overridden with value from _get_noaction; silent=0 with noaction
+              {optX => 'x', 'noaction' => 20, silent => 0}, # keeps_state is removed; noaction overridden with value from _get_noaction; silent=0 with noaction
+              $CAF::Path::EC,
           ], "_func_args called with expected args");
 
-verify_exception("LC_Check mocked directory dispatch");
-
-
+verify_exception($mc, "LC_Check mocked directory dispatch");
 
 # Test calling unknown dispatch method
-init_exception("LC_Check unknown dispatch");
+init_exception($mc, "LC_Check unknown dispatch");
 $func_catch_args = [];
 ok(! defined($mc->LC_Check('no_lc_check_function')), # args are not relevant
    "failing LC_Check returns undef");
@@ -263,17 +110,17 @@ is_deeply($func_catch_args, [], "_func_catch not called");
 is($mc->{fail}, "Unsupported LC::Check function no_lc_check_function",
    "fail attribute set on unknown dispatch failure");
 # so no point in running verify_excpetion
-is($exception_reset, 0, "exception reset is not called when handling unknown dispatch");
-ok($mc->_reset_exception_fail(), "_reset_exception_fail after unknown dispatch");
+is($exception_helper::exception_reset, 0, "exception reset is not called when handling unknown dispatch");
+ok($mc->_reset_exception_fail(undef, $CAF::Path::EC), "_reset_exception_fail after unknown dispatch");
 
 # Done, unmock _get_noaction and mock _function_catch differently for for further tests
-$mock->unmock('_get_noaction');
+$mockexc->unmock('_get_noaction');
 
 # New mocked _function_catch() allow to count the number of calls to computing
 # the expected number of exception resets
-$mock->mock('_function_catch', sub {
-    $function_catch_call_count += 1;
-    my $function_catch_orig = $mock->original('_function_catch');
+$mockexc->mock('_function_catch', sub {
+    $exception_helper::function_catch_call_count += 1;
+    my $function_catch_orig = $mockexc->original('_function_catch');
     return &$function_catch_orig(@_);
 });
 
@@ -302,7 +149,7 @@ ok(! defined($mc->{fail}), "no fail attribute set with ok path");
 
 =cut
 
-init_exception("existence tests (file/directory)");
+init_exception($mc, "existence tests (file/directory)");
 
 # Tests without NoAction
 $CAF::Object::NoAction = 0;
@@ -342,8 +189,8 @@ is($mc->is_hardlink($basetestfile, $basetestfile), 0, "is_hardlink false (same f
 is($mc->is_hardlink($basetestfile, $basetestfile2), 0, "is_hardlink false with non-hardlinked files");
 
 # noreset=1
-verify_exception("existence tests (file/directory)", undef, 0, 1);
-ok($mc->_reset_exception_fail(), "_reset_exception_fail after existence tests (file/directory)");
+verify_exception($mc, "existence tests (file/directory)", undef, 0, 1);
+ok($mc->_reset_exception_fail(undef, $CAF::Path::EC), "_reset_exception_fail after existence tests (file/directory)");
 
 
 =head2 symlink/hardlink creation/update/test
@@ -377,7 +224,7 @@ sub check_symlink {
     is(readlink($link_path), $target, $target_msg) unless $noaction;
 };
 
-init_exception("symlink tests");
+init_exception($mc, "symlink tests");
 
 rmtree ($basetest) if -d $basetest;
 my $target_directory = "tgtdir";
@@ -441,15 +288,16 @@ ok($mc->is_symlink($brokenlink), "Broken link has been updated (target check dis
 is(readlink($brokenlink), "really_really_missing", "Broken link has the expected target by 'check' undefined");
 
 # noreset=0
-diag ("symlink() calls: $symlink_call_count, _function_catch() calls: $function_catch_call_count");
-verify_exception("symlink tests", "Failed to create symlink", $symlink_call_count + $function_catch_call_count, 0);
-ok($mc->_reset_exception_fail(), "_reset_exception_fail after symlink tests");
+diag ("symlink() calls: $exception_helper::symlink_call_count, _function_catch() calls: $exception_helper::function_catch_call_count");
+verify_exception($mc, "symlink tests", "Failed to create symlink",
+                 $exception_helper::symlink_call_count + $exception_helper::function_catch_call_count, 0);
+ok($mc->_reset_exception_fail(undef, $CAF::Path::EC), "_reset_exception_fail after symlink tests");
 
 
 # Test xxx_exists, is_hardlink and has_hardlinks methods with symlinks
 # Needs symlinks created in previous step (symlink creation/update)
 
-init_exception("existence tests (symlinks and hardlinks)");
+init_exception($mc, "existence tests (symlinks and hardlinks)");
 my $hardlink = "$basetest/a_hardlink";
 
 ok(! $mc->directory_exists($brokenlink), "directory_exists false on brokenlink");
@@ -479,8 +327,8 @@ is($mc->is_hardlink($filelink, $hardlink), 1, "$filelink and $hardlink are hard 
 is(! $mc->is_hardlink($filelink, $dirlink), 1, "$filelink and $dirlink are not hard linked (different hard links)");
 
 # noreset=0
-verify_exception("existence tests (symlinks and hardlinks)", undef, 6, 0);
-ok($mc->_reset_exception_fail(), "_reset_exception_fail after existence tests (symlinks and hardlinks)");
+verify_exception($mc, "existence tests (symlinks and hardlinks)", undef, 6, 0);
+ok($mc->_reset_exception_fail(undef, $CAF::Path::EC), "_reset_exception_fail after existence tests (symlinks and hardlinks)");
 
 
 # Test hardlink creation
@@ -511,7 +359,7 @@ sub check_hardlink {
     ok($mc->is_hardlink($link_path, $target), $target_msg) unless $noaction;
 };
 
-init_exception("hardlink tests");
+init_exception($mc, "hardlink tests");
 
 rmtree ($basetest) if -d $basetest;
 my $cwd = cwd();
@@ -552,9 +400,10 @@ is($mc->hardlink($target_file1, $hardlink2), CHANGED, "hardlink2 created");
 is($mc->is_hardlink($hardlink1, $hardlink2), 0, "is_hardlink false (0) with 2 different hardlinks");
 
 # noreset=0
-diag ("hardlink() calls: $hardlink_call_count, _function_catch() calls: $function_catch_call_count");
-verify_exception("hardlink tests", "\\*\\*\\* invalid target", $hardlink_call_count + $function_catch_call_count, 0);
-ok($mc->_reset_exception_fail(), "_reset_exception_fail after hardlink tests");
+diag ("hardlink() calls: $exception_helper::hardlink_call_count, _function_catch() calls: $exception_helper::function_catch_call_count");
+verify_exception($mc, "hardlink tests", "\\*\\*\\* invalid target",
+                 $exception_helper::hardlink_call_count + $exception_helper::function_catch_call_count, 0);
+ok($mc->_reset_exception_fail(undef, $CAF::Path::EC), "_reset_exception_fail after hardlink tests");
 
 
 =head2 directory
@@ -734,12 +583,12 @@ $CAF::Object::NoAction = 0;
 rmtree($basetest) if -d $basetest;
 
 $testdir = "$basetest/a/b/c";
-init_exception("directory creation NoAction=0");
+init_exception($mc, "directory creation NoAction=0");
 
 verify_directory($testdir, "directory exception test");
 
 # exception reset called 3 times: start, LC_Check and status
-verify_exception("directory creation NoAction=0", undef, 3);
+verify_exception($mc, "directory creation NoAction=0", undef, 3);
 
 
 rmtree($basetest) if -d $basetest;
@@ -753,13 +602,13 @@ ok(symlink("really_really_missing", $brokenlink), "broken symlink created 1");
 
 ok(!$mc->directory_exists($brokenlink), "brokenlink is not a directory");
 
-init_exception("directory creation failure NoAction=0");
+init_exception($mc, "directory creation failure NoAction=0");
 
 ok(!defined($mc->directory("$brokenlink/exist")),
    "directory on broken symlink parent returns undef on failure");
 
 # Called 2 times: init and LC_Check (no status)
-verify_exception("directory creation failure NoAction=0",
+verify_exception($mc, "directory creation failure NoAction=0",
                  '\*\*\* mkdir\(target/test/check/broken_symlink, 0755\): File exists', 2);
 ok(! $mc->directory_exists("$brokenlink/exist"), "directory brokenlink/exist not created");
 ok(! $mc->directory_exists($brokenlink), "brokenlink still not a directory");
@@ -776,12 +625,12 @@ ok(symlink("really_really_missing", $brokenlink), "broken symlink created 2");
 
 ok(!$mc->directory_exists($brokenlink), "brokenlink is not a directory 2");
 
-init_exception("temp directory creation failure NoAction=0 subdir");
+init_exception($mc, "temp directory creation failure NoAction=0 subdir");
 
 ok(!defined($mc->directory("$brokenlink/sub/exist-X", temp => 1)),
    "temp directory on broken symlink parent returns undef on failure missing subdir");
 # called 3 times: init, 2 times with creation of subdir via failing directory
-verify_exception("temp directory creation failure NoAction=0 subdir",
+verify_exception($mc, "temp directory creation failure NoAction=0 subdir",
                  'Failed to create basedir for temporary directory target/test/check/broken_symlink/sub/exist-XXXXX', 3);
 ok(! $mc->directory_exists("$brokenlink/exist"), "directory brokenlink/exist not created 2");
 ok(! $mc->directory_exists($brokenlink), "brokenlink still not a directory 2");
@@ -803,13 +652,13 @@ ok($mc->directory_exists($basetempdir), "Testdir basedir exists");
 # remove all permissions on basedir
 chmod(0000, $basetempdir);
 
-init_exception("temp directory creation failure NoAction=0 permission");
+init_exception($mc, "temp directory creation failure NoAction=0 permission");
 
 ok(!defined($mc->directory($tempdir, temp => 1)),
    "temp directory on parent without permissions returns undef on failure tempdir");
 
 # called 2 times: init and _safe_eval
-verify_exception("temp directory creation failure NoAction=0 permission",
+verify_exception($mc, "temp directory creation failure NoAction=0 permission",
                  '^Failed to create temporary directory target/test/check/sub/exist-XXXXX: Error in tempdir\(\) using target/test/check/sub/exist-XXXXX: Could not create directory target/test/check/sub/exist-\w{5}: Permission denied at', 2);
 
 # reset write bits for removal
@@ -838,12 +687,12 @@ $CAF::Object::NoAction = 1;
 rmtree($basetest) if -d $basetest;
 # Test non-existingfile
 
-init_exception("status (missing/noaction=1)");
+init_exception($mc, "status (missing/noaction=1)");
 
 ok(! $mc->file_exists($statusfile), "status testfile does not exists missing/noaction=1");
 is($mc->status($statusfile, mode => 0400), CHANGED,
    "status on missing file returns success on missing/noaction=1");
-verify_exception("status (missing/noaction=1)");
+verify_exception($mc, "status (missing/noaction=1)");
 
 ok(! $mc->file_exists($statusfile), "status testfile still does not exists missing/noaction=1");
 
@@ -852,11 +701,11 @@ $CAF::Object::NoAction = 0;
 
 rmtree($basetest) if -d $basetest;
 # Test non-existingfile
-init_exception("status (missing/noaction=0)");
+init_exception($mc, "status (missing/noaction=0)");
 ok(! $mc->file_exists($statusfile), "status testfile does not exists missing/noaction=0");
 ok(! defined($mc->status($statusfile, mode => 0400)),
    "status on missing file returns undef missing/noaction=0");
-verify_exception("status (missing/noaction=0)",
+verify_exception($mc, "status (missing/noaction=0)",
                  '\*\*\* lstat\(target/test/check/status\): No such file or directory');
 ok(! $mc->file_exists($statusfile), "status testfile still does not exists missing/noaction=0");
 
@@ -957,13 +806,13 @@ ok($mc->directory_exists($movedir1), "move testdir exists");
 my $nrfiles = scalar grep {-f $_} glob("$movedir2/*");
 is($nrfiles, 2, "$nrfiles files in dest dir before move");
 
-init_exception("move NoAction=0");
+init_exception($mc, "move NoAction=0");
 is($mc->move($movesrc1, $movedest1, '.old'), CHANGED, "move src $movesrc1 to dest $movedest1 with backup '.old'");
 # 4 calls,
 #   one from init move
 #   two from hardlink from backup (init hardlink and function_catch)
 #   one from safe_eval FCmove
-verify_exception("move NoAction=0", undef, 4);
+verify_exception($mc, "move NoAction=0", undef, 4);
 
 ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved");
 ok($mc->file_exists($movedest1), "move dest file exists after move");
@@ -988,9 +837,9 @@ ok($mc->directory_exists($movedir1), "move testdir exists w/o backup");
 $nrfiles = scalar grep {-f $_} glob("$movedir2/*");
 is($nrfiles, 2, "$nrfiles files in dest dir before move w/o backup");
 
-init_exception("move w/o backup NoAction=0");
+init_exception($mc, "move w/o backup NoAction=0");
 is($mc->move($movesrc1, $movedest1, ''), CHANGED, "move src $movesrc1 to dest $movedest1 w/o backup");
-verify_exception("move w/o backup NoAction=0", undef, 2); # move init, safe eval FCmove
+verify_exception($mc, "move w/o backup NoAction=0", undef, 2); # move init, safe eval FCmove
 ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved w/o backup");
 ok($mc->file_exists($movedest1), "move dest file exists after move w/o backup");
 is(readfile($movedest1), 'source', 'dest file has source content w/o backup');
@@ -1010,12 +859,12 @@ ok(!$mc->file_exists($movedest1b), "move dest backup file does not exists w/o ba
 ok($mc->directory_exists($movedir1), "move testdir exists w/o backup w/o destdir");
 ok(!$mc->directory_exists($movedir2), "move dest testdir does not exists w/o backup w/o destdir");
 
-init_exception("move w/o backup  w/o destdir NoAction=0");
+init_exception($mc, "move w/o backup  w/o destdir NoAction=0");
 is($mc->move($movesrc1, $movedest1, ''), CHANGED, "move src $movesrc1 to dest $movedest1 w/o backup w/o destdir");
 # move,
 #  directory + func_catch + status/LC_Chekc/func_catch
 #  safe eval FCmove
-verify_exception("move w/o backup w/o destdir NoAction=0", undef, 5);
+verify_exception($mc, "move w/o backup w/o destdir NoAction=0", undef, 5);
 ok(! $mc->file_exists($movesrc1), "move src file does not exists, was moved w/o backup w/o destdir");
 ok($mc->directory_exists($movedir2), "move dest testdir does exists after move w/o backup w/o destdir");
 ok($mc->file_exists($movedest1), "move dest file exists after move w/o backup w/o destdir");
@@ -1035,20 +884,20 @@ my $movedest2 = "$brokenlink/sub/dst";
 ok(symlink("really_really_missing", $brokenlink), "broken symlink created 1");
 
 # no backup, there's no dest to backup anyway
-init_exception("move failure to create destdir");
+init_exception($mc, "move failure to create destdir");
 ok(! defined($mc->move($movesrc1, $movedest2, '')),
    "move src $movesrc1 to dest $movedest1 w/o backup failed no permission to create destdir");
-verify_exception("move failure to create destdir",
+verify_exception($mc, "move failure to create destdir",
                  '^Failed to create basedir for dest target/test/check/broken_symlink/sub/dst: \*\*\* mkdir\(target/test/check/broken_symlink, 0755\): File exists', 3);
 
 # make destdir and remove all permissions
 mkpath $movedir2;
 chmod(0000, $movedir2);
 # no backup, there's no dest to backup anyway
-init_exception("move failure to move source");
+init_exception($mc, "move failure to move source");
 ok(! defined($mc->move($movesrc1, $movedest1, '')),
    "move src $movesrc1 to dest $movedest1 w/o backup failed no permission to move src to dest (destdor exists)");
-verify_exception("move failure to move source",
+verify_exception($mc, "move failure to move source",
                  '^Failed to move target/test/check/move1/src to target/test/check/move2/dst: Permission denied', 2);
 
 chmod(0700, $movedir2);
@@ -1057,10 +906,10 @@ writefile($movedest1, 'dest');
 # do not set 0000, or else Path cannot detect that dest exists
 # and thus no backup is taken, and we get different failure
 chmod(0500, $movedir2);
-init_exception("move failure to cleanup dest with backup");
+init_exception($mc, "move failure to cleanup dest with backup");
 ok(! defined($mc->move($movesrc1, $movedest1, '.old')),
    "move src $movesrc1 to dest $movedest1 with backup '.old' failed no permission to make backup of dest");
-verify_exception("move failure to cleanup dest with backup",
+verify_exception($mc, "move failure to cleanup dest with backup",
                  '^move: backup of dest target/test/check/move2/dst to target/test/check/move2/dst.old failed: \*\*\* link\(target/test/check/move2/dst, target/test/check/move2/dst.old\): Permission denied', 3);
 
 # Restore sufficient permissions
@@ -1177,11 +1026,11 @@ $readdir = undef;
 ok(! defined($mc->listdir($listdir)), "listdir returns undef when _listdir returns undef");
 
 # listdir with mocked _listdir
-init_exception("listdir");
+init_exception($mc, "listdir");
 $readdir = [qw(x A a B b)];
 is_deeply($mc->listdir($listdir), [qw(A B a b x)],
           "listdir w/o options returns sorted list of all files without . and ..");
-verify_exception("listdir", undef, 1);
+verify_exception($mc, "listdir", undef, 1);
 
 # test
 is_deeply($mc->listdir($listdir, test => sub {return $_[0] eq 'A';}),

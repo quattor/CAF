@@ -1,5 +1,7 @@
 #${PMpre} CAF::Path${PMpost}
 
+use parent qw(CAF::Exception);
+
 use CAF::Object qw(SUCCESS CHANGED);
 use LC::Check 1.22;
 use LC::Exception qw (throw_error);
@@ -136,155 +138,6 @@ sub mkcafpath
 # TODO: do we need some magic to be able to use as regular exported functions
 # TODO: handle LC::Check _message, should use Reporter instead of print
 
-=item _get_noaction
-
-Return NoAction setting:
-
-=over
-
-=item Return 0 is C<keeps_state> is true
-
-Any other value of C<keeps_state> is ignored. (In particular,
-you cannot use C<keeps_state> to enable NoAction).
-
-=item Return value of C<CAF::Object::NoAction> otherwise.
-
-=back
-
-Supports an optional C<msg> that is prefixed to reporter.
-
-=cut
-
-
-sub _get_noaction
-{
-    my ($self, $keeps_state, $msg) = @_;
-
-    $msg = '' if (! defined($msg));
-
-    my $noaction;
-
-    if ($keeps_state) {
-        $self->debug(1, $msg, "keeps_state set, noaction is false");
-        $noaction = 0;
-    } else {
-        if ($self->can('noAction')) {
-            $noaction = $self->noAction();
-        } else {
-            $noaction = $CAF::Object::NoAction;
-        }
-        $self->debug(1, $msg, "noaction is ", ($noaction ? 'true' : 'false'));
-    }
-
-    return $noaction ? 1 : 0;
-}
-
-=item _reset_exception_fail
-
-Reset previous exceptions and/or fail attribute.
-
-=cut
-
-# TODO: move to CAF::Object ?
-
-sub _reset_exception_fail
-{
-    my ($self, $msg) = @_;
-
-    $msg = defined($msg) ? " ($msg)" : "";
-
-    # Reset the fail attribute
-    if ($self->{fail}) {
-        $self->debug(1, "Ignoring/resetting previous existing fail$msg: ",
-                       $self->{fail});
-        $self->{fail} = undef;
-    }
-
-    # Ignore/reset any existing errors
-    if ($EC->error()) {
-        # LC::Exception supports formatted stringification
-        my $errmsg = ''.$EC->error();
-        $self->debug(1, "Ignoring/resetting previous existing error$msg: $errmsg");
-        $EC->ignore_error();
-    };
-
-    return SUCCESS;
-}
-
-
-=item _function_catch
-
-Execute function reference C<funcref> with arrayref C<$args> and hashref C<$opts>.
-
-Method resets/ignores any existing errors and fail attribute, and catches any exception thrown.
-No error is reported, it returns undef in this case and the fail attribute is set.
-
-=cut
-
-sub _function_catch
-{
-    my ($self, $funcref, $args, $opts) = @_;
-
-    $self->_reset_exception_fail('_function_catch');
-
-    my $res = $funcref->(@$args, %$opts);
-
-    if ($EC->error()) {
-        # LC::Exception supports formatted stringification
-        my $errmsg = ''.$EC->error();
-        $EC->ignore_error();
-        return $self->fail($errmsg);
-    }
-
-    return $res;
-}
-
-# TODO: move to CAF::Object ?
-
-=item _safe_eval
-
-Run function reference C<funcref> with arrayref C<argsref> and hashref C<optsref>.
-
-Return and set fail attribute with C<failmsg> on die or an error (C<undef> returned
-by C<funcref>), or print (at verbose level) C<msg> on success (respectively $@ and
-stringified result are appended). Note that C<_safe_eval> doesn't work with functions
-that don't return a defined value when they succeed.
-
-Resets previous exceptions and/or fail attribute
-
-=cut
-
-sub _safe_eval
-{
-    my ($self, $funcref, $argsref, $optsref, $failmsg, $msg) = @_;
-
-    $self->_reset_exception_fail('_safe_eval');
-
-    my (@args, %opts);
-    @args = @$argsref if $argsref;
-    %opts = %$optsref if $optsref;
-
-    local $@;
-    my $res = eval {
-                    $funcref->(@args, %opts);
-                   };
-
-    # $res is undef if there is a syntax or runtime error or if the evaluated
-    # function returns undef (interpreted as a function error).
-    if ( defined($res) ) {
-        $self->verbose("$msg: $res");
-    } else {
-        my $err_msg = '';
-        if ($@) {
-            chomp($@);
-            $err_msg = ": $@";
-        }
-        return $self->fail("$failmsg$err_msg");
-    }
-
-    return $res;
-}
-
 
 =item LC_Check
 
@@ -317,7 +170,7 @@ sub LC_Check
 
     my $funcref = $LC_CHECK_DISPATCH{$function};
     if (defined($funcref)) {
-        return $self->_function_catch($funcref, $args, $opts);
+        return $self->_function_catch($funcref, $args, $opts, $EC);
     } else {
         return $self->fail("Unsupported LC::Check function $function");
     };
@@ -452,7 +305,7 @@ sub cleanup
 
     $dest = $self->_untaint_path($dest, "cleanup dest") || return;
 
-    $self->_reset_exception_fail('cleanup');
+    $self->_reset_exception_fail('cleanup', $EC);
 
     return SUCCESS if (! $self->any_exists($dest));
 
@@ -490,6 +343,7 @@ sub cleanup
                 $CLEANUP_DISPATCH{$method}, \@args, undef,
                 "Cleanup $method failed to remove $dest",
                 "Cleanup $method removed $dest",
+                $EC
                 );
             # move and unlink return 0 on failure, set $!
             # rmtree dies on failure
@@ -564,7 +418,7 @@ sub directory
     # assume we will create a new directory
     my $newdir = 1;
 
-    $self->_reset_exception_fail('directory');
+    $self->_reset_exception_fail('directory', $EC);
 
     if (delete $opts{temp}) {
         # pad to at least X by adding 4
@@ -584,6 +438,7 @@ sub directory
                 \&tempdir, [$directory], {CLEANUP => 1},
                 "Failed to create temporary directory $directory",
                 "Created temporary directory with tempdir",
+                $EC
                 );
             return if defined($self->{fail});
         }
@@ -640,7 +495,7 @@ sub _make_link
 
     $self->debug(2, "Creating $link_type $link_path to target $target");
 
-    $self->_reset_exception_fail($link_type);
+    $self->_reset_exception_fail($link_type, $EC);
 
     my $status = $self->LC_Check('link', [$link_path, $target], \%opts);
 
@@ -863,7 +718,7 @@ sub move
     $src = $self->_untaint_path($src, "move src") || return;
     $dest = $self->_untaint_path($dest, "move dest") || return;
 
-    $self->_reset_exception_fail('move');
+    $self->_reset_exception_fail('move', $EC);
 
     return SUCCESS if (! $self->any_exists($src));
 
@@ -894,6 +749,7 @@ sub move
             $CLEANUP_DISPATCH{move}, [$src, $dest], undef,
             "Failed to move $src to $dest",
             "Moved $src to $dest",
+            $EC
             );
         # move returns 0 on failure, set $!
         return $self->fail("Failed to move $src to $dest: $!") if ! $res;
@@ -990,7 +846,7 @@ sub listdir
     $dir = $self->_untaint_path($dir, "listdir directory") || return;
     $dir =~ s#/*$##;
 
-    $self->_reset_exception_fail('listdir');
+    $self->_reset_exception_fail('listdir', $EC);
 
     if (! $self->directory_exists($dir)) {
         return $self->fail("listdir: directory $dir is not a directory");
