@@ -115,7 +115,9 @@ File's modification time.
 
 =item C<backup>
 
-Path for the backup file, if this one has to be re-written.
+Create a backup file when the file already exists and will be modified.
+The value is used as a suffix to create the backup filename
+(e.g. C<.old>).
 
 =item C<keeps_state>
 
