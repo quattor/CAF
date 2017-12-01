@@ -80,6 +80,15 @@ is(readfile($fn), $TEXT, "file $fn created with expected contents");
 is(get_perm($fn), 0764, "created file $fn has mode 0764");
 is((stat($fn))[9], 1234567, "mtime set to 1234567 forfile $fn");
 
+$fh = CAF::FileWriter->open ($fn, mode => 0764, log => $obj);
+print $fh $TEXT;
+ok(!$fh->close(), 'close reports no change with same content and same permissions');
+
+$fh = CAF::FileWriter->open ($fn, mode => 0700, log => $obj);
+print $fh $TEXT;
+ok($fh->close(), 'close reports change with same content and different permissions');
+is(get_perm($fn), 0700, "created file $fn has mode 0700 with same content");
+
 # test with existing file
 $fn = "$testdir/success/file2";
 writefile($fn, "garbage");

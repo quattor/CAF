@@ -30,6 +30,9 @@ sub read_file_contents {
 }
 $lcfile->mock("file_contents", \&read_file_contents);
 
+my $mock_path = Test::MockModule->new('CAF::Path');
+$mock_path->mock('status', 1);
+
 
 my $testdir = 'target/test/fileeditor_source';
 mkpath($testdir);

@@ -27,7 +27,7 @@ use lib "$Bin/modules";
 use testapp;
 use CAF::Reporter qw($HISTORY);
 use CAF::History qw($EVENTS);
-use CAF::Object;
+use CAF::Object qw(CHANGED);
 use Scalar::Util qw(refaddr);
 use Errno qw(ENOENT);
 
@@ -53,7 +53,7 @@ use constant FILENAME => "/my/test";
 our ($path, $text, $text_throw, $text_from_file, $faw_die);
 our %opts = ();
 
-my ($log, $dir_exists, $dir_args, $dir_ec);
+my ($log, $dir_exists, $dir_args, $dir_ec, $status_args, $status_ec);
 my $str = '';
 open ($log, ">", \$str);
 
@@ -75,6 +75,8 @@ sub init_test
     $dir_exists = 0;
     $dir_args = undef;
     $dir_ec = 1;
+    $status_args = undef;
+    $status_ec = 1; # no error, but no change either
 }
 
 my $mock_history = Test::MockModule->new('CAF::History');
@@ -86,6 +88,13 @@ $mock_path->mock('directory', sub {
     return $dir_ec;
 });
 $mock_path->mock('directory_exists', sub {$dir_exists++; return 0;});
+
+$mock_path->mock('status', sub {
+    my $self = shift;
+    $status_args = \@_;
+    $self->{fail} = "status failed" if !$status_ec;
+    return $status_ec;
+});
 
 use CAF::FileWriter;
 
@@ -107,6 +116,7 @@ ok (!*$fh->{save},  "File marked not to be saved after closing");
 is ($path, FILENAME, "The correct file is opened");
 is($dir_exists, 1, "directory exists called once");
 is_deeply($dir_args, ['/my', 'mode', 0755], "directory creation called with parent dir args");
+ok(!defined $status_args, "status not called");
 
 my @methods = qw(info verbose report debug warn error event is_verbose);
 foreach my $method (@methods) {
@@ -181,6 +191,7 @@ is (*$fh->{save}, 0, "File marked not to be saved");
 $fh->close;
 is ($path, "", "No file is opened when cancelling");
 ok (!exists ($opts{contents}), "Nothing is written after cancel");
+ok(!defined $status_args, "status not called after cancel");
 
 init_test;
 $fh = CAF::FileWriter->new (
@@ -204,6 +215,7 @@ $fh->cancel();
 like ($str, qr{Will not save file /\S+ \(cancelled\)}, "Cancel operation correctly logged");
 $fh->close();
 
+
 init_test;
 $fh = CAF::FileWriter->open (
     FILENAME,
@@ -220,6 +232,7 @@ is ($opts{backup}, "foo", "Checking options: correct backup option passed");
 is ($opts{mode}, 0400, "Checking options: correct mode passed");
 is ($opts{owner}, "100:200", "Checking options: correct owner/group passed as owner:group");
 is ($opts{mtime}, 1234567, "Checking options: correct mtime passed");
+ok(!defined $status_args, "status not called with options");
 
 is($CAF::Object::NoAction, 0, "NoAction is set to 0");
 
@@ -232,6 +245,8 @@ $fh->close();
 is_deeply(\%opts, {}, "no modification, no call to file_write");
 $re = "File " . FILENAME . " was not modified";
 like($str, qr{^$re}m, "Writing same contents correctly reported");
+is_deeply($status_args, [FILENAME, 'mode', oct(644)],
+          "status called after close without content change and default mode");
 
 # Not writing anything to $fh and close -> (new) empty file
 init_test;
@@ -254,6 +269,7 @@ like ($fh, qr(En un lugar), "Regexp also works");
 $fh->close();
 is($CAF::Object::NoAction, 1, "NoAction is set to 1");
 is(scalar keys %opts, 0, "NoAction=1: File::AtomicWrite file_write is not called");
+ok(!defined $status_args, "status not called with options w NoAction=1");
 
 # actions on closed file
 ok(!$fh->opened(), "file is not opened anymore");

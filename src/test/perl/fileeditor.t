@@ -28,6 +28,7 @@ $mockapp->mock('error', sub {
 my $mock_path = Test::MockModule->new('CAF::Path');
 # parent dir always exists
 $mock_path->mock('directory_exists', sub {return 1;});
+$mock_path->mock('status', 1);
 
 use Test::Quattor::Object;
 
