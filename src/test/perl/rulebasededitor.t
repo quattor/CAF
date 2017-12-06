@@ -9,6 +9,10 @@ use Test::Quattor::Object;
 use Carp qw(confess);
 use File::Path;
 use File::Temp qw(tempfile);
+use Test::MockModule;
+
+my $mock_path = Test::MockModule->new('CAF::Path');
+$mock_path->mock('status', 1);
 
 my $testdir = 'target/test/editor';
 mkpath($testdir);

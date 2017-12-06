@@ -7,7 +7,7 @@ use File::AtomicWrite 1.18;
 use Errno qw(ENOENT);
 use IO::String;
 use CAF::Process;
-use CAF::Object;
+use CAF::Object qw(CHANGED);
 use CAF::Path;
 use File::Basename qw(dirname);
 use overload '""' => "stringify";
@@ -300,6 +300,9 @@ sub close
 
         my $msg = 'was';
 
+        # Pass NoAction here, as it keeps track of the NoAction value during initialisation and/or keeps_state
+        my $cafpath = CAF::Path::mkcafpath(log => *$self->{LOG}, NoAction => $options->{noaction});
+
         if ($changed) {
             $report_diff->($diff, 'to');
 
@@ -308,8 +311,6 @@ sub close
                 $self->debug(1, "File $filename with NoAction=1");
             } else {
                 my $parent_dir = dirname($filename);
-                # Pass NoAction here, as it keeps track of the NoAction value during initialisation and/or keeps_state
-                my $cafpath = CAF::Path::mkcafpath(log => *$self->{LOG}, NoAction => $options->{noaction});
                 # only create the directory (by calling directory method) if the directory doesn't exist yet
                 # the directory method can be called on an existing directory without problem,
                 # but a mode is specified here; and this call here could possibly change
@@ -348,7 +349,40 @@ sub close
                 $self->change_hook();
             }
         } else {
-            $msg = 'was not';
+
+            # even when nothing changed set the permissions
+            my %fileopts;
+            foreach my $name (qw(mode mtime owner group)) {
+                $fileopts{$name} = $options->{$name} if exists($options->{$name});
+            };
+            # probably always true since mode has a default value
+            if (scalar %fileopts) {
+                my $status = $cafpath->status($filename, %fileopts);
+                if (defined($status)) {
+                    if ($status == CHANGED) {
+                        $changed = 1;
+                        # status returns would have changed state under noaction
+                        $modified = $self->noAction() ? 0 : 1;
+                        # update changed event w/o diff
+                        $event{changed} = $changed;
+                    }
+                } else {
+                    $self->warn("status during close gave error: $cafpath->{fail}");
+                    # Make an oldstyle exception
+                    throw_error("close status failed filename $filename: $cafpath->{fail}");
+                    return;
+                }
+            }
+
+            if ($changed) {
+                if ($modified) {
+                    $msg = 'status would have been';
+                } else {
+                    $msg = 'status was';
+                }
+            } else {
+                $msg = 'was not';
+            }
         }
 
         $self->verbose("File $filename $msg modified");
