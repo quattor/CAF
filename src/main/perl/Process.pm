@@ -105,10 +105,33 @@ false.
 
 =item C<sensitive>
 
-A boolean specifying whether the arguments contain sensitive information
-(like passwords). If C<sensitive> is true, the commandline will not be reported
+A boolean, hashref or functionref specifying whether the arguments contain
+sensitive information (like passwords).
+
+If C<sensitive> is true, the commandline will not be reported
 (by default when C<log> option is used, the commandline is reported
 with verbose level).
+
+If C<sensitive> is a hash reference, a basic search (key) and replace (value) is performed.
+The keys and values are not interpreted as regexp patterns. The order of the search and
+replace is determined by the sorted values (this gives you some control over the order).
+Be aware that all occurences are replaced, and when e.g. weak passwords are used,
+it might reveal the password by replacing other parts of the commandline
+(C<--password=password> might be replaced by C<--SECRET=SECRET>,
+thus revealing the weak password).
+Also, when a key is a substring of another key,
+it will reveal (parts of) sensitive data if the order is not correct.
+
+If C<sensitive> is a function reference, the command arrayref is passed
+as only argument, and the stringified return value is reported.
+    my $replace = sub {
+        my $command = shift;
+        return join("_", @$command);
+    };
+
+    ...
+
+    CAF::Process->new(..., sensitive => $replace);
 
 This does not cover command output. If the output (stdout and/or stderr) contains
 sensitve information, make sure to handle it yourself via C<stdout> and/or C<stderr>
@@ -142,6 +165,54 @@ sub _initialize
     return SUCCESS;
 }
 
+
+=item _sensitive_commandline
+
+Generate the reported command line text, in particular it deals with
+the C<sensitive> attribute.
+When the sensitive attribute is not set, it returns C<stringify_command>.
+
+This method does not report, only returns text.
+
+See the description of the C<sensitive> option in C<_initialize>.
+
+=cut
+
+sub _sensitive_commandline
+{
+    my ($self) = @_;
+
+    my $text;
+    my $senstxt = "$self->{COMMAND}->[0] <sensitive>";
+    my $sens = $self->{sensitive};
+    if (ref($sens) eq 'CODE') {
+        local $@;
+        my $sensdata;
+        eval {
+            $sensdata = $sens->($self->{COMMAND});
+        };
+        if ($@) {
+            # Do not report error, it might contain sensitive data
+            $text = "$senstxt (sensitive function failed, contact developers)";
+        } else {
+            $text = "$sensdata";
+        }
+    } elsif (ref($sens) eq 'HASH') {
+        # sort keys on value
+        $text = $self->stringify_command();
+        my @keys = sort { $sens->{$a} cmp $sens->{$b} } keys(%$sens);
+        foreach my $key (@keys) {
+            # metaquote both keys and values
+            $text =~ s/\Q$key\E/\Q$sens->{$key}\E/g;
+        }
+    } elsif ($sens) {
+        $text = $senstxt;
+    } else {
+        $text = $self->stringify_command();
+    }
+    return $text;
+}
+
 =item _LC_Process
 
 Run C<LC::Process> C<function> with arrayref arguments C<args>.
@@ -158,8 +229,7 @@ sub _LC_Process
     my ($self, $function, $args, $noaction_value, $msg, $postmsg) = @_;
 
     $msg =~ s/^(\w)/Not \L$1/ if $self->noAction();
-    $self->verbose("$msg command: ",
-                   ($self->{sensitive} ? "$self->{COMMAND}->[0] <sensitive>" : $self->stringify_command()),
+    $self->verbose("$msg command: ", $self->_sensitive_commandline(),
                    (defined($postmsg) ? " $postmsg" : ''));
 
     if ($self->noAction()) {
