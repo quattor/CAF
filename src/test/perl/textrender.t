@@ -7,6 +7,7 @@ use Test::Quattor;
 use CAF::TextRender qw($YAML_BOOL $YAML_BOOL_PREFIX get_template_instance);
 use Test::MockModule;
 use Cwd;
+use Test::Quattor::Object;
 
 use B qw(svref_2object);
 

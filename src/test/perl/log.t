@@ -5,6 +5,7 @@ use Test::More;
 use Test::MockModule;
 use LC::Exception qw (SUCCESS);
 use CAF::Log qw($FH $FILENAME $SYSLOG);
+use Test::Quattor::Object;
 
 mkdir('target/test');
 

@@ -8,6 +8,7 @@ use testapp;
 use CAF::FileWriter;
 use CAF::FileReader;
 use Test::More;
+use Test::Quattor::Object;
 
 =pod
 

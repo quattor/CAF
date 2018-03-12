@@ -5,6 +5,7 @@ use Test::More;
 use Test::Quattor;
 use CAF::Service;
 use Test::MockModule;
+use Test::Quattor::Object;
 
 =pod
 

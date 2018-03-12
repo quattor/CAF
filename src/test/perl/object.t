@@ -6,6 +6,7 @@ use Test::MockModule;
 use LC::Exception;
 # Test the EXPORT_OK
 use CAF::Object qw(SUCCESS CHANGED throw_error);
+use Test::Quattor::Object;
 
 use FindBin qw($Bin);
 use lib "$Bin/modules";

@@ -17,6 +17,7 @@ use CAF::FileReader;
 
 use File::Path;
 use File::Temp qw(tempfile);
+use Test::Quattor::Object;
 
 my $testdir = 'target/test/file_new_open';
 mkpath($testdir);

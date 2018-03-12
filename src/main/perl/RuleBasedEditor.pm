@@ -897,6 +897,7 @@ sub _updateConfigLine
 
     # Update the matching configuration lines
     if ( $new_line ) {
+        my $correct_new_line = $self->_escape_regexp_string($new_line);
         my $comment = "";
         # For shell variables, add a comment at the end of the line indicating it was edited by Quattor
         # Not done for other formats as comments at the end of the line are not supported in many
@@ -907,7 +908,7 @@ sub _updateConfigLine
         $self->debug(1, "$function_name: checking expected configuration line ($new_line) with pattern ",
                      ">>>$config_param_pattern<<<");
         $self->add_or_replace_lines(qr/^\s*$config_param_pattern/,
-                                    qr/^\s*$new_line$/,
+                                    qr/^\s*$correct_new_line$/,
                                     $new_line . $comment . "\n",
                                     ENDING_OF_FILE,
                                    );

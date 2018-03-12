@@ -6,6 +6,7 @@ use Test::More;
 use testapp;
 
 use Test::MockModule;
+use Test::Quattor::Object;
 use CAF::Application qw($OPTION_CFGFILE);
 
 
