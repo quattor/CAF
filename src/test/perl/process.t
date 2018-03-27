@@ -6,6 +6,7 @@ use lib "$Bin/modules";
 use testapp;
 use CAF::Process;
 use Test::More;
+use Test::Quattor::Object;
 
 use Test::MockModule;
 my $mock = Test::MockModule->new ("CAF::Process");
@@ -120,6 +121,42 @@ $ps->run ();
 like ($str, qr/Running the command: ls <sensitive>/,
       "run logged with sensitive mode (command not in log)");
 
+# _sensitive_commandline
+$ps->{sensitive} = undef;
+is($ps->_sensitive_commandline(), join(" ", @$command),
+   "expected commandline w/o sensitive");
+
+$ps->{sensitive} = 1;
+is($ps->_sensitive_commandline(), 'ls <sensitive>',
+   "expected commandline w sensitive=1");
+
+# one key is a substring of another,
+# control the order by the value
+# tip: use long random passwords ;)
+$ps->{sensitive} = {
+    a => 'LETTERA',
+    random => 'ASECRET',
+    '.*' => 'A', # should not match, even if it runs first
+};
+is($ps->_sensitive_commandline(),
+   'ls LETTERA ASECRET commLETTERAnd which I do not cLETTERAre',
+   "expected commandline w sensitive=hashref");
+
+
+my $sens_function = sub {
+    return join(",", @{$_[0]}[0..2]);
+};
+$ps->{sensitive} = $sens_function;
+is($ps->_sensitive_commandline(), 'ls,a,random',
+   "expected commandline w sensitive=funcref");
+
+my $sens_function_die = sub {
+    die("magic");
+};
+$ps->{sensitive} = $sens_function_die;
+is($ps->_sensitive_commandline(),
+   'ls <sensitive> (sensitive function failed, contact developers)',
+   "expected commandline w sensitive=funcref and failure");
 
 init_test();
 # Let's test the rest of the commands

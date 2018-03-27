@@ -4,6 +4,7 @@ use warnings;
 use Test::More;
 use CAF::Service;
 use Test::MockModule;
+use Test::Quattor::Object;
 
 # do not use Test::Quattor for this test
 

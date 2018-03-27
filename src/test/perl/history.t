@@ -9,6 +9,7 @@ use Test::MockModule;
 use LC::Exception qw (SUCCESS);
 use myhistory;
 use object_ok;
+use Test::Quattor::Object;
 
 use CAF::History qw($IDX $ID $TS $REF);
 

@@ -15,6 +15,7 @@ use testapp;
 use CAF::Process;
 use Test::More;
 use Cwd 'abs_path';
+use Test::Quattor::Object;
 
 my $exe = abs_path("$Bin/../resources/stream_output.sh");
 

@@ -21,6 +21,8 @@ use Scalar::Util qw(refaddr);
 use Template;
 use version;
 
+use Test::Quattor::Object;
+
 use Readonly;
 Readonly my $EVENTS => 'EVENTS';
 Readonly my $INSTANCES => 'INSTANCES';

@@ -4,6 +4,7 @@ use warnings;
 use Test::More;
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 use Test::MockObject::Extends;
+use Test::Quattor::Object;
 
 use constant LOCK_TEST_DIR => "target/test";
 use constant LOCK_TEST => LOCK_TEST_DIR . "/lock-fork";

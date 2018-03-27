@@ -6,6 +6,7 @@ use lib "$Bin/modules";
 use testapp;
 use CAF::FileEditor;
 use Test::More;
+use Test::Quattor::Object;
 use Carp qw(confess);
 use Fcntl qw(:seek);
 
@@ -22,11 +23,6 @@ my ($log, $str);
 my $this_app = testapp->new ($0, qw (--verbose));
 
 $SIG{__DIE__} = \&confess;
-
-*testapp::error = sub {
-    my $self = shift;
-    $self->{ERROR} = @_;
-};
 
 open ($log, ">", \$str);
 use constant TEXT => <<'EOF';
