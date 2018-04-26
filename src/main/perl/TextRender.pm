@@ -422,10 +422,17 @@ sub load_module
     return 1;
 }
 
-
-sub render_json
+# Indent json and add spaces before and after
+sub render_jsonpretty
 {
     my ($self) = @_;
+    return $self->render_json(1);
+}
+
+# render json output, if pretty is true, this is rendered with idents
+sub render_json
+{
+    my ($self, $pretty) = @_;
 
     # We should only support hash or array refs (see JSON::XS allow_nonref option)
     # JSON::XS croaks if not handled properly
@@ -433,6 +440,7 @@ sub render_json
     if ($ref eq 'HASH' || $ref eq 'ARRAY') {
         my $j = JSON::XS->new();
         $j->canonical(1); # sort the keys, to create reproducable results
+        $j->pretty($pretty ? 1 : 0);
         return $j->encode($self->{contents});
     } else {
         return $self->fail("contents for JSON rendering must be ",
