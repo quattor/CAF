@@ -459,6 +459,28 @@ is($trd->{fail},
 
 =pod
 
+=head3 jsonpretty
+
+Test jsonpretty rendering
+
+=cut
+
+$res = <<EOF;
+{
+   "level1" : {
+      "name_level1" : "value_level1"
+   },
+   "name_level0" : "value_level0"
+}
+EOF
+
+$trd = CAF::TextRender->new('jsonpretty', $contents, eol=>0);
+ok($trd->load_module('JSON::XS'), "JSON::XS loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for jsonpretty");
+is("$trd", $res, "jsonpretty module rendered correctly");
+
+=pod
+
 =head3 yaml
 
 Test yaml/YAML::XS
