@@ -270,6 +270,10 @@ sub execute
 {
     my $self = shift;
 
+    if ($self->{OPTIONS}->{shell}) {
+        $self->verbose('DEVELOPER FEEDBACK: Executing process using subshell, this is deprecated and may be removed in a future release.');
+    }
+
     my @opts = ();
     foreach my $k (sort(keys (%{$self->{OPTIONS}}))) {
         push (@opts, "$k=$self->{OPTIONS}->{$k}");
@@ -712,6 +716,8 @@ Suppose you want to add options to your command, dynamically:
     $proc->run();
 
 =head2 Subshells
+
+This functionality has been deprecated and may be removed in a future release.
 
 Okay, you B<really> want them. You can't live without them. You found
 some obscure case that really needs a shell. Here is how to get
