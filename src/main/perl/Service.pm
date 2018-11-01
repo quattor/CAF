@@ -10,6 +10,8 @@ use Readonly;
 
 Readonly my $DEFAULT_SLEEP => 5;
 Readonly::Array our @FLAVOURS => qw(linux_sysv linux_systemd solaris);
+Readonly::Array my @GENERATED_ACTIONS => qw(start stop restart reload);
+Readonly::Array our @ALL_ACTIONS => (@GENERATED_ACTIONS, 'stop_sleep_start');
 
 # Mapping the methods we expose here to the svcadm operations. We
 # choose the Linux terms for our API.
@@ -19,7 +21,7 @@ Readonly::Hash my %SOLARIS_METHODS => {
     restart => 'restart'
 };
 
-our @EXPORT_OK = qw(@FLAVOURS os_flavour __make_method);
+our @EXPORT_OK = qw(@FLAVOURS @ALL_ACTIONS os_flavour __make_method);
 
 =pod
 
@@ -226,7 +228,7 @@ Reloads the daemons
 
 # The start, stop, restart and reload methods are identical on each Linux
 # variant.  We can generate them all in one go.
-foreach my $method (qw(start stop restart reload)) {
+foreach my $method (@GENERATED_ACTIONS) {
     foreach my $flavour (@FLAVOURS) {
         # for flavour solaris, reload and restart are coded below
         next if ($flavour eq 'solaris' && ($method eq 'restart'  || $method eq 'reload'));

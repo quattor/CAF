@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Quattor;
-use CAF::Service;
+use CAF::Service qw(@ALL_ACTIONS);
 use Test::MockModule;
 use Test::Quattor::Object;
 
@@ -28,8 +28,16 @@ Test all methods for C<CAF::Service> for linux_systemd
 
 set_service_variant("linux_systemd");
 
+my @actions = qw(start stop restart reload);
 
-foreach my $m (qw(start stop restart reload)) {
+is_deeply(\@ALL_ACTIONS, [@actions, 'stop_sleep_start'], "exported supported actions as expected");
+foreach my $m (@ALL_ACTIONS) {
+    # ->can cannot test AUTOLOAD magic
+    my $method = (grep {$_ eq $m} @actions) ? "${m}_linux_systemd" : $m;
+    ok($srv->can($method), "method $method supported");
+}
+
+foreach my $m (@actions) {
     my $method = "${m}_linux_systemd";
     $srv->$method();
     ok(get_command("systemctl $m ntpd.service sshd.service"), "systemctl $m works");
@@ -62,7 +70,7 @@ foreach my $m (qw(start stop restart reload)) {
 command_history_reset;
 $srv->stop_sleep_start(1);
 ok(command_history_ok(["service ntpd stop",
-                       "service sshd stop", 
+                       "service sshd stop",
                        "service ntpd start",
                        "service sshd start"
                        ]), "stop_sleep_start sysv works");
@@ -97,10 +105,10 @@ ok(get_command("svcadm -v restart -s -T $srv->{options}->{timeout} ntpd sshd"),
 command_history_reset;
 $srv->stop_sleep_start(1);
 ok(command_history_ok(["svcadm -v disable -t ntpd sshd",
-                       "svcadm -v enable -t ntpd sshd" 
+                       "svcadm -v enable -t ntpd sshd"
                       ]), "stop_sleep_start svcadm disable/stop works");
 
-my $srvopts = CAF::Service->new(['ntpd', 'sshd'], 
+my $srvopts = CAF::Service->new(['ntpd', 'sshd'],
                                 timeout => 0,
                                 persistent => 1,
                                 recursive => 1,
