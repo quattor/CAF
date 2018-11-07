@@ -55,7 +55,7 @@ CAF::Kerberos - Class for Kerberos handling using L<GSSAPI>.
 This class handles Kerberos tickets and some
 utitlities like kerberos en/decryption.
 
-To create a new ticket for principal SERVICE/host@REALM
+To create a new ticket for principal C<SERVICE/host@REALM>
 (using default (server) keytab for the TGT), you can use
 
     my $krb = CAF::Kerberos->new(
@@ -540,7 +540,7 @@ sub DESTROY {
 Convert the principal hashref into a principal string.
 
 Optional C<principal> hashref can be passed, if none is provided,
-use the instance C<$self->{principal}>.
+use the instance C<< $self->{principal} >>.
 
 Returns the principal string, undef in case or problem.
 
@@ -842,7 +842,7 @@ use strict 'refs';
 
 =item _process
 
-Run arrayref $cmd via C<CAF::Process->new->output> in updated environment.
+Run arrayref $cmd via C<< CAF::Process->new->output >> in updated environment.
 
 Returns the output (and sets C<< $? >>).
 

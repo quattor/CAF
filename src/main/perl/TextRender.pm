@@ -129,10 +129,10 @@ JSON format (using C<JSON::XS>) (JSON true and false have to be resp. C<\1> and 
 
 =item yaml
 
-YAML (using C<YAML::XS>) (YAML true and false, either resp. C<$YAML_BOOL->{yes}> and
-C<$YAML_BOOL->{no}>; or the strings C<$YAML_BOOL_PREFIX."true"> and
+YAML (using C<YAML::XS>) (YAML true and false, either resp. C<<$YAML_BOOL->{yes} >> and
+C<< $YAML_BOOL->{no} >>; or the strings C<$YAML_BOOL_PREFIX."true"> and
 C<$YAML_BOOL_PREFIX."false"> (There are known problems with creating hashrefs using the
-C<$YAML_BOOL->{yes}> value for true; Perl seems to mess up the structure when creating
+C<< $YAML_BOOL->{yes} >> value for true; Perl seems to mess up the structure when creating
 the hashrefs))
 
 =item properties

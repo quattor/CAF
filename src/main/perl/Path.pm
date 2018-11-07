@@ -94,9 +94,10 @@ undef on failure and store the error message in the C<fail> attribute.
 Returns an instance of C<CAF::Object> and C<CAF::Path>.
 This instance is a simple way to use C<CAF::Path> when
 subclassing is not possible. Allowed options are
-C<<log => $logger>> and C<<NoAction => $noaction>>.
+C<< log => $logger >> and C<< NoAction => $noaction >>.
 
 This function is not exported, to be used as e.g.
+
     use CAF::Path;
     ...
     my $cafpath = CAF::Path::mkcafpath(log => $logger);
@@ -141,7 +142,7 @@ sub mkcafpath
 
 =item LC_Check
 
-Execute function C<<LC::Check::<function>>> with arrayref C<$args> and hashref C<$opts>.
+Execute function C<< LC::Check::<function> >> with arrayref C<$args> and hashref C<$opts>.
 
 C<CAF::Object::NoAction> is added to the options, unless C<keeps_state> is set.
 

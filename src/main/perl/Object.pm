@@ -58,7 +58,7 @@ C<_initialize> (e.g. to avoid troubles when the subclass overloads logic evaluat
 =item new
 
 Creates an empty hash and bless'es it as the new class instance. All arguments are then passed
-to a C<$self->_initialize(@_)> call.
+to a C<< $self->_initialize(@_) >> call.
 When C<_initialize> returns success, the C<NoAction> attribute is set to the value of
 C<CAF::Object::NoAction> if it didn't exist after C<_initialize>.
 If C<_initialize> returns failure, an error is thrown and undef returned.
@@ -127,7 +127,7 @@ sub _initialize
 =item error, warn, info, verbose, debug, report, OK, event
 
 Convenience methods to access the log/reporter instance that might
-be passed during initialisation and set to C<$self->{log}>.
+be passed during initialisation and set to C<< $self->{log} >>.
 
 (When constructing classes via multiple inheritance,
 C<CAF::Reporter> should precede C<CAF::Object> if you want
@@ -157,7 +157,7 @@ logs it with C<verbose> and returns undef.
 
 To be used in subclasses that are not supposed to log/report
 any errors themself when a problem or failure occurs.
-In such classes, all failures should use C<return $self->fail("message");>.
+In such classes, all failures should use C<< return $self->fail("message"); >>.
 
 =cut
 
