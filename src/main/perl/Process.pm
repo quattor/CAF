@@ -41,7 +41,7 @@ functions. Commands are logged at the verbose level.
 
 All these methods return the return value of their LC::Process
 equivalent. This is different from the command's exit status, which is
-stored in $?.
+stored in C<$?>.
 
 Please use these functions, and B<do not> use C<``>, C<qx//> or
 C<system>. These functions won't spawn a subshell, and thus are more
@@ -124,6 +124,7 @@ it will reveal (parts of) sensitive data if the order is not correct.
 
 If C<sensitive> is a function reference, the command arrayref is passed
 as only argument, and the stringified return value is reported.
+
     my $replace = sub {
         my $command = shift;
         return join("_", @$command);
@@ -220,7 +221,7 @@ Run C<LC::Process> C<function> with arrayref arguments C<args>.
 C<noaction_value> is is the value to return with C<NoAction>.
 
 C<msg> and C<postmsg> are used to construct log message
-C<<<msg> command: <COMMAND>[ <postmsg>]>>.
+C<< <msg> command: <COMMAND>[ <postmsg>] >>.
 
 =cut
 
@@ -259,7 +260,7 @@ Runs the command, with the options passed at initialization time. If
 running on verbose mode, the exact command line and options are
 logged.
 
-Please, initialize the object with C<log => ''> if you are passing
+Please, initialize the object with C<< log => '' >> if you are passing
 confidential data as an argument to your command.
 
 =back
@@ -348,7 +349,7 @@ the remainder of the output when the process is finished.
 Another option are the process C<arguments>. This is a reference to the
 array of arguments passed to the C<process> function.
 The arguments are passed before the output to the C<process>: e.g.
-if C<arguments =\> [qw(a b)]> is used, the C<process> function is
+if C<< arguments =\> [qw(a b)] >> is used, the C<process> function is
 called like C<process(a,b,$newoutput)> (with C<$newoutput> the
 new streamed output)
 
@@ -649,7 +650,7 @@ sub execute_if_exists
 =head1 COMMON USE CASES
 
 On the next examples, no log is used. If you want your component to
-log the command, just add log => $self to the object creation.
+log the command, just add C<< log => $self >> to the object creation.
 
 =head2 Running a command
 
@@ -722,9 +723,5 @@ it. But please, don't use it without a B<good> reason:
     $cmd->execute();
 
 It will only work with the C<execute> method.
-
-=head1 SEE ALSO
-
-C<LC::Process>
 
 =cut

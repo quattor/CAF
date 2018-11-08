@@ -123,6 +123,7 @@ Best-effort to handle ssl setup, C<Net::SSL> vs C<IO::Socket::SSL>
 and C<verify_hostname>.
 
 Example usage
+
     ...
     my $ua = $self->_get_ua(%opts);
 
@@ -144,7 +145,7 @@ Options
 
 =item key: the client certificate private key filename
 
-=item ccache: the kerberos crednetial cache
+=item ccache: the kerberos credential cache
 
 =item timeout: set timeout
 

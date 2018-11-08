@@ -79,8 +79,8 @@ sub name
 
 =item version(): string
 
-Returns the version number as defined in $self->{'VERSION'}, or
-<unknown> if not defined.
+Returns the version number as defined in C<< $self->{'VERSION'} >>, or
+C<< <unknown> >> if not defined.
 
 =cut
 
@@ -142,8 +142,8 @@ sub option_exists
 
 Returns the option value coming from the command line and/or
 configuration file. Scalar can be a string, or a reference to a hash
-or an array containing the option's value. option() is a wrapper
-on top of AppConfig->get($opt). 
+or an array containing the option's value. C<option()> is a wrapper
+on top of C<< AppConfig->get($opt) >>.
 
 If the option doesn't exist, returns C<undef>, except if the C<default>
 argument has been specified: in this case this value is returned but
@@ -167,7 +167,7 @@ sub option
 =item set_option($opt, $val): SUCCESS
 
 Defines an option and sets its value. If the option was previously
-defined, its value is overwritten. This is a wrapper over C<AppConfig>
+defined, its value is overwritten. This is a wrapper over C<AppConfig> 
 methods to hide the internal implementation of a C<CAF::Application>.
 
 This method always returns SUCCESS.

@@ -232,7 +232,7 @@ filename, but the internal C<$LOGFILE> attribute).
 =item struct
 
 Enable the structured logging type C<struct> (implemented by method
-C< <_struct_<struct> >>).
+C<< _struct_<struct> >>).
 
 If C<struct> is defined but false, structured logging will be disabled.
 
@@ -533,10 +533,10 @@ sub debug
 
 Writes C<@array> as a concatenated string with added newline
 to the log file, if one is setup
-(via C<<config_reporter(logfile => $loginst) >>).
+(via C<< config_reporter(logfile => $loginst) >>).
 
 If the last argument is a hashref and structured logging is enabled
-(via C<<config_reporter(struct => $type) >>), call the structured
+(via C<< config_reporter(struct => $type) >>), call the structured
 logging method with this hashref as argument.
 
 =cut

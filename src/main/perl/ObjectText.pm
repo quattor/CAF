@@ -27,6 +27,7 @@ Define subclass via
     }
 
 And use it via
+
     my $sc = SubClass->new(log => $self);
     print "$sc"; # stringification
 
