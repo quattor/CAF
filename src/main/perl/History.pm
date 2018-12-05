@@ -151,7 +151,7 @@ sub new
 
 Add an event. An event is specified by an id from the C<$obj>
 and a hash C<metadata>. (Metadata can be passed as
-C<<->event($obj, modified => 0);>>.)
+C<< ->event($obj, modified => 0); >>.)
 
 If an instance is passed, the C<Scalar::Util::refaddr> is used as internal
 identifier. If a scalar is passed, it's value is used.
