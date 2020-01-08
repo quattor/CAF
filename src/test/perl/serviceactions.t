@@ -11,7 +11,7 @@ my $obj = Test::Quattor::Object->new();
 
 set_service_variant("linux_systemd");
 
-is_deeply(\@SERVICE_ACTIONS, [qw(restart reload stop_sleep_start)], "expected service actions");
+is_deeply(\@SERVICE_ACTIONS, [qw(restart reload stop_sleep_start condrestart)], "expected service actions");
 
 foreach my $act (@SERVICE_ACTIONS) {
     ok((grep {$_ eq $act} @ALL_ACTIONS), "serviceaction $act is a CAF::Service action");
@@ -22,6 +22,7 @@ my $sa = CAF::ServiceActions->new(log => $obj);
 isa_ok($sa, 'CAF::ServiceActions', 'new returns a CAF::ServiceActions instance');
 
 $sa->add({daemon1 => 'restart', daemon2 => 'reload'});
+$sa->add({daemon4 => 'condrestart'});
 $sa->add({daemon3 => 'restart'}, msg => 'test long');
 is($obj->{LOGLATEST}->{VERBOSE}, 'Scheduled daemon/action daemon3:restart test long',
    'expected reported verbose message including msg long');
@@ -29,6 +30,7 @@ is($obj->{LOGLATEST}->{VERBOSE}, 'Scheduled daemon/action daemon3:restart test l
 my $sched = {
     reload => {daemon2 => 1},
     restart => {daemon1 => 1, daemon3 => 1},
+    condrestart => {daemon4 => 1},
 };
 is_deeply($sa->{actions}, $sched, "expected added actions long");
 
@@ -40,7 +42,9 @@ is($obj->{LOGLATEST}->{VERBOSE}, 'No daemon/action scheduled test undef',
 
 ok(!@Test::Quattor::command_history, "No commands run before run");
 $sa->run();
-ok(command_history_ok(["systemctl reload daemon2.service", "systemctl restart daemon1.service daemon3.service"]),
+ok(command_history_ok(["systemctl condrestart daemon4.service",
+                       "systemctl reload daemon2.service",
+                       "systemctl restart daemon1.service daemon3.service"]),
    "run runs expected commands long");
 ok(!$obj->{LOGLATEST}->{ERROR}, "no errors long");
 

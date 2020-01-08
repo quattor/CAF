@@ -28,7 +28,7 @@ Test all methods for C<CAF::Service> for linux_systemd
 
 set_service_variant("linux_systemd");
 
-my @actions = qw(start stop restart reload);
+my @actions = qw(start stop restart reload condrestart);
 
 is_deeply(\@ALL_ACTIONS, [@actions, 'stop_sleep_start'], "exported supported actions as expected");
 foreach my $m (@ALL_ACTIONS) {
@@ -60,7 +60,7 @@ Test all methods for C<CAF::Service> for linux_sysv
 
 set_service_variant("linux_sysv");
 
-foreach my $m (qw(start stop restart reload)) {
+foreach my $m (qw(start stop restart reload condrestart)) {
     my $method = "${m}_linux_sysv";
     $srv->$method();
     ok(get_command("service ntpd $m"), "sysv $m works");
@@ -91,6 +91,8 @@ $srv->start_solaris();
 ok(get_command("svcadm -v enable -t ntpd sshd"), "svcadm enable/start works");
 $srv->stop_solaris();
 ok(get_command("svcadm -v disable -t ntpd sshd"), "svcadm disable/stop works");
+$srv->condrestart_solaris();
+ok(get_command("svcadm -v restart -t ntpd sshd"), "svcadm [cond]restart works");
 
 $srv->reload_solaris();
 ok(get_command('svcadm -v refresh ntpd sshd'),

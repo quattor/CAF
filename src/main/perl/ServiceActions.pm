@@ -7,7 +7,7 @@ use CAF::Object qw(SUCCESS);
 use Readonly;
 
 # to keepin sync with caf_service_actions type in template-library-core quattor/types/component
-Readonly our @SERVICE_ACTIONS => qw(restart reload stop_sleep_start);
+Readonly our @SERVICE_ACTIONS => qw(restart reload stop_sleep_start condrestart);
 
 our @EXPORT_OK = qw(@SERVICE_ACTIONS);
 

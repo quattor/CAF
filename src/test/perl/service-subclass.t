@@ -39,7 +39,7 @@ Test avaliable methods
 
 =cut
 
-foreach my $m (qw(start stop restart reload init)) {
+foreach my $m (qw(start stop restart reload condrestart init)) {
     foreach my $fl (@FLAVOURS) {
         my $method = "${m}_${fl}";
         diag "can $method";
@@ -55,7 +55,7 @@ Test all methods + custom init for C<CAF::Service> for linux_sysv
 
 =cut
 
-foreach my $m (qw(start stop restart reload init)) {
+foreach my $m (qw(start stop restart reload condrestart init)) {
     diag "method $m";
     $srv->$m();
     is($command, "service myservice $m", "subclassed service myservice $m works");
