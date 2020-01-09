@@ -40,12 +40,14 @@ foreach my $m (@ALL_ACTIONS) {
 foreach my $m (@actions) {
     my $method = "${m}_linux_systemd";
     $srv->$method();
-    ok(get_command("systemctl $m ntpd.service sshd.service"), "systemctl $m works");
+    ok(get_command("systemctl $m ntpd.service"), "systemctl $m works");
 }
 command_history_reset;
 $srv->stop_sleep_start(1);
-ok(command_history_ok(["systemctl stop ntpd.service sshd.service",
-                       "systemctl start ntpd.service sshd.service"
+ok(command_history_ok(["systemctl stop ntpd.service",
+                       "systemctl stop sshd.service",
+                       "systemctl start ntpd.service",
+                       "systemctl start sshd.service"
                        ]), "stop_sleep_start systemctl works");
 
 

@@ -44,7 +44,8 @@ ok(!@Test::Quattor::command_history, "No commands run before run");
 $sa->run();
 ok(command_history_ok(["systemctl condrestart daemon4.service",
                        "systemctl reload daemon2.service",
-                       "systemctl restart daemon1.service daemon3.service"]),
+                       "systemctl restart daemon1.service",
+                       "systemctl restart daemon3.service"]),
    "run runs expected commands long");
 ok(!$obj->{LOGLATEST}->{ERROR}, "no errors long");
 

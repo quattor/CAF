@@ -406,8 +406,12 @@ sub __make_method
     } elsif ($flavour eq 'linux_systemd') {
         return sub {
             my $self = shift;
-            return $self->_logcmd("systemctl", $method,
-                                  map { m/\.(service|target)$/ ? $_ : "$_.service" } @{$self->{services}} );
+            my $ok = 1;
+
+            foreach my $i (@{$self->{services}}) {
+                $ok &&= $self->_logcmd("systemctl", $method, $i =~ m/\.(service|target)$/ ? $i : "$i.service");
+            }
+            return $ok;
         };
     } elsif ($flavour eq 'solaris') {
         return sub {
