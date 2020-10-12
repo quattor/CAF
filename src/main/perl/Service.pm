@@ -10,7 +10,7 @@ use Readonly;
 
 Readonly my $DEFAULT_SLEEP => 5;
 Readonly::Array our @FLAVOURS => qw(linux_sysv linux_systemd solaris);
-Readonly::Array my @GENERATED_ACTIONS => qw(start stop restart reload);
+Readonly::Array my @GENERATED_ACTIONS => qw(start stop restart reload condrestart);
 Readonly::Array our @ALL_ACTIONS => (@GENERATED_ACTIONS, 'stop_sleep_start');
 
 # Mapping the methods we expose here to the svcadm operations. We
@@ -18,7 +18,8 @@ Readonly::Array our @ALL_ACTIONS => (@GENERATED_ACTIONS, 'stop_sleep_start');
 Readonly::Hash my %SOLARIS_METHODS => {
     start => 'enable',
     stop => 'disable',
-    restart => 'restart'
+    restart => 'restart',
+    condrestart => 'restart'
 };
 
 our @EXPORT_OK = qw(@FLAVOURS @ALL_ACTIONS os_flavour __make_method);
@@ -38,6 +39,7 @@ platforms
     $srv->stop();
     $srv->start();
     $srv->restart();
+    $srv->condrestart();
     $srv->stop_sleep_start();
 
 Will do the right thing with SystemV Init scripts, Systemd units and
@@ -404,8 +406,12 @@ sub __make_method
     } elsif ($flavour eq 'linux_systemd') {
         return sub {
             my $self = shift;
-            return $self->_logcmd("systemctl", $method,
-                                  map { m/\.(service|target)$/ ? $_ : "$_.service" } @{$self->{services}} );
+            my $ok = 1;
+
+            foreach my $i (@{$self->{services}}) {
+                $ok &&= $self->_logcmd("systemctl", $method, $i =~ m/\.(service|target)$/ ? $i : "$i.service");
+            }
+            return $ok;
         };
     } elsif ($flavour eq 'solaris') {
         return sub {
