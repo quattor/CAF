@@ -524,6 +524,73 @@ $txt =~ s/\s//g;
 is("$txt", '---no:falseyes:true',
    "yaml module renders booleans true/false correctly when using prefixing");
 
+=pod
+
+=head3 yamlmulti
+
+Test yaml/YAML::XS multi-documents
+
+=cut
+
+my $multicontents = {
+    'doc0' => {
+        'name_level0_doc0' => 'value_level0_doc0',
+            'level1_doc0' => {
+                'name_level1_doc0' => 'value_level1_doc0',
+        }
+    },
+    'doc1' => {
+        'name_level0_doc1' => 'value_level0_doc1',
+        'level1_doc1' => {
+            'name_level1_doc1' => 'value_level1_doc1',
+        }
+    }
+};
+
+
+my $multires = <<EOF;
+---
+level1_doc0:
+  name_level1_doc0: value_level1_doc0
+name_level0_doc0: value_level0_doc0
+---
+level1_doc1:
+  name_level1_doc1: value_level1_doc1
+name_level0_doc1: value_level0_doc1
+EOF
+$trd = CAF::TextRender->new('yamlmulti', $multicontents);
+ok($trd->load_module('YAML::XS'), "YAML::XS loaded");
+ok(! $trd->{method_is_tt}, "method_is_tt false for yamlmulti");
+is("$trd", $multires, "yamlmulti module rendered correctly");
+
+# true/false tests
+$trd = CAF::TextRender->new('yamlmulti', {'a' => $YAML_BOOL}, eol=>0);
+$txt = "$trd";
+$txt =~ s/\s//g;
+is($txt, '---no:falseyes:true',
+   "yamlmulti module renders booleans true/false correctly");
+
+# but this goes wrong
+$trd = CAF::TextRender->new('yamlmulti', {
+    'a' => {'yes' => $YAML_BOOL->{'yes'}},
+    'b' => {'no' => $YAML_BOOL->{'no'}},
+}, eol=>0);
+
+$txt = "$trd";
+$txt =~ s/\s//g;
+is("$txt", "---yes:1---no:''",
+   "yamlmulti module renders booleans true/false incorrect when constructing hashref");
+
+# so use the CAF::TextRender prefixing
+$trd = CAF::TextRender->new('yamlmulti', {
+    'a' => {'yes' => $YAML_BOOL_PREFIX."true"},
+    'b' => {'no' => $YAML_BOOL_PREFIX."false"},
+}, eol=>0);
+$txt = "$trd";
+$txt =~ s/\s//g;
+is("$txt", '---yes:true---no:false',
+   "yamlmulti module renders booleans true/false correctly when using prefixing");
+
 
 =pod
 
