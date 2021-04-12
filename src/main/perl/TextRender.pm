@@ -125,7 +125,7 @@ The rendering module to use: either one of the following reserved values
 
 =item json
 
-JSON format (using C<JSON::XS>) (JSON true and false have to be resp. C<\1> and c<\0>)
+JSON format (using C<JSON::XS>) (JSON true and false have to be resp. C<\1> and C<\0>)
 
 =item yaml
 
@@ -134,6 +134,14 @@ C<< $YAML_BOOL->{no} >>; or the strings C<$YAML_BOOL_PREFIX."true"> and
 C<$YAML_BOOL_PREFIX."false"> (There are known problems with creating hashrefs using the
 C<< $YAML_BOOL->{yes} >> value for true; Perl seems to mess up the structure when creating
 the hashrefs))
+
+=item yamlmulti
+
+Multi-document YAML, the keys of the passed contents are sorted and
+the list of the corresponding values is used to generate the multi-document YAML.
+(The keys are only used for sorting)
+
+See C<yaml> module for details on handling booleans.
 
 =item properties
 
@@ -465,9 +473,18 @@ sub _yaml_replace_boolean_prefix
 
 sub render_yaml
 {
-    my ($self, $cfg) = @_;
+    my ($self) = @_;
 
     my $txt = YAML::XS::Dump($self->{contents});
+    return $self->_yaml_replace_boolean_prefix($txt);
+}
+
+sub render_yamlmulti
+{
+    my ($self) = @_;
+
+    my @keys = sort keys %{$self->{contents}};
+    my $txt = YAML::XS::Dump(@{$self->{contents}}{@keys});
     return $self->_yaml_replace_boolean_prefix($txt);
 }
 
