@@ -4,7 +4,7 @@
   <artifactId>perl-CAF</artifactId>
   <packaging>pom</packaging>
   <version>21.12.3-SNAPSHOT</version>
-  <name>Common Application Framework for Quattor</name>
+  <name>perl-CAF</name>
   <parent>
     <groupId>org.quattor.maven</groupId>
     <artifactId>build-profile</artifactId>
@@ -262,6 +262,9 @@
           <artifactId>rpm-maven-plugin</artifactId>
           <configuration>
             <summary>Common Application Framework for Quattor Perl applications</summary>
+            <description>The Perl Common Application Framework (CAF) for Quattor.
+A library encapsulating most annoying details like reporting, file handling or
+command executions.</description>
             <name>${project.artifactId}</name>
             <url>https://github.com/quattor/CAF/tree/master</url>
             <mappings>
