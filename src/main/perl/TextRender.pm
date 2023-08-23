@@ -224,9 +224,9 @@ sub _initialize
         STRICT => $DEFAULT_TT_STRICT,
         RECURSION => $DEFAULT_TT_RECURSION,
     };
-    while (my ($key, $value) = each %{$opts{ttoptions}}) {
-        $self->{ttoptions}->{$key} = $value;
-    }
+    foreach my $key (keys %{$opts{ttoptions}}) {
+        $self->{ttoptions}->{$key} = $opts{ttoptions}{$key};
+    };
 
     # set render method
     ($self->{method}, $self->{method_is_tt}) = $self->select_module_method();
@@ -520,7 +520,8 @@ sub render_tiny
 
     my $c = Config::Tiny->new();
 
-    while (my ($k, $v) = each(%{$self->{contents}})) {
+    foreach my $k (keys %{$self->{contents}}) {
+        my $v = $self->{contents}{$k};
         if (ref($v)) {
             $c->{$k} = $v;
         } else {
