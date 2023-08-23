@@ -30,8 +30,8 @@ sub _rep_setup
     # initialise with current "global" CAF::Reporter settings
     #   if DEBUGLV is not set
     if (! exists($self->{$DEBUGLV})) {
-        while (my ($opt, $val) = each (%$CAF::Reporter::_REP_SETUP)) {
-            $self->{$opt} = $val;
+        foreach my $opt (keys %{$CAF::Reporter::_REP_SETUP}) {
+            $self->{$opt} = ${$CAF::Reporter::_REP_SETUP}{$opt};
         }
     }
 
