@@ -123,8 +123,8 @@ my $opts = {};
 my $success_func = sub {
     my ($arg1, $arg2, %opts) = @_;
     push(@$args, $arg1, $arg2);
-    while (my ($k, $v) = each %opts) {
-        $opts->{$k} = $v;
+    foreach my $k (keys %opts) {
+        $opts->{$k} = $opts{$k};
     };
     return 100;
 };
