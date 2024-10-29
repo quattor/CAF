@@ -3,6 +3,7 @@
 use parent qw(CAF::Object Exporter);
 use CAF::Service;
 use CAF::Object qw(SUCCESS);
+use EDG::WP4::CCM::Path qw(unescape);
 
 use Readonly;
 
@@ -113,8 +114,9 @@ sub add
     $msg = " $msg" if $msg;
 
     my @acts;
-    foreach my $daemon (sort keys %{$pairs || {}}) {
-        my $action = $pairs->{$daemon};
+    foreach my $escdaemon (sort keys %{$pairs || {}}) {
+        my $daemon = unescape($escdaemon);
+        my $action = $pairs->{$escdaemon};
         if (grep {$_ eq $action} @SERVICE_ACTIONS) {
             $self->{actions}->{$action} ||= {};
             $self->{actions}->{$action}->{$daemon} = 1;
