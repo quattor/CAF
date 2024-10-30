@@ -76,4 +76,9 @@ ok(command_history_ok(["systemctl reload daemon2.service"], ['daemon1']),
    "run runs expected commands wrong (no daemon1)");
 
 
+my $sa4 = CAF::ServiceActions->new(log => $obj);
+$sa4->add({daemon_40instance_2eservice => 'restart'});
+is_deeply($sa4->{actions}, {restart => {'daemon@instance.service' => 1}}, "add correctly unescapes instanced name");
+
+
 done_testing;
